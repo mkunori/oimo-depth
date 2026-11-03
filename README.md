@@ -4,6 +4,8 @@
 
 TypeScript（strict）+ React + Vite を採用し、GitHub Pages への静的公開と Vitest によるコアロジックの単体テストを前提にしています。
 
+UI から独立した自動採掘・SCORE 上限・設備購入の計算エンジンを実装しています。API・仮バランス・数値精度・拡張点は [ゲーム計算エンジンの仕様](docs/game-core.md) を参照してください。ホーム画面への接続は後続 Issue で行います。
+
 ## 環境構築・開発
 
 Node.js 24.x（`.nvmrc`）と付属の npm を使用してください。
