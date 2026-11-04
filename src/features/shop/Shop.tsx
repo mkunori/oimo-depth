@@ -10,10 +10,11 @@ import type { EquipmentId } from '../../data/equipment';
 interface ShopProps {
   readonly state: GameState;
   readonly isCapped: boolean;
+  readonly isPaused: boolean;
   readonly onPurchase: (id: EquipmentId, mode: PurchaseMode) => void;
 }
 
-export function Shop({ state, isCapped, onPurchase }: ShopProps) {
+export function Shop({ state, isCapped, isPaused, onPurchase }: ShopProps) {
   const [mode, setMode] = useState<PurchaseMode>(1);
 
   return (
@@ -40,7 +41,7 @@ export function Shop({ state, isCapped, onPurchase }: ShopProps) {
           const definition = EQUIPMENT[id];
           const quote = getPurchaseQuote(state, id, mode);
           const nextPrice = getEquipmentPrice(id, state.equipmentCounts[id]);
-          const disabled = isCapped || quote.quantity === 0;
+          const disabled = isPaused || isCapped || quote.quantity === 0;
           return (
             <li key={id}>
               <article className="equipment" aria-labelledby={`${id}-title`}>
@@ -65,7 +66,7 @@ export function Shop({ state, isCapped, onPurchase }: ShopProps) {
                   {!disabled && <strong>{formatNumber(quote.totalCost)} 芋</strong>}
                 </button>
                 <p id={`${id}-reason`} className={`purchase-reason ${disabled ? '' : 'is-available'}`}>
-                  {isCapped ? 'SCORE 上限到達のため購入を停止しています。' : quote.quantity === 0 ? '所持芋が足りません。' : '所持芋を使って購入できます。'}
+                  {isPaused ? 'セーブの確認が必要なため購入を停止しています。' : isCapped ? 'SCORE 上限到達のため購入を停止しています。' : quote.quantity === 0 ? '所持芋が足りません。' : '所持芋を使って購入できます。'}
                 </p>
               </article>
             </li>

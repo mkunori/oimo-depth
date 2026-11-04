@@ -4,13 +4,18 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { createSave, parseSave, serializeSave } from './core/save';
+import { createInitialState } from './core/state';
+import { SAVE_STORAGE_KEY } from './features/save/SaveRepository';
 
 let now = 0;
 
 beforeEach(() => {
   now = 0;
+  localStorage.clear();
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
   vi.spyOn(performance, 'now').mockImplementation(() => now);
+  vi.spyOn(Date, 'now').mockImplementation(() => 1_700_000_000_000 + Math.floor(now));
 });
 
 afterEach(() => {
@@ -42,11 +47,11 @@ describe('minimal mining game', () => {
     expect(progress.value).toBe(0);
     expect(progress.max).toBe(1_000_000);
     expect(screen.getAllByRole('article')).toHaveLength(3);
-    for (const button of screen.getAllByRole('button')) {
+    for (const button of within(screen.getByRole('region', { name: '設備' })).getAllByRole('button')) {
       expect((button as HTMLButtonElement).disabled).toBe(true);
     }
     expect(screen.getAllByText('所持芋が足りません。')).toHaveLength(3);
-    expect(screen.getByText(/ページを再読み込みすると最初から/)).toBeTruthy();
+    expect(screen.getByText(/このブラウザに自動保存します/)).toBeTruthy();
   });
 
   it('uses real elapsed time when a timer callback arrives late', () => {
@@ -121,7 +126,8 @@ describe('minimal mining game', () => {
     view.unmount();
     expect(vi.getTimerCount()).toBe(0);
     renderGame();
-    expect(screen.getByLabelText('所持芋').textContent).toBe('0');
+    expect(screen.getByLabelText('所持芋').textContent).toBe('2');
+    expect(screen.getByLabelText('作業員の所有数').textContent).toBe('1');
     expect(vi.getTimerCount()).toBe(1);
   });
 
@@ -156,7 +162,7 @@ describe('minimal mining game', () => {
     expect(screen.getByText('上限到達 — 収穫が停止しました')).toBeTruthy();
     expect(screen.getByText('転生は後続Issueで実装予定です。')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /転生/ })).toBeNull();
-    for (const button of screen.getAllByRole('button')) {
+    for (const button of within(screen.getByRole('region', { name: '設備' })).getAllByRole('button')) {
       expect((button as HTMLButtonElement).disabled).toBe(true);
       fireEvent.click(button);
     }
@@ -174,5 +180,153 @@ describe('minimal mining game', () => {
     expect(screen.getByLabelText('所持芋').textContent).toBe('1,000,000');
     expect(screen.getByLabelText('作業員の所有数').textContent).toBe('0');
     expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
+  });
+});
+
+function openSavePanel() {
+  fireEvent.click(screen.getByText(/^セーブ管理/));
+}
+
+describe('save management UI', () => {
+  it('loads one hour of offline rewards once under StrictMode and reports the result', () => {
+    localStorage.setItem(SAVE_STORAGE_KEY, serializeSave(createSave(createInitialState(), Date.now() - 3_600_000)));
+    const writes = vi.spyOn(Storage.prototype, 'setItem');
+    renderGame();
+
+    expect(writes).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('所持芋').textContent).toBe('3,600');
+    const report = screen.getByRole('region', { name: 'おかえりなさい' });
+    expect(within(report).getAllByText('1時間 0分')).toHaveLength(2);
+    expect(within(report).getByText('3,600 芋')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '放置報酬の報告を閉じる' }));
+    expect(screen.queryByRole('region', { name: 'おかえりなさい' })).toBeNull();
+    tickAfter(1);
+    expect(screen.getByLabelText('所持芋').textContent).toBe('3,601');
+  });
+
+  it.each(['', 'broken', '{"saveVersion":0}'])('keeps current game and save on invalid import %s', (text) => {
+    renderGame();
+    tickAfter(100);
+    openSavePanel();
+    const original = localStorage.getItem(SAVE_STORAGE_KEY);
+    fireEvent.change(screen.getByLabelText('インポートするセーブテキスト'), { target: { value: text } });
+    fireEvent.click(screen.getByRole('button', { name: 'インポート内容を確認' }));
+
+    expect(screen.getByRole('alert').textContent).toContain('現在の進行とセーブは保持');
+    expect(screen.getByLabelText('所持芋').textContent).toBe('100');
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(original);
+    expect(screen.queryByRole('button', { name: 'このセーブに置き換える' })).toBeNull();
+  });
+
+  it('exports, previews, cancels, and restores the exact exported state only after confirmation', () => {
+    renderGame();
+    tickAfter(100);
+    fireEvent.click(screen.getByRole('button', { name: '作業員を1台購入' }));
+    openSavePanel();
+    fireEvent.click(screen.getByRole('button', { name: 'セーブをエクスポート' }));
+    const exported = (screen.getByLabelText('エクスポート用セーブ（全選択してコピー）') as HTMLTextAreaElement).value;
+    tickAfter(10);
+    expect(screen.getByLabelText('所持芋').textContent).toBe('110');
+    fireEvent.change(screen.getByLabelText('インポートするセーブテキスト'), { target: { value: exported } });
+    fireEvent.click(screen.getByRole('button', { name: 'インポート内容を確認' }));
+    expect(screen.getByRole('group', { name: 'インポートの確認' })).toBeTruthy();
+    expect(screen.getByLabelText('所持芋').textContent).toBe('110');
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(screen.getByLabelText('所持芋').textContent).toBe('110');
+    fireEvent.click(screen.getByRole('button', { name: 'インポート内容を確認' }));
+    fireEvent.click(screen.getByRole('button', { name: 'このセーブに置き換える' }));
+
+    expect(screen.getByLabelText('所持芋').textContent).toBe('90');
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('100');
+    expect(screen.getByLabelText('作業員の所有数').textContent).toBe('1');
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState).toEqual(parseSave(exported).gameState);
+  });
+
+  it('requires confirmation for reset and leaves data intact when cancelled', () => {
+    renderGame();
+    tickAfter(100);
+    openSavePanel();
+    const original = localStorage.getItem(SAVE_STORAGE_KEY);
+    fireEvent.click(screen.getByRole('button', { name: 'セーブを初期化' }));
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(original);
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(screen.getByLabelText('所持芋').textContent).toBe('100');
+    fireEvent.click(screen.getByRole('button', { name: 'セーブを初期化' }));
+    fireEvent.click(screen.getByRole('button', { name: '初期化を実行' }));
+
+    expect(screen.getByLabelText('所持芋').textContent).toBe('0');
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState).toEqual(createInitialState());
+    tickAfter(1);
+    expect(screen.getByLabelText('所持芋').textContent).toBe('1');
+  });
+
+  it('does not overwrite a corrupt save and lets the user export the original before recovery', () => {
+    localStorage.setItem(SAVE_STORAGE_KEY, 'broken original');
+    renderGame();
+    tickAfter(100);
+    expect(screen.getByRole('alert').textContent).toContain('元データを保持');
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe('broken original');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
+    openSavePanel();
+    fireEvent.click(screen.getByRole('button', { name: 'セーブをエクスポート' }));
+    expect((screen.getByLabelText('エクスポート用セーブ（全選択してコピー）') as HTMLTextAreaElement).value).toBe('broken original');
+    fireEvent.click(screen.getByRole('button', { name: 'セーブを初期化' }));
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe('broken original');
+    fireEvent.click(screen.getByRole('button', { name: '初期化を実行' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('1');
+  });
+
+  it('handles visibilitychange and pagehide/pageshow without double settlement', () => {
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+    renderGame();
+    tickAfter(5);
+    visibility.mockReturnValue('hidden');
+    fireEvent(document, new Event('visibilitychange'));
+    fireEvent(window, new Event('pagehide'));
+    tickAfter(48 * 3_600);
+    expect(screen.getByLabelText('所持芋').textContent).toBe('5');
+    visibility.mockReturnValue('visible');
+    fireEvent(document, new Event('visibilitychange'));
+    fireEvent(window, new Event('pageshow'));
+
+    expect(screen.getByLabelText('所持芋').textContent).toBe('86,405');
+    const report = screen.getByRole('region', { name: 'おかえりなさい' });
+    expect(within(report).getByText('48時間 0分')).toBeTruthy();
+    expect(within(report).getByText('24時間 0分')).toBeTruthy();
+    tickAfter(1);
+    expect(screen.getByLabelText('所持芋').textContent).toBe('86,406');
+  });
+
+  it('pauses and warns on a competing storage change without overwriting it', () => {
+    renderGame();
+    tickAfter(100);
+    const external = serializeSave(createSave(createInitialState(), Date.now()));
+    localStorage.setItem(SAVE_STORAGE_KEY, external);
+    fireEvent(window, new StorageEvent('storage', { key: SAVE_STORAGE_KEY, newValue: external }));
+    tickAfter(100);
+
+    expect(screen.getByRole('alert').textContent).toContain('別のタブ');
+    expect(screen.getByLabelText('所持芋').textContent).toBe('100');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(external);
+    for (const button of within(screen.getByRole('region', { name: '設備' })).getAllByRole('button')) {
+      expect((button as HTMLButtonElement).disabled).toBe(true);
+    }
+  });
+
+  it('keeps current state and original save if an import write fails', () => {
+    renderGame();
+    tickAfter(100);
+    openSavePanel();
+    const original = localStorage.getItem(SAVE_STORAGE_KEY);
+    fireEvent.change(screen.getByLabelText('インポートするセーブテキスト'), { target: { value: serializeSave(createSave(createInitialState(), Date.now())) } });
+    fireEvent.click(screen.getByRole('button', { name: 'インポート内容を確認' }));
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('quota exceeded', 'QuotaExceededError'); });
+    fireEvent.click(screen.getByRole('button', { name: 'このセーブに置き換える' }));
+
+    expect(screen.getByRole('alert').textContent).toContain('保存領域の読み書きに失敗');
+    expect(screen.getByLabelText('所持芋').textContent).toBe('100');
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(original);
   });
 });

@@ -70,7 +70,7 @@ const purchased = purchaseEquipment(harvested, 'worker', 10);
 - 巨大数対応: `GameState` の金額・累計、`EquipmentDefinition` の価格・生産量、`src/core/game.ts` の演算・比較・丸め・有限値検証をまとめて任意精度の数値表現へ変更してください。価格指数計算も含むため、型だけの変更では対応できません。
 - 倍率ボーナス: `getProductionPerSecond` に集約した生産計算へ追加します。今回の状態には仮のボーナス項目を置きません。
 - 転生・限界突破: 初期状態と上限定数を境界として仕様確定後に拡張します。転生リセットや上限変更は未実装です。
-- オフライン計算・保存: 外側で経過時間を決め、検証済みの状態を `advanceGame` に渡す構成を想定します。保存形式や読込処理は未実装です。
+- オフライン計算・保存: `src/core/save.ts` が保存形式の検証と経過時間の上限制御を行い、`advanceGame` に渡します。保存領域・時計・React との接続は `src/features/save/` に分離しています。詳細は [保存とオフライン進行](save.md) を参照してください。
 - 深度・地層・スキルツリー・装備・上位転生のモデルは仕様確定を待ちます。
 
 テストは `npm test`、型チェックは `npm run typecheck`、本番ビルドは `npm run build` で実行します。
