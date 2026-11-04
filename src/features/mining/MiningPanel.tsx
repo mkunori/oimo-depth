@@ -8,13 +8,14 @@ interface MiningPanelProps {
   readonly state: GameState;
   readonly production: number;
   readonly isCapped: boolean;
+  readonly isPaused: boolean;
 }
 
-export function MiningPanel({ state, production, isCapped }: MiningPanelProps) {
+export function MiningPanel({ state, production, isCapped, isPaused }: MiningPanelProps) {
   const affordable = EQUIPMENT_IDS.find(
     (id) => getEquipmentPrice(id, state.equipmentCounts[id]) <= state.imo,
   );
-  const goal = isCapped
+  const goal = isPaused ? '進行を一時停止しています。セーブ管理の案内を確認してください。' : isCapped
     ? '転生は後続Issueで実装予定です。'
     : affordable
       ? `${EQUIPMENT[affordable].name}を購入できます。設備を増やして、収穫を速くしましょう。`
@@ -34,7 +35,7 @@ export function MiningPanel({ state, production, isCapped }: MiningPanelProps) {
         </div>
         <div className="rate-stat">
           <dt>収穫速度</dt>
-          <dd><output aria-label="収穫速度" aria-live="off">{formatNumber(isCapped ? 0 : production)}</output><span className="unit">芋 / 秒</span></dd>
+          <dd><output aria-label="収穫速度" aria-live="off">{formatNumber(isCapped || isPaused ? 0 : production)}</output><span className="unit">芋 / 秒</span></dd>
         </div>
       </dl>
       <div className="score-block">
@@ -47,7 +48,7 @@ export function MiningPanel({ state, production, isCapped }: MiningPanelProps) {
       </div>
       <p className={`mining-status ${isCapped ? 'is-capped' : ''}`} role="status">
         <span className="status-dot" aria-hidden="true" />
-        {isCapped ? '上限到達 — 収穫が停止しました' : '自動採掘中 — 芋を収穫しています'}
+        {isPaused ? 'セーブの確認が必要です — 採掘を一時停止しています' : isCapped ? '上限到達 — 収穫が停止しました' : '自動採掘中 — 芋を収穫しています'}
       </p>
       {isCapped && <p className="capacity-note">設備の生産能力は {formatNumber(production)} 芋 / 秒です。SCORE 上限のため、これ以上は収穫できません。</p>}
       <aside className="next-goal" aria-labelledby="goal-title">
