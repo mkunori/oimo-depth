@@ -1,0 +1,6837 @@
+{
+  "formatVersion": 1,
+  "parameters": {
+    "balance": {
+      "scoreCap": 1000000,
+      "baseProduction": 1
+    },
+    "equipment": {
+      "worker": {
+        "name": "作業員",
+        "basePrice": 10,
+        "priceMultiplier": 1.15,
+        "productionPerUnit": 1
+      },
+      "cart": {
+        "name": "運搬車",
+        "basePrice": 100,
+        "priceMultiplier": 1.2,
+        "productionPerUnit": 10
+      },
+      "harvester": {
+        "name": "自動収穫機",
+        "basePrice": 1000,
+        "priceMultiplier": 1.25,
+        "productionPerUnit": 100
+      }
+    },
+    "prestige": {
+      "unlockScore": 100000,
+      "earlyReward": 1,
+      "capReward": 2
+    },
+    "skills": {
+      "harvest": {
+        "id": "harvest",
+        "name": "豊かな収穫",
+        "maxRank": 3,
+        "costs": [
+          1,
+          2,
+          3
+        ],
+        "prerequisites": [],
+        "effect": {
+          "type": "harvest",
+          "perRank": 0.5
+        }
+      },
+      "discount": {
+        "id": "discount",
+        "name": "設備の目利き",
+        "maxRank": 2,
+        "costs": [
+          1,
+          2
+        ],
+        "prerequisites": [
+          {
+            "id": "harvest",
+            "rank": 1
+          }
+        ],
+        "effect": {
+          "type": "discount",
+          "perRank": 10
+        }
+      },
+      "startingImo": {
+        "id": "startingImo",
+        "name": "旅立ちの蓄え",
+        "maxRank": 2,
+        "costs": [
+          1,
+          2
+        ],
+        "prerequisites": [
+          {
+            "id": "harvest",
+            "rank": 1
+          }
+        ],
+        "effect": {
+          "type": "startingImo",
+          "perRank": 50
+        }
+      }
+    },
+    "offlineLimitSeconds": 86400,
+    "saveVersion": 2
+  },
+  "runCount": 6,
+  "maxSeconds": 7776000,
+  "skillPlans": {
+    "harvest": [
+      "harvest",
+      "harvest",
+      "harvest",
+      "discount",
+      "discount",
+      "startingImo",
+      "startingImo"
+    ],
+    "discount": [
+      "harvest",
+      "discount",
+      "discount",
+      "harvest",
+      "harvest",
+      "startingImo",
+      "startingImo"
+    ],
+    "startingImo": [
+      "harvest",
+      "startingImo",
+      "startingImo",
+      "harvest",
+      "harvest",
+      "discount",
+      "discount"
+    ],
+    "save": []
+  },
+  "coverage": [
+    {
+      "feature": "通常設備・自動採掘・SCOREクリップ",
+      "status": "core",
+      "detail": "実際のゲーム計算関数を使用"
+    },
+    {
+      "feature": "1〜6回の通常転生・3種の基本スキル",
+      "status": "core",
+      "detail": "実際のポイントと前提に従って購入"
+    },
+    {
+      "feature": "復帰・24時間上限・セーブ復元",
+      "status": "core",
+      "detail": "各復帰で保存形式を往復し settleOffline を実行"
+    },
+    {
+      "feature": "1e9 / 1e12 / 1e15",
+      "status": "projection",
+      "detail": "固定生産力での必要時間・目標時間に必要な生産量のみ試算"
+    },
+    {
+      "feature": "掘削・設備自動購入スキル・地層",
+      "status": "not-modeled",
+      "detail": "計算式・効果未確定。常時操作は自動購入機能ではなく理想化した操作方策"
+    },
+    {
+      "feature": "限界突破の条件・費用・保持範囲",
+      "status": "not-modeled",
+      "detail": "現行の上限は1e6。条件確定後に非リセット遷移を追加する"
+    },
+    {
+      "feature": "上位転生・装備モード・消費可能SCORE",
+      "status": "not-modeled",
+      "detail": "#7/#8 の閾値・費用・倍率が未確定。仕様とコアの追加後に到達時間・構成差を検証する"
+    },
+    {
+      "feature": "クリック補助・任意ブースト",
+      "status": "not-modeled",
+      "detail": "機能・数値とも未実装"
+    }
+  ],
+  "projectionReference": {
+    "scenarioId": "active-60-cap",
+    "run": 6,
+    "production": 6977.5
+  },
+  "projections": [
+    {
+      "from": 1000000,
+      "to": 1000000000,
+      "multiplier": 1,
+      "production": 6977.5,
+      "seconds": 143174.48943,
+      "requiredProduction": 46250,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6.62844858474
+    },
+    {
+      "from": 1000000,
+      "to": 1000000000,
+      "multiplier": 10,
+      "production": 69775,
+      "seconds": 14317.448943,
+      "requiredProduction": 46250,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6.62844858474
+    },
+    {
+      "from": 1000000,
+      "to": 1000000000,
+      "multiplier": 100,
+      "production": 697750,
+      "seconds": 1431.7448943,
+      "requiredProduction": 46250,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6.62844858474
+    },
+    {
+      "from": 1000000,
+      "to": 1000000000,
+      "multiplier": 1000,
+      "production": 6977500,
+      "seconds": 143.17448943,
+      "requiredProduction": 46250,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6.62844858474
+    },
+    {
+      "from": 1000000000,
+      "to": 1000000000000,
+      "multiplier": 1,
+      "production": 6977.5,
+      "seconds": 143174489.43,
+      "requiredProduction": 46250000,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6628.44858474
+    },
+    {
+      "from": 1000000000,
+      "to": 1000000000000,
+      "multiplier": 10,
+      "production": 69775,
+      "seconds": 14317448.943,
+      "requiredProduction": 46250000,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6628.44858474
+    },
+    {
+      "from": 1000000000,
+      "to": 1000000000000,
+      "multiplier": 100,
+      "production": 697750,
+      "seconds": 1431744.8943,
+      "requiredProduction": 46250000,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6628.44858474
+    },
+    {
+      "from": 1000000000,
+      "to": 1000000000000,
+      "multiplier": 1000,
+      "production": 6977500,
+      "seconds": 143174.48943,
+      "requiredProduction": 46250000,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6628.44858474
+    },
+    {
+      "from": 1000000000000,
+      "to": 1000000000000000,
+      "multiplier": 1,
+      "production": 6977.5,
+      "seconds": 143174489430,
+      "requiredProduction": 46250000000,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6628448.58474
+    },
+    {
+      "from": 1000000000000,
+      "to": 1000000000000000,
+      "multiplier": 10,
+      "production": 69775,
+      "seconds": 14317448943,
+      "requiredProduction": 46250000000,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6628448.58474
+    },
+    {
+      "from": 1000000000000,
+      "to": 1000000000000000,
+      "multiplier": 100,
+      "production": 697750,
+      "seconds": 1431744894.3,
+      "requiredProduction": 46250000000,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6628448.58474
+    },
+    {
+      "from": 1000000000000,
+      "to": 1000000000000000,
+      "multiplier": 1000,
+      "production": 6977500,
+      "seconds": 143174489.43,
+      "requiredProduction": 46250000000,
+      "targetSeconds": 21600,
+      "requiredMultiplier": 6628448.58474
+    }
+  ],
+  "coreSha256": "14b0709d635f744767357b89435c8ee0568f1f678b8d8f57e83d5e987bbdd75d",
+  "campaigns": [
+    {
+      "scenario": {
+        "id": "idle-cap",
+        "label": "購入なし・ポイント温存",
+        "visitSeconds": null,
+        "presence": "online",
+        "equipment": "none",
+        "skillPlan": "save",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 6000000,
+      "state": {
+        "imo": 0,
+        "runEarnedScore": 0,
+        "runStartingImo": 0,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 12,
+          "skillRanks": {
+            "harvest": 0,
+            "discount": 0,
+            "startingImo": 0
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 2,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1000000,
+            "lastObservationSeconds": 1000000,
+            "creditedSeconds": 1000000,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 1.00000761449e-7,
+            "purchases": 0,
+            "purchaseDecisions": 0,
+            "score100k": {
+              "productionSeconds": 100000,
+              "observedSeconds": 100000
+            },
+            "score1m": {
+              "productionSeconds": 1000000,
+              "observedSeconds": 1000000
+            },
+            "state": {
+              "imo": 1000000,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 0,
+                "cart": 0,
+                "harvester": 0
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 1000000,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 4,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1000000,
+            "lastObservationSeconds": 1000000,
+            "creditedSeconds": 1000000,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 1.00000761449e-7,
+            "purchases": 0,
+            "purchaseDecisions": 0,
+            "score100k": {
+              "productionSeconds": 100000,
+              "observedSeconds": 100000
+            },
+            "score1m": {
+              "productionSeconds": 1000000,
+              "observedSeconds": 1000000
+            },
+            "state": {
+              "imo": 1000000,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 0,
+                "cart": 0,
+                "harvester": 0
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 2,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 2000000,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 6,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1000000,
+            "lastObservationSeconds": 1000000,
+            "creditedSeconds": 1000000,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 1.00000761449e-7,
+            "purchases": 0,
+            "purchaseDecisions": 0,
+            "score100k": {
+              "productionSeconds": 100000,
+              "observedSeconds": 100000
+            },
+            "score1m": {
+              "productionSeconds": 1000000,
+              "observedSeconds": 1000000
+            },
+            "state": {
+              "imo": 1000000,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 0,
+                "cart": 0,
+                "harvester": 0
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 4,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 3000000,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 8,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1000000,
+            "lastObservationSeconds": 1000000,
+            "creditedSeconds": 1000000,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 1.00000761449e-7,
+            "purchases": 0,
+            "purchaseDecisions": 0,
+            "score100k": {
+              "productionSeconds": 100000,
+              "observedSeconds": 100000
+            },
+            "score1m": {
+              "productionSeconds": 1000000,
+              "observedSeconds": 1000000
+            },
+            "state": {
+              "imo": 1000000,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 0,
+                "cart": 0,
+                "harvester": 0
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 6,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 4000000,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 10,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1000000,
+            "lastObservationSeconds": 1000000,
+            "creditedSeconds": 1000000,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 1.00000761449e-7,
+            "purchases": 0,
+            "purchaseDecisions": 0,
+            "score100k": {
+              "productionSeconds": 100000,
+              "observedSeconds": 100000
+            },
+            "score1m": {
+              "productionSeconds": 1000000,
+              "observedSeconds": 1000000
+            },
+            "state": {
+              "imo": 1000000,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 0,
+                "cart": 0,
+                "harvester": 0
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 8,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 5000000,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 12,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1000000,
+            "lastObservationSeconds": 1000000,
+            "creditedSeconds": 1000000,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 1.00000761449e-7,
+            "purchases": 0,
+            "purchaseDecisions": 0,
+            "score100k": {
+              "productionSeconds": 100000,
+              "observedSeconds": 100000
+            },
+            "score1m": {
+              "productionSeconds": 1000000,
+              "observedSeconds": 1000000
+            },
+            "state": {
+              "imo": 1000000,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 0,
+                "cart": 0,
+                "harvester": 0
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 10,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "continuous-cap",
+        "label": "常時操作・上限転生・収穫優先",
+        "visitSeconds": null,
+        "presence": "online",
+        "equipment": "payback",
+        "skillPlan": "harvest",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 2692.01387065,
+      "state": {
+        "imo": 50,
+        "runEarnedScore": 0,
+        "runStartingImo": 50,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 813.291590592,
+            "lastObservationSeconds": 813.291590592,
+            "creditedSeconds": 813.291590592,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 1.00000001169e-7,
+            "purchases": 116,
+            "purchaseDecisions": 116,
+            "score100k": {
+              "productionSeconds": 326.500541354,
+              "observedSeconds": 326.500541454
+            },
+            "score1m": {
+              "productionSeconds": 813.291590492,
+              "observedSeconds": 813.291590592
+            },
+            "state": {
+              "imo": 45100,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 62,
+                "cart": 35,
+                "harvester": 19
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 813.291590592,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 542.194393992,
+            "lastObservationSeconds": 542.194393992,
+            "creditedSeconds": 542.194393992,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 9.99999993923e-8,
+            "purchases": 116,
+            "purchaseDecisions": 116,
+            "score100k": {
+              "productionSeconds": 217.667027778,
+              "observedSeconds": 217.667027878
+            },
+            "score1m": {
+              "productionSeconds": 542.194393892,
+              "observedSeconds": 542.194393992
+            },
+            "state": {
+              "imo": 45100,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 62,
+                "cart": 35,
+                "harvester": 19
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 1355.48598458,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 406.645795691,
+            "lastObservationSeconds": 406.645795691,
+            "creditedSeconds": 406.645795691,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 9.99999993923e-8,
+            "purchases": 116,
+            "purchaseDecisions": 116,
+            "score100k": {
+              "productionSeconds": 163.25027099,
+              "observedSeconds": 163.25027109
+            },
+            "score1m": {
+              "productionSeconds": 406.645795591,
+              "observedSeconds": 406.645795691
+            },
+            "state": {
+              "imo": 45100,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 62,
+                "cart": 35,
+                "harvester": 19
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 1762.13178027,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 1,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 325.316636711,
+            "lastObservationSeconds": 325.316636711,
+            "creditedSeconds": 325.316636711,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 1.0000000028e-7,
+            "purchases": 116,
+            "purchaseDecisions": 116,
+            "score100k": {
+              "productionSeconds": 130.600216917,
+              "observedSeconds": 130.600217017
+            },
+            "score1m": {
+              "productionSeconds": 325.316636611,
+              "observedSeconds": 325.316636711
+            },
+            "state": {
+              "imo": 45100,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 62,
+                "cart": 35,
+                "harvester": 19
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 2087.44841699,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 309.939074793,
+            "lastObservationSeconds": 309.939074793,
+            "creditedSeconds": 309.939074793,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 1.0000000028e-7,
+            "purchases": 118,
+            "purchaseDecisions": 118,
+            "score100k": {
+              "productionSeconds": 120.830092788,
+              "observedSeconds": 120.830092888
+            },
+            "score1m": {
+              "productionSeconds": 309.939074693,
+              "observedSeconds": 309.939074793
+            },
+            "state": {
+              "imo": 35245,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 63,
+                "cart": 36,
+                "harvester": 19
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 1,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 2397.38749178,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 294.626378872,
+            "lastObservationSeconds": 294.626378872,
+            "creditedSeconds": 294.626378872,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 1.0000000028e-7,
+            "purchases": 120,
+            "purchaseDecisions": 120,
+            "score100k": {
+              "productionSeconds": 111.391912666,
+              "observedSeconds": 111.391912766
+            },
+            "score1m": {
+              "productionSeconds": 294.626378772,
+              "observedSeconds": 294.626378872
+            },
+            "state": {
+              "imo": 33578,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 64,
+                "cart": 36,
+                "harvester": 20
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 2,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "active-60-cap",
+        "label": "1分確認・上限転生・収穫優先",
+        "visitSeconds": 60,
+        "presence": "online",
+        "equipment": "payback",
+        "skillPlan": "harvest",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 3120,
+      "state": {
+        "imo": 50,
+        "runEarnedScore": 0,
+        "runStartingImo": 50,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 780,
+            "lastObservationSeconds": 780,
+            "creditedSeconds": 780,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.6817671284,
+            "purchases": 105,
+            "purchaseDecisions": 12,
+            "score100k": {
+              "productionSeconds": 340.734237829,
+              "observedSeconds": 360
+            },
+            "score1m": {
+              "productionSeconds": 750.318232872,
+              "observedSeconds": 780
+            },
+            "state": {
+              "imo": 83737,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 780,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 600,
+            "lastObservationSeconds": 600,
+            "creditedSeconds": 600,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 40.2291121903,
+            "purchases": 102,
+            "purchaseDecisions": 9,
+            "score100k": {
+              "productionSeconds": 278.278186275,
+              "observedSeconds": 300
+            },
+            "score1m": {
+              "productionSeconds": 559.77088781,
+              "observedSeconds": 600
+            },
+            "state": {
+              "imo": 80495,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 33,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 1380,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 480,
+            "lastObservationSeconds": 480,
+            "creditedSeconds": 480,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 34.9134687735,
+            "purchases": 101,
+            "purchaseDecisions": 7,
+            "score100k": {
+              "productionSeconds": 229.902200489,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 445.086531226,
+              "observedSeconds": 480
+            },
+            "state": {
+              "imo": 136968,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 47,
+                "cart": 31,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 1860,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 1,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 420,
+            "lastObservationSeconds": 420,
+            "creditedSeconds": 420,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.6659073652,
+            "purchases": 95,
+            "purchaseDecisions": 6,
+            "score100k": {
+              "productionSeconds": 209.670103093,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 390.334092635,
+              "observedSeconds": 420
+            },
+            "state": {
+              "imo": 200831,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 43,
+                "cart": 29,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 2280,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 420,
+            "lastObservationSeconds": 420,
+            "creditedSeconds": 420,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 41.9784306434,
+            "purchases": 105,
+            "purchaseDecisions": 6,
+            "score100k": {
+              "productionSeconds": 201.279863481,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 378.021569357,
+              "observedSeconds": 420
+            },
+            "state": {
+              "imo": 123533,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 48,
+                "cart": 34,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 1,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 2700,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 420,
+            "lastObservationSeconds": 420,
+            "creditedSeconds": 420,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 49.9032604801,
+            "purchases": 108,
+            "purchaseDecisions": 6,
+            "score100k": {
+              "productionSeconds": 198.322884013,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 370.09673952,
+              "observedSeconds": 420
+            },
+            "state": {
+              "imo": 71289,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 34,
+                "harvester": 24
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 2,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "active-300-cap",
+        "label": "5分確認・上限転生・収穫優先",
+        "visitSeconds": 300,
+        "presence": "online",
+        "equipment": "payback",
+        "skillPlan": "harvest",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 7200,
+      "state": {
+        "imo": 50,
+        "runEarnedScore": 0,
+        "runStartingImo": 50,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1500,
+            "lastObservationSeconds": 1500,
+            "creditedSeconds": 1500,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 184.567175872,
+            "purchases": 95,
+            "purchaseDecisions": 4,
+            "score100k": {
+              "productionSeconds": 783.067729084,
+              "observedSeconds": 900
+            },
+            "score1m": {
+              "productionSeconds": 1315.43282413,
+              "observedSeconds": 1500
+            },
+            "state": {
+              "imo": 296380,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 42,
+                "cart": 31,
+                "harvester": 22
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 1500,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1200,
+            "lastObservationSeconds": 1200,
+            "creditedSeconds": 1200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 103.868238138,
+            "purchases": 81,
+            "purchaseDecisions": 3,
+            "score100k": {
+              "productionSeconds": 674.786899955,
+              "observedSeconds": 900
+            },
+            "score1m": {
+              "productionSeconds": 1096.13176186,
+              "observedSeconds": 1200
+            },
+            "state": {
+              "imo": 649412,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 35,
+                "cart": 27,
+                "harvester": 19
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 2700,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1200,
+            "lastObservationSeconds": 1200,
+            "creditedSeconds": 1200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 221.105326392,
+            "purchases": 84,
+            "purchaseDecisions": 3,
+            "score100k": {
+              "productionSeconds": 637.55186722,
+              "observedSeconds": 900
+            },
+            "score1m": {
+              "productionSeconds": 978.894673608,
+              "observedSeconds": 1200
+            },
+            "state": {
+              "imo": 394981,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 36,
+                "cart": 26,
+                "harvester": 22
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 3900,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 1,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1200,
+            "lastObservationSeconds": 1200,
+            "creditedSeconds": 1200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 285.125515174,
+            "purchases": 103,
+            "purchaseDecisions": 3,
+            "score100k": {
+              "productionSeconds": 621.235857267,
+              "observedSeconds": 900
+            },
+            "score1m": {
+              "productionSeconds": 914.874484826,
+              "observedSeconds": 1200
+            },
+            "state": {
+              "imo": 101356,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 48,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 5100,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 1200,
+            "lastObservationSeconds": 1200,
+            "creditedSeconds": 1200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 291.609403255,
+            "purchases": 100,
+            "purchaseDecisions": 3,
+            "score100k": {
+              "productionSeconds": 619.099249374,
+              "observedSeconds": 900
+            },
+            "score1m": {
+              "productionSeconds": 908.390596745,
+              "observedSeconds": 1200
+            },
+            "state": {
+              "imo": 59804,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 44,
+                "cart": 32,
+                "harvester": 24
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 1,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 6300,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 900,
+            "lastObservationSeconds": 900,
+            "creditedSeconds": 900,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 7.28527607362,
+            "purchases": 52,
+            "purchaseDecisions": 2,
+            "score100k": {
+              "productionSeconds": 616.641104294,
+              "observedSeconds": 900
+            },
+            "score1m": {
+              "productionSeconds": 892.714723926,
+              "observedSeconds": 900
+            },
+            "state": {
+              "imo": 954399,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 23,
+                "cart": 18,
+                "harvester": 11
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 2,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "active-900-cap",
+        "label": "15分確認・上限転生・収穫優先",
+        "visitSeconds": 900,
+        "presence": "online",
+        "equipment": "payback",
+        "skillPlan": "harvest",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 16200,
+      "state": {
+        "imo": 50,
+        "runEarnedScore": 0,
+        "runStartingImo": 50,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 2700,
+            "lastObservationSeconds": 2700,
+            "creditedSeconds": 2700,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 164.957264957,
+            "purchases": 53,
+            "purchaseDecisions": 2,
+            "score100k": {
+              "productionSeconds": 1835.74203574,
+              "observedSeconds": 2700
+            },
+            "score1m": {
+              "productionSeconds": 2535.04273504,
+              "observedSeconds": 2700
+            },
+            "state": {
+              "imo": 946209,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 26,
+                "cart": 16,
+                "harvester": 11
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 2700,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 2700,
+            "lastObservationSeconds": 2700,
+            "creditedSeconds": 2700,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 603.358477011,
+            "purchases": 73,
+            "purchaseDecisions": 2,
+            "score100k": {
+              "productionSeconds": 1413.80208333,
+              "observedSeconds": 1800
+            },
+            "score1m": {
+              "productionSeconds": 2096.64152299,
+              "observedSeconds": 2700
+            },
+            "state": {
+              "imo": 825945,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 35,
+                "cart": 22,
+                "harvester": 16
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 5400,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 2700,
+            "lastObservationSeconds": 2700,
+            "creditedSeconds": 2700,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 726.31831256,
+            "purchases": 78,
+            "purchaseDecisions": 2,
+            "score100k": {
+              "productionSeconds": 1223.02631579,
+              "observedSeconds": 1800
+            },
+            "score1m": {
+              "productionSeconds": 1973.68168744,
+              "observedSeconds": 2700
+            },
+            "state": {
+              "imo": 725912,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 35,
+                "cart": 25,
+                "harvester": 18
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 8100,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 1,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 2700,
+            "lastObservationSeconds": 2700,
+            "creditedSeconds": 2700,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 792.568161829,
+            "purchases": 77,
+            "purchaseDecisions": 2,
+            "score100k": {
+              "productionSeconds": 1127.3255814,
+              "observedSeconds": 1800
+            },
+            "score1m": {
+              "productionSeconds": 1907.43183817,
+              "observedSeconds": 2700
+            },
+            "state": {
+              "imo": 611127,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 33,
+                "cart": 24,
+                "harvester": 20
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 10800,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 2700,
+            "lastObservationSeconds": 2700,
+            "creditedSeconds": 2700,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 818.521560575,
+            "purchases": 94,
+            "purchaseDecisions": 2,
+            "score100k": {
+              "productionSeconds": 1075.33632287,
+              "observedSeconds": 1800
+            },
+            "score1m": {
+              "productionSeconds": 1881.47843943,
+              "observedSeconds": 2700
+            },
+            "state": {
+              "imo": 496627,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 44,
+                "cart": 29,
+                "harvester": 21
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 1,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 13500,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 2700,
+            "lastObservationSeconds": 2700,
+            "creditedSeconds": 2700,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 827.970102282,
+            "purchases": 93,
+            "purchaseDecisions": 2,
+            "score100k": {
+              "productionSeconds": 1062.91666667,
+              "observedSeconds": 1800
+            },
+            "score1m": {
+              "productionSeconds": 1872.02989772,
+              "observedSeconds": 2700
+            },
+            "state": {
+              "imo": 458548,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 41,
+                "cart": 30,
+                "harvester": 22
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 2,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "offline-6h-cap",
+        "label": "1日4回復帰・上限転生",
+        "visitSeconds": 21600,
+        "presence": "offline",
+        "equipment": "payback",
+        "skillPlan": "harvest",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 259200,
+      "state": {
+        "imo": 50,
+        "runEarnedScore": 0,
+        "runStartingImo": 50,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 20454.3325527,
+            "purchases": 43,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21691.8032787,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 22745.6674473,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 978465,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 23,
+                "cart": 13,
+                "harvester": 7
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 43200,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 20990.2961563,
+            "purchases": 40,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21642.5960933,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 22209.7038437,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 967610,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 17,
+                "cart": 14,
+                "harvester": 9
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 86400,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 21194.9195597,
+            "purchases": 46,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21624.0474174,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 22005.0804403,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 956959,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 20,
+                "cart": 16,
+                "harvester": 10
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 129600,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 1,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 21305.982906,
+            "purchases": 53,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21614.2968143,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 21894.017094,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 946209,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 26,
+                "cart": 16,
+                "harvester": 11
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 172800,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 21312.243346,
+            "purchases": 54,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21613.9923954,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 21887.756654,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 946084,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 24,
+                "cart": 19,
+                "harvester": 11
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 1,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 216000,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 21329.1338583,
+            "purchases": 55,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21613.1710809,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 21870.8661417,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 946166,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 26,
+                "cart": 17,
+                "harvester": 12
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 2,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "offline-12h-cap",
+        "label": "1日2回復帰・上限転生",
+        "visitSeconds": 43200,
+        "presence": "offline",
+        "equipment": "payback",
+        "skillPlan": "harvest",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 518400,
+      "state": {
+        "imo": 50,
+        "runEarnedScore": 0,
+        "runStartingImo": 50,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 86400,
+            "lastObservationSeconds": 86400,
+            "creditedSeconds": 86400,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 42389.8391194,
+            "purchases": 46,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 43248.0948349,
+              "observedSeconds": 86400
+            },
+            "score1m": {
+              "productionSeconds": 44010.1608806,
+              "observedSeconds": 86400
+            },
+            "state": {
+              "imo": 956959,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 20,
+                "cart": 16,
+                "harvester": 10
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 86400,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 86400,
+            "lastObservationSeconds": 86400,
+            "creditedSeconds": 86400,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 42749.5183044,
+            "purchases": 51,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 43216.955684,
+              "observedSeconds": 86400
+            },
+            "score1m": {
+              "productionSeconds": 43650.4816956,
+              "observedSeconds": 86400
+            },
+            "state": {
+              "imo": 935433,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 23,
+                "cart": 16,
+                "harvester": 12
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 172800,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 86400,
+            "lastObservationSeconds": 86400,
+            "creditedSeconds": 86400,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 42898.6807388,
+            "purchases": 57,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 43204.4854881,
+              "observedSeconds": 86400
+            },
+            "score1m": {
+              "productionSeconds": 43501.3192612,
+              "observedSeconds": 86400
+            },
+            "state": {
+              "imo": 913614,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 25,
+                "cart": 19,
+                "harvester": 13
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 259200,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 1,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 86400,
+            "lastObservationSeconds": 86400,
+            "creditedSeconds": 86400,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 42980.5658057,
+            "purchases": 59,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 40000,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 43419.4341943,
+              "observedSeconds": 86400
+            },
+            "state": {
+              "imo": 892229,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 25,
+                "cart": 20,
+                "harvester": 14
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 345600,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 86400,
+            "lastObservationSeconds": 86400,
+            "creditedSeconds": 86400,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 42984.1500302,
+            "purchases": 68,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 40000,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 43415.8499698,
+              "observedSeconds": 86400
+            },
+            "state": {
+              "imo": 892130,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 32,
+                "cart": 22,
+                "harvester": 14
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 1,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 432000,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 86400,
+            "lastObservationSeconds": 86400,
+            "creditedSeconds": 86400,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 42994.1142527,
+            "purchases": 67,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 40000,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 43405.8857473,
+              "observedSeconds": 86400
+            },
+            "state": {
+              "imo": 892667,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 32,
+                "cart": 20,
+                "harvester": 15
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 2,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "offline-48h-cap",
+        "label": "48時間ごと復帰・24時間制限",
+        "visitSeconds": 172800,
+        "presence": "offline",
+        "equipment": "payback",
+        "skillPlan": "harvest",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 2073600,
+      "state": {
+        "imo": 50,
+        "runEarnedScore": 0,
+        "runStartingImo": 50,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 345600,
+            "lastObservationSeconds": 345600,
+            "creditedSeconds": 172800,
+            "discardedOfflineSeconds": 172800,
+            "idleAtCapSeconds": 85797.3614776,
+            "purchases": 57,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 86408.9709763,
+              "observedSeconds": 345600
+            },
+            "score1m": {
+              "productionSeconds": 87002.6385224,
+              "observedSeconds": 345600
+            },
+            "state": {
+              "imo": 913614,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 25,
+                "cart": 19,
+                "harvester": 13
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 345600,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 345600,
+            "lastObservationSeconds": 345600,
+            "creditedSeconds": 172800,
+            "discardedOfflineSeconds": 172800,
+            "idleAtCapSeconds": 86062.831687,
+            "purchases": 64,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 66666.6666667,
+              "observedSeconds": 172800
+            },
+            "score1m": {
+              "productionSeconds": 86737.168313,
+              "observedSeconds": 345600
+            },
+            "state": {
+              "imo": 870464,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 30,
+                "cart": 19,
+                "harvester": 15
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 691200,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 345600,
+            "lastObservationSeconds": 345600,
+            "creditedSeconds": 172800,
+            "discardedOfflineSeconds": 172800,
+            "idleAtCapSeconds": 86176.9147789,
+            "purchases": 71,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 50000,
+              "observedSeconds": 172800
+            },
+            "score1m": {
+              "productionSeconds": 86623.0852211,
+              "observedSeconds": 345600
+            },
+            "state": {
+              "imo": 828111,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 33,
+                "cart": 22,
+                "harvester": 16
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 1036800,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 1,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 345600,
+            "lastObservationSeconds": 345600,
+            "creditedSeconds": 172800,
+            "discardedOfflineSeconds": 172800,
+            "idleAtCapSeconds": 86240.4883011,
+            "purchases": 75,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 40000,
+              "observedSeconds": 172800
+            },
+            "score1m": {
+              "productionSeconds": 86559.5116989,
+              "observedSeconds": 345600
+            },
+            "state": {
+              "imo": 784896,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 35,
+                "cart": 23,
+                "harvester": 17
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 1382400,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 345600,
+            "lastObservationSeconds": 345600,
+            "creditedSeconds": 172800,
+            "discardedOfflineSeconds": 172800,
+            "idleAtCapSeconds": 86242.8857715,
+            "purchases": 78,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 40000,
+              "observedSeconds": 172800
+            },
+            "score1m": {
+              "productionSeconds": 86557.1142285,
+              "observedSeconds": 345600
+            },
+            "state": {
+              "imo": 784699,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 35,
+                "cart": 26,
+                "harvester": 17
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 1,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 1728000,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 345600,
+            "lastObservationSeconds": 345600,
+            "creditedSeconds": 172800,
+            "discardedOfflineSeconds": 172800,
+            "idleAtCapSeconds": 86249.0856593,
+            "purchases": 79,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 40000,
+              "observedSeconds": 172800
+            },
+            "score1m": {
+              "productionSeconds": 86550.9143407,
+              "observedSeconds": 345600
+            },
+            "state": {
+              "imo": 784787,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 37,
+                "cart": 24,
+                "harvester": 18
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 2,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "continuous-early",
+        "label": "常時操作・早期転生・収穫優先",
+        "visitSeconds": null,
+        "presence": "online",
+        "equipment": "payback",
+        "skillPlan": "harvest",
+        "prestigeAt": "early"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 1251.58541048,
+      "state": {
+        "imo": 0,
+        "runEarnedScore": 0,
+        "runStartingImo": 0,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 0,
+            "startingImo": 0
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 326.500541454,
+            "lastObservationSeconds": 326.500541454,
+            "creditedSeconds": 326.500541454,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 78,
+            "purchaseDecisions": 78,
+            "score100k": {
+              "productionSeconds": 326.500541354,
+              "observedSeconds": 326.500541454
+            },
+            "score1m": null,
+            "state": {
+              "imo": 301.0001177,
+              "runEarnedScore": 100000.000118,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 23,
+                "harvester": 9
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 326.500541454,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 217.667027878,
+            "lastObservationSeconds": 217.667027878,
+            "creditedSeconds": 217.667027878,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 78,
+            "purchaseDecisions": 78,
+            "score100k": {
+              "productionSeconds": 217.667027778,
+              "observedSeconds": 217.667027878
+            },
+            "score1m": null,
+            "state": {
+              "imo": 301.00017655,
+              "runEarnedScore": 100000.000177,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 23,
+                "harvester": 9
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 544.167569331,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 217.667027878,
+            "lastObservationSeconds": 217.667027878,
+            "creditedSeconds": 217.667027878,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 78,
+            "purchaseDecisions": 78,
+            "score100k": {
+              "productionSeconds": 217.667027778,
+              "observedSeconds": 217.667027878
+            },
+            "score1m": null,
+            "state": {
+              "imo": 301.00017655,
+              "runEarnedScore": 100000.000177,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 23,
+                "harvester": 9
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 761.834597209,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 163.25027109,
+            "lastObservationSeconds": 163.25027109,
+            "creditedSeconds": 163.25027109,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 78,
+            "purchaseDecisions": 78,
+            "score100k": {
+              "productionSeconds": 163.25027099,
+              "observedSeconds": 163.25027109
+            },
+            "score1m": null,
+            "state": {
+              "imo": 301.0002354,
+              "runEarnedScore": 100000.000235,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 23,
+                "harvester": 9
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 925.084868299,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 2,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 163.25027109,
+            "lastObservationSeconds": 163.25027109,
+            "creditedSeconds": 163.25027109,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 78,
+            "purchaseDecisions": 78,
+            "score100k": {
+              "productionSeconds": 163.25027099,
+              "observedSeconds": 163.25027109
+            },
+            "score1m": null,
+            "state": {
+              "imo": 301.0002354,
+              "runEarnedScore": 100000.000235,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 23,
+                "harvester": 9
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 1088.33513939,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 163.25027109,
+            "lastObservationSeconds": 163.25027109,
+            "creditedSeconds": 163.25027109,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 78,
+            "purchaseDecisions": 78,
+            "score100k": {
+              "productionSeconds": 163.25027099,
+              "observedSeconds": 163.25027109
+            },
+            "score1m": null,
+            "state": {
+              "imo": 301.0002354,
+              "runEarnedScore": 100000.000235,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 23,
+                "harvester": 9
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 2,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "active-60-early",
+        "label": "1分確認・早期転生・収穫優先",
+        "visitSeconds": 60,
+        "presence": "online",
+        "equipment": "payback",
+        "skillPlan": "harvest",
+        "prestigeAt": "early"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 1680,
+      "state": {
+        "imo": 0,
+        "runEarnedScore": 0,
+        "runStartingImo": 0,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 0,
+            "startingImo": 0
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 360,
+            "lastObservationSeconds": 360,
+            "creditedSeconds": 360,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 46,
+            "purchaseDecisions": 5,
+            "score100k": {
+              "productionSeconds": 340.734237829,
+              "observedSeconds": 360
+            },
+            "score1m": null,
+            "state": {
+              "imo": 75327,
+              "runEarnedScore": 124140,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 22,
+                "cart": 13,
+                "harvester": 11
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 360,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 300,
+            "lastObservationSeconds": 300,
+            "creditedSeconds": 300,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 52,
+            "purchaseDecisions": 4,
+            "score100k": {
+              "productionSeconds": 278.278186275,
+              "observedSeconds": 300
+            },
+            "score1m": null,
+            "state": {
+              "imo": 98045,
+              "runEarnedScore": 135450,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 27,
+                "cart": 16,
+                "harvester": 9
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 660,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 300,
+            "lastObservationSeconds": 300,
+            "creditedSeconds": 300,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 52,
+            "purchaseDecisions": 4,
+            "score100k": {
+              "productionSeconds": 278.278186275,
+              "observedSeconds": 300
+            },
+            "score1m": null,
+            "state": {
+              "imo": 98045,
+              "runEarnedScore": 135450,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 27,
+                "cart": 16,
+                "harvester": 9
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 960,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 240,
+            "lastObservationSeconds": 240,
+            "creditedSeconds": 240,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 34,
+            "purchaseDecisions": 3,
+            "score100k": {
+              "productionSeconds": 229.902200489,
+              "observedSeconds": 240
+            },
+            "score1m": null,
+            "state": {
+              "imo": 98186,
+              "runEarnedScore": 116520,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 17,
+                "cart": 10,
+                "harvester": 7
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 1200,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 2,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 240,
+            "lastObservationSeconds": 240,
+            "creditedSeconds": 240,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 34,
+            "purchaseDecisions": 3,
+            "score100k": {
+              "productionSeconds": 229.902200489,
+              "observedSeconds": 240
+            },
+            "score1m": null,
+            "state": {
+              "imo": 98186,
+              "runEarnedScore": 116520,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 17,
+                "cart": 10,
+                "harvester": 7
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 1440,
+          "reward": 1,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 240,
+            "lastObservationSeconds": 240,
+            "creditedSeconds": 240,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 0,
+            "purchases": 34,
+            "purchaseDecisions": 3,
+            "score100k": {
+              "productionSeconds": 229.902200489,
+              "observedSeconds": 240
+            },
+            "score1m": null,
+            "state": {
+              "imo": 98186,
+              "runEarnedScore": 116520,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 17,
+                "cart": 10,
+                "harvester": 7
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 2,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "offline-6h-early",
+        "label": "1日4回復帰・早期転生方針",
+        "visitSeconds": 21600,
+        "presence": "offline",
+        "equipment": "payback",
+        "skillPlan": "harvest",
+        "prestigeAt": "early"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 259200,
+      "state": {
+        "imo": 50,
+        "runEarnedScore": 0,
+        "runStartingImo": 50,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 20454.3325527,
+            "purchases": 43,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21691.8032787,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 22745.6674473,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 978465,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 23,
+                "cart": 13,
+                "harvester": 7
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 43200,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 20990.2961563,
+            "purchases": 40,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21642.5960933,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 22209.7038437,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 967610,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 17,
+                "cart": 14,
+                "harvester": 9
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 86400,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 21194.9195597,
+            "purchases": 46,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21624.0474174,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 22005.0804403,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 956959,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 20,
+                "cart": 16,
+                "harvester": 10
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 129600,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 1,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 21305.982906,
+            "purchases": 53,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21614.2968143,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 21894.017094,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 946209,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 26,
+                "cart": 16,
+                "harvester": 11
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 172800,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 21312.243346,
+            "purchases": 54,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21613.9923954,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 21887.756654,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 946084,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 24,
+                "cart": 19,
+                "harvester": 11
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 1,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 216000,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 43200,
+            "lastObservationSeconds": 43200,
+            "creditedSeconds": 43200,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 21329.1338583,
+            "purchases": 55,
+            "purchaseDecisions": 1,
+            "score100k": {
+              "productionSeconds": 21613.1710809,
+              "observedSeconds": 43200
+            },
+            "score1m": {
+              "productionSeconds": 21870.8661417,
+              "observedSeconds": 43200
+            },
+            "state": {
+              "imo": 946166,
+              "runEarnedScore": 1000000,
+              "equipmentCounts": {
+                "worker": 26,
+                "cart": 17,
+                "harvester": 12
+              },
+              "runStartingImo": 0,
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 2,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "active-60-discount",
+        "label": "1分確認・上限転生・割引優先",
+        "visitSeconds": 60,
+        "presence": "online",
+        "equipment": "payback",
+        "skillPlan": "discount",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 3300,
+      "state": {
+        "imo": 50,
+        "runEarnedScore": 0,
+        "runStartingImo": 50,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 1,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 780,
+            "lastObservationSeconds": 780,
+            "creditedSeconds": 780,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.6817671284,
+            "purchases": 105,
+            "purchaseDecisions": 12,
+            "score100k": {
+              "productionSeconds": 340.734237829,
+              "observedSeconds": 360
+            },
+            "score1m": {
+              "productionSeconds": 750.318232872,
+              "observedSeconds": 780
+            },
+            "state": {
+              "imo": 83737,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 780,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 2,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 600,
+            "lastObservationSeconds": 600,
+            "creditedSeconds": 600,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 52.7517423696,
+            "purchases": 100,
+            "purchaseDecisions": 9,
+            "score100k": {
+              "productionSeconds": 272.920156337,
+              "observedSeconds": 300
+            },
+            "score1m": {
+              "productionSeconds": 547.24825763,
+              "observedSeconds": 600
+            },
+            "state": {
+              "imo": 32707,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 43,
+                "cart": 33,
+                "harvester": 24
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 1,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 1380,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 2,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 540,
+            "lastObservationSeconds": 540,
+            "creditedSeconds": 540,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 27.8246246246,
+            "purchases": 101,
+            "purchaseDecisions": 8,
+            "score100k": {
+              "productionSeconds": 247.996664582,
+              "observedSeconds": 300
+            },
+            "score1m": {
+              "productionSeconds": 512.175375375,
+              "observedSeconds": 540
+            },
+            "state": {
+              "imo": 136916,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 44,
+                "cart": 33,
+                "harvester": 24
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 2,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 1920,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 2,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 2,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 480,
+            "lastObservationSeconds": 480,
+            "creditedSeconds": 480,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 52.1900678814,
+            "purchases": 107,
+            "purchaseDecisions": 7,
+            "score100k": {
+              "productionSeconds": 219.979381443,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 427.809932119,
+              "observedSeconds": 480
+            },
+            "state": {
+              "imo": 46006,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 48,
+                "cart": 35,
+                "harvester": 24
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 2,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 2400,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 480,
+            "lastObservationSeconds": 480,
+            "creditedSeconds": 480,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 52.1900678814,
+            "purchases": 107,
+            "purchaseDecisions": 7,
+            "score100k": {
+              "productionSeconds": 219.979381443,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 427.809932119,
+              "observedSeconds": 480
+            },
+            "state": {
+              "imo": 46006,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 48,
+                "cart": 35,
+                "harvester": 24
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 2,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 2,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 2880,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 420,
+            "lastObservationSeconds": 420,
+            "creditedSeconds": 420,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 49.9032604801,
+            "purchases": 108,
+            "purchaseDecisions": 6,
+            "score100k": {
+              "productionSeconds": 198.322884013,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 370.09673952,
+              "observedSeconds": 420
+            },
+            "state": {
+              "imo": 71289,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 34,
+                "harvester": 24
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 2,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "active-60-starting",
+        "label": "1分確認・上限転生・初期所持芋優先",
+        "visitSeconds": 60,
+        "presence": "online",
+        "equipment": "payback",
+        "skillPlan": "startingImo",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 3120,
+      "state": {
+        "imo": 100,
+        "runEarnedScore": 0,
+        "runStartingImo": 100,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 780,
+            "lastObservationSeconds": 780,
+            "creditedSeconds": 780,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.6817671284,
+            "purchases": 105,
+            "purchaseDecisions": 12,
+            "score100k": {
+              "productionSeconds": 340.734237829,
+              "observedSeconds": 360
+            },
+            "score1m": {
+              "productionSeconds": 750.318232872,
+              "observedSeconds": 780
+            },
+            "state": {
+              "imo": 83737,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 780,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 600,
+            "lastObservationSeconds": 600,
+            "creditedSeconds": 600,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 40.2291121903,
+            "purchases": 102,
+            "purchaseDecisions": 9,
+            "score100k": {
+              "productionSeconds": 278.278186275,
+              "observedSeconds": 300
+            },
+            "score1m": {
+              "productionSeconds": 559.77088781,
+              "observedSeconds": 600
+            },
+            "state": {
+              "imo": 80495,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 33,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 1380,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 100,
+            "runEarnedScore": 0,
+            "runStartingImo": 100,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 540,
+            "lastObservationSeconds": 540,
+            "creditedSeconds": 540,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 31.3360829896,
+            "purchases": 101,
+            "purchaseDecisions": 9,
+            "score100k": {
+              "productionSeconds": 229.872193437,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 508.66391701,
+              "observedSeconds": 540
+            },
+            "state": {
+              "imo": 114728,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 50,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 2
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 1920,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 100,
+            "runEarnedScore": 0,
+            "runStartingImo": 100,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 2,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 420,
+            "lastObservationSeconds": 420,
+            "creditedSeconds": 420,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 12.3802103623,
+            "purchases": 100,
+            "purchaseDecisions": 7,
+            "score100k": {
+              "productionSeconds": 191.336669049,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 407.619789638,
+              "observedSeconds": 420
+            },
+            "state": {
+              "imo": 250304,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 100,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 32,
+                "harvester": 22
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 2
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 2340,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 100,
+            "runEarnedScore": 0,
+            "runStartingImo": 100,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 1,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 420,
+            "lastObservationSeconds": 420,
+            "creditedSeconds": 420,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 12.3802103623,
+            "purchases": 100,
+            "purchaseDecisions": 7,
+            "score100k": {
+              "productionSeconds": 191.336669049,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 407.619789638,
+              "observedSeconds": 420
+            },
+            "state": {
+              "imo": 250304,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 100,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 32,
+                "harvester": 22
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 2,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 2
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 2760,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 100,
+            "runEarnedScore": 0,
+            "runStartingImo": 100,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 360,
+            "lastObservationSeconds": 360,
+            "creditedSeconds": 360,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 35.496639283,
+            "purchases": 103,
+            "purchaseDecisions": 6,
+            "score100k": {
+              "productionSeconds": 148.322017459,
+              "observedSeconds": 180
+            },
+            "score1m": {
+              "productionSeconds": 324.503360717,
+              "observedSeconds": 360
+            },
+            "state": {
+              "imo": 166963,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 100,
+              "equipmentCounts": {
+                "worker": 47,
+                "cart": 33,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 1,
+                  "startingImo": 2
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "active-60-save",
+        "label": "1分確認・上限転生・ポイント温存",
+        "visitSeconds": 60,
+        "presence": "online",
+        "equipment": "payback",
+        "skillPlan": "save",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 4680,
+      "state": {
+        "imo": 0,
+        "runEarnedScore": 0,
+        "runStartingImo": 0,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 12,
+          "skillRanks": {
+            "harvest": 0,
+            "discount": 0,
+            "startingImo": 0
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 2,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 780,
+            "lastObservationSeconds": 780,
+            "creditedSeconds": 780,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.6817671284,
+            "purchases": 105,
+            "purchaseDecisions": 12,
+            "score100k": {
+              "productionSeconds": 340.734237829,
+              "observedSeconds": 360
+            },
+            "score1m": {
+              "productionSeconds": 750.318232872,
+              "observedSeconds": 780
+            },
+            "state": {
+              "imo": 83737,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 780,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 4,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 780,
+            "lastObservationSeconds": 780,
+            "creditedSeconds": 780,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.6817671284,
+            "purchases": 105,
+            "purchaseDecisions": 12,
+            "score100k": {
+              "productionSeconds": 340.734237829,
+              "observedSeconds": 360
+            },
+            "score1m": {
+              "productionSeconds": 750.318232872,
+              "observedSeconds": 780
+            },
+            "state": {
+              "imo": 83737,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 2,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 1560,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 6,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 780,
+            "lastObservationSeconds": 780,
+            "creditedSeconds": 780,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.6817671284,
+            "purchases": 105,
+            "purchaseDecisions": 12,
+            "score100k": {
+              "productionSeconds": 340.734237829,
+              "observedSeconds": 360
+            },
+            "score1m": {
+              "productionSeconds": 750.318232872,
+              "observedSeconds": 780
+            },
+            "state": {
+              "imo": 83737,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 4,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 2340,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 8,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 780,
+            "lastObservationSeconds": 780,
+            "creditedSeconds": 780,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.6817671284,
+            "purchases": 105,
+            "purchaseDecisions": 12,
+            "score100k": {
+              "productionSeconds": 340.734237829,
+              "observedSeconds": 360
+            },
+            "score1m": {
+              "productionSeconds": 750.318232872,
+              "observedSeconds": 780
+            },
+            "state": {
+              "imo": 83737,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 6,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 3120,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 10,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 780,
+            "lastObservationSeconds": 780,
+            "creditedSeconds": 780,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.6817671284,
+            "purchases": 105,
+            "purchaseDecisions": 12,
+            "score100k": {
+              "productionSeconds": 340.734237829,
+              "observedSeconds": 360
+            },
+            "score1m": {
+              "productionSeconds": 750.318232872,
+              "observedSeconds": 780
+            },
+            "state": {
+              "imo": 83737,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 8,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 3900,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 12,
+              "skillRanks": {
+                "harvest": 0,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 780,
+            "lastObservationSeconds": 780,
+            "creditedSeconds": 780,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.6817671284,
+            "purchases": 105,
+            "purchaseDecisions": 12,
+            "score100k": {
+              "productionSeconds": 340.734237829,
+              "observedSeconds": 360
+            },
+            "score1m": {
+              "productionSeconds": 750.318232872,
+              "observedSeconds": 780
+            },
+            "state": {
+              "imo": 83737,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 50,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 10,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "id": "active-60-tier",
+        "label": "1分確認・上位設備優先",
+        "visitSeconds": 60,
+        "presence": "online",
+        "equipment": "highest-tier",
+        "skillPlan": "harvest",
+        "prestigeAt": "cap"
+      },
+      "requestedRuns": 6,
+      "completedRuns": 6,
+      "elapsedSeconds": 3120,
+      "state": {
+        "imo": 50,
+        "runEarnedScore": 0,
+        "runStartingImo": 50,
+        "equipmentCounts": {
+          "worker": 0,
+          "cart": 0,
+          "harvester": 0
+        },
+        "permanent": {
+          "prestigeCount": 6,
+          "unspentPoints": 0,
+          "skillRanks": {
+            "harvest": 3,
+            "discount": 2,
+            "startingImo": 2
+          }
+        }
+      },
+      "runs": [
+        {
+          "run": 1,
+          "startsAtSeconds": 0,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 1,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 1,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 780,
+            "lastObservationSeconds": 780,
+            "creditedSeconds": 780,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 30.1979828166,
+            "purchases": 102,
+            "purchaseDecisions": 12,
+            "score100k": {
+              "productionSeconds": 340.46141607,
+              "observedSeconds": 360
+            },
+            "score1m": {
+              "productionSeconds": 749.802017183,
+              "observedSeconds": 780
+            },
+            "state": {
+              "imo": 80495,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 46,
+                "cart": 33,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 0,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 0,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 2,
+          "startsAtSeconds": 780,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 2,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 2,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 600,
+            "lastObservationSeconds": 600,
+            "creditedSeconds": 600,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 41.6704007966,
+            "purchases": 103,
+            "purchaseDecisions": 9,
+            "score100k": {
+              "productionSeconds": 276.757869962,
+              "observedSeconds": 300
+            },
+            "score1m": {
+              "productionSeconds": 558.329599203,
+              "observedSeconds": 600
+            },
+            "state": {
+              "imo": 74299,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 47,
+                "cart": 33,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 1,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 1,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 3,
+          "startsAtSeconds": 1380,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 3,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 0,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 480,
+            "lastObservationSeconds": 480,
+            "creditedSeconds": 480,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 35.960960961,
+            "purchases": 98,
+            "purchaseDecisions": 7,
+            "score100k": {
+              "productionSeconds": 229.260606061,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 444.039039039,
+              "observedSeconds": 480
+            },
+            "state": {
+              "imo": 128825,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 43,
+                "cart": 32,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 2,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 2,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 4,
+          "startsAtSeconds": 1860,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 4,
+              "unspentPoints": 1,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 1,
+                "startingImo": 0
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 420,
+            "lastObservationSeconds": 420,
+            "creditedSeconds": 420,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 29.8254931715,
+            "purchases": 88,
+            "purchaseDecisions": 6,
+            "score100k": {
+              "productionSeconds": 208.866599799,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 390.174506829,
+              "observedSeconds": 420
+            },
+            "state": {
+              "imo": 199334,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 35,
+                "cart": 30,
+                "harvester": 23
+              },
+              "permanent": {
+                "prestigeCount": 3,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 0,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 5,
+          "startsAtSeconds": 2280,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 0,
+            "runEarnedScore": 0,
+            "runStartingImo": 0,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 5,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 1
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 420,
+            "lastObservationSeconds": 420,
+            "creditedSeconds": 420,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 43.1582786287,
+            "purchases": 95,
+            "purchaseDecisions": 6,
+            "score100k": {
+              "productionSeconds": 201.279863481,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 376.841721371,
+              "observedSeconds": 420
+            },
+            "state": {
+              "imo": 116434,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 41,
+                "cart": 30,
+                "harvester": 24
+              },
+              "permanent": {
+                "prestigeCount": 4,
+                "unspentPoints": 1,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 1,
+                  "startingImo": 0
+                }
+              }
+            }
+          }
+        },
+        {
+          "run": 6,
+          "startsAtSeconds": 2700,
+          "reward": 2,
+          "afterPrestige": {
+            "imo": 50,
+            "runEarnedScore": 0,
+            "runStartingImo": 50,
+            "equipmentCounts": {
+              "worker": 0,
+              "cart": 0,
+              "harvester": 0
+            },
+            "permanent": {
+              "prestigeCount": 6,
+              "unspentPoints": 0,
+              "skillRanks": {
+                "harvest": 3,
+                "discount": 2,
+                "startingImo": 2
+              }
+            }
+          },
+          "result": {
+            "completed": true,
+            "elapsedSeconds": 420,
+            "lastObservationSeconds": 420,
+            "creditedSeconds": 420,
+            "discardedOfflineSeconds": 0,
+            "idleAtCapSeconds": 50.3006442377,
+            "purchases": 102,
+            "purchaseDecisions": 6,
+            "score100k": {
+              "productionSeconds": 198.30853563,
+              "observedSeconds": 240
+            },
+            "score1m": {
+              "productionSeconds": 369.699355762,
+              "observedSeconds": 420
+            },
+            "state": {
+              "imo": 67983,
+              "runEarnedScore": 1000000,
+              "runStartingImo": 0,
+              "equipmentCounts": {
+                "worker": 43,
+                "cart": 35,
+                "harvester": 24
+              },
+              "permanent": {
+                "prestigeCount": 5,
+                "unspentPoints": 0,
+                "skillRanks": {
+                  "harvest": 3,
+                  "discount": 2,
+                  "startingImo": 1
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "benchmarks": [
+    {
+      "scenarioId": "idle-cap",
+      "result": {
+        "completed": false,
+        "elapsedSeconds": 900,
+        "lastObservationSeconds": 0,
+        "creditedSeconds": 900,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 0,
+        "purchases": 0,
+        "purchaseDecisions": 0,
+        "score100k": null,
+        "score1m": null,
+        "state": {
+          "imo": 900,
+          "runEarnedScore": 900,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 0,
+            "cart": 0,
+            "harvester": 0
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "continuous-cap",
+      "result": {
+        "completed": true,
+        "elapsedSeconds": 813.291590592,
+        "lastObservationSeconds": 813.291590592,
+        "creditedSeconds": 813.291590592,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 1.00000001169e-7,
+        "purchases": 116,
+        "purchaseDecisions": 116,
+        "score100k": {
+          "productionSeconds": 326.500541354,
+          "observedSeconds": 326.500541454
+        },
+        "score1m": {
+          "productionSeconds": 813.291590492,
+          "observedSeconds": 813.291590592
+        },
+        "state": {
+          "imo": 45100,
+          "runEarnedScore": 1000000,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 62,
+            "cart": 35,
+            "harvester": 19
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "active-60-cap",
+      "result": {
+        "completed": true,
+        "elapsedSeconds": 780,
+        "lastObservationSeconds": 780,
+        "creditedSeconds": 780,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 29.6817671284,
+        "purchases": 105,
+        "purchaseDecisions": 12,
+        "score100k": {
+          "productionSeconds": 340.734237829,
+          "observedSeconds": 360
+        },
+        "score1m": {
+          "productionSeconds": 750.318232872,
+          "observedSeconds": 780
+        },
+        "state": {
+          "imo": 83737,
+          "runEarnedScore": 1000000,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 50,
+            "cart": 32,
+            "harvester": 23
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "active-300-cap",
+      "result": {
+        "completed": false,
+        "elapsedSeconds": 900,
+        "lastObservationSeconds": 900,
+        "creditedSeconds": 900,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 0,
+        "purchases": 66,
+        "purchaseDecisions": 3,
+        "score100k": {
+          "productionSeconds": 783.067729084,
+          "observedSeconds": 900
+        },
+        "score1m": null,
+        "state": {
+          "imo": 79,
+          "runEarnedScore": 158700,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 31,
+            "cart": 19,
+            "harvester": 16
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "active-900-cap",
+      "result": {
+        "completed": false,
+        "elapsedSeconds": 900,
+        "lastObservationSeconds": 900,
+        "creditedSeconds": 900,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 0,
+        "purchases": 13,
+        "purchaseDecisions": 1,
+        "score100k": null,
+        "score1m": null,
+        "state": {
+          "imo": 13,
+          "runEarnedScore": 900,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 8,
+            "cart": 5,
+            "harvester": 0
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "offline-6h-cap",
+      "result": {
+        "completed": false,
+        "elapsedSeconds": 900,
+        "lastObservationSeconds": 0,
+        "creditedSeconds": 0,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 0,
+        "purchases": 0,
+        "purchaseDecisions": 0,
+        "score100k": null,
+        "score1m": null,
+        "state": {
+          "imo": 0,
+          "runEarnedScore": 0,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 0,
+            "cart": 0,
+            "harvester": 0
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "offline-12h-cap",
+      "result": {
+        "completed": false,
+        "elapsedSeconds": 900,
+        "lastObservationSeconds": 0,
+        "creditedSeconds": 0,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 0,
+        "purchases": 0,
+        "purchaseDecisions": 0,
+        "score100k": null,
+        "score1m": null,
+        "state": {
+          "imo": 0,
+          "runEarnedScore": 0,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 0,
+            "cart": 0,
+            "harvester": 0
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "offline-48h-cap",
+      "result": {
+        "completed": false,
+        "elapsedSeconds": 900,
+        "lastObservationSeconds": 0,
+        "creditedSeconds": 0,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 0,
+        "purchases": 0,
+        "purchaseDecisions": 0,
+        "score100k": null,
+        "score1m": null,
+        "state": {
+          "imo": 0,
+          "runEarnedScore": 0,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 0,
+            "cart": 0,
+            "harvester": 0
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "continuous-early",
+      "result": {
+        "completed": true,
+        "elapsedSeconds": 813.291590592,
+        "lastObservationSeconds": 813.291590592,
+        "creditedSeconds": 813.291590592,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 1.00000001169e-7,
+        "purchases": 116,
+        "purchaseDecisions": 116,
+        "score100k": {
+          "productionSeconds": 326.500541354,
+          "observedSeconds": 326.500541454
+        },
+        "score1m": {
+          "productionSeconds": 813.291590492,
+          "observedSeconds": 813.291590592
+        },
+        "state": {
+          "imo": 45100,
+          "runEarnedScore": 1000000,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 62,
+            "cart": 35,
+            "harvester": 19
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "active-60-early",
+      "result": {
+        "completed": true,
+        "elapsedSeconds": 780,
+        "lastObservationSeconds": 780,
+        "creditedSeconds": 780,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 29.6817671284,
+        "purchases": 105,
+        "purchaseDecisions": 12,
+        "score100k": {
+          "productionSeconds": 340.734237829,
+          "observedSeconds": 360
+        },
+        "score1m": {
+          "productionSeconds": 750.318232872,
+          "observedSeconds": 780
+        },
+        "state": {
+          "imo": 83737,
+          "runEarnedScore": 1000000,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 50,
+            "cart": 32,
+            "harvester": 23
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "offline-6h-early",
+      "result": {
+        "completed": false,
+        "elapsedSeconds": 900,
+        "lastObservationSeconds": 0,
+        "creditedSeconds": 0,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 0,
+        "purchases": 0,
+        "purchaseDecisions": 0,
+        "score100k": null,
+        "score1m": null,
+        "state": {
+          "imo": 0,
+          "runEarnedScore": 0,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 0,
+            "cart": 0,
+            "harvester": 0
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "active-60-discount",
+      "result": {
+        "completed": true,
+        "elapsedSeconds": 780,
+        "lastObservationSeconds": 780,
+        "creditedSeconds": 780,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 29.6817671284,
+        "purchases": 105,
+        "purchaseDecisions": 12,
+        "score100k": {
+          "productionSeconds": 340.734237829,
+          "observedSeconds": 360
+        },
+        "score1m": {
+          "productionSeconds": 750.318232872,
+          "observedSeconds": 780
+        },
+        "state": {
+          "imo": 83737,
+          "runEarnedScore": 1000000,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 50,
+            "cart": 32,
+            "harvester": 23
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "active-60-starting",
+      "result": {
+        "completed": true,
+        "elapsedSeconds": 780,
+        "lastObservationSeconds": 780,
+        "creditedSeconds": 780,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 29.6817671284,
+        "purchases": 105,
+        "purchaseDecisions": 12,
+        "score100k": {
+          "productionSeconds": 340.734237829,
+          "observedSeconds": 360
+        },
+        "score1m": {
+          "productionSeconds": 750.318232872,
+          "observedSeconds": 780
+        },
+        "state": {
+          "imo": 83737,
+          "runEarnedScore": 1000000,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 50,
+            "cart": 32,
+            "harvester": 23
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "active-60-save",
+      "result": {
+        "completed": true,
+        "elapsedSeconds": 780,
+        "lastObservationSeconds": 780,
+        "creditedSeconds": 780,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 29.6817671284,
+        "purchases": 105,
+        "purchaseDecisions": 12,
+        "score100k": {
+          "productionSeconds": 340.734237829,
+          "observedSeconds": 360
+        },
+        "score1m": {
+          "productionSeconds": 750.318232872,
+          "observedSeconds": 780
+        },
+        "state": {
+          "imo": 83737,
+          "runEarnedScore": 1000000,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 50,
+            "cart": 32,
+            "harvester": 23
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "scenarioId": "active-60-tier",
+      "result": {
+        "completed": true,
+        "elapsedSeconds": 780,
+        "lastObservationSeconds": 780,
+        "creditedSeconds": 780,
+        "discardedOfflineSeconds": 0,
+        "idleAtCapSeconds": 30.1979828166,
+        "purchases": 102,
+        "purchaseDecisions": 12,
+        "score100k": {
+          "productionSeconds": 340.46141607,
+          "observedSeconds": 360
+        },
+        "score1m": {
+          "productionSeconds": 749.802017183,
+          "observedSeconds": 780
+        },
+        "state": {
+          "imo": 80495,
+          "runEarnedScore": 1000000,
+          "runStartingImo": 0,
+          "equipmentCounts": {
+            "worker": 46,
+            "cart": 33,
+            "harvester": 23
+          },
+          "permanent": {
+            "prestigeCount": 0,
+            "unspentPoints": 0,
+            "skillRanks": {
+              "harvest": 0,
+              "discount": 0,
+              "startingImo": 0
+            }
+          }
+        }
+      }
+    }
+  ]
+}
