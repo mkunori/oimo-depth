@@ -1,4 +1,5 @@
-import { getEquipmentAvailability, getEquipmentPrice, getEquipmentPurchaseGain, purchaseEquipment } from '../core/game';
+import { configureAutomation, getEquipmentAvailability, getEquipmentPrice, getEquipmentPurchaseGain, purchaseEquipment } from '../core/game';
+import type { AutomationPolicy } from '../data/automation';
 import { purchaseSkill } from '../core/prestige';
 import type { GameState } from '../core/state';
 import { EQUIPMENT_IDS } from '../data/equipment';
@@ -13,12 +14,13 @@ export const SKILL_PLANS = {
   save: [],
   breakthrough: ['harvest', 'harvest', 'harvest', 'discount', 'breakthrough'],
   'late-breakthrough': ['harvest', 'harvest', 'harvest', 'discount', 'discount', 'startingImo', 'startingImo', 'breakthrough'],
+  'automation-first': ['harvest', 'automation', 'harvest', 'harvest', 'discount', 'breakthrough'],
 } as const satisfies Record<string, readonly SkillId[]>;
 export type SkillPlan = keyof typeof SKILL_PLANS;
 
 /** 指定順の次ランクを買えなければ貯める。安い下位候補へ勝手に振り替えない。 */
-export function investSkills(state: GameState, plan: SkillPlan): GameState {
-  const targetRanks = { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0 };
+export function investSkills(state: GameState, plan: SkillPlan, automation?: AutomationPolicy): GameState {
+  const targetRanks = { automation: 0, harvest: 0, discount: 0, startingImo: 0, breakthrough: 0 };
   for (const id of SKILL_PLANS[plan]) {
     targetRanks[id] += 1;
     if (state.permanent.skillRanks[id] >= targetRanks[id]) continue;
@@ -26,7 +28,8 @@ export function investSkills(state: GameState, plan: SkillPlan): GameState {
     if (next === state) break;
     state = next;
   }
-  return state;
+  return automation && state.permanent.skillRanks.automation > 0
+    ? configureAutomation(state, { ...state.automation, enabled: true, policy: automation }) : state;
 }
 
 function payback(state: GameState, id: EquipmentId): number {

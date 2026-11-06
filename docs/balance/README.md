@@ -15,7 +15,7 @@ npm run simulate -- --scenario active-60-cap --scenario offline-6h-cap --runs 12
 
 既定は15方策・各6回の転生・実経過90日で打切り、出力先は `docs/balance/generated/` です。`--out` は明示的に指定したディレクトリへ出力します。`--runs` は1〜100、`--max-days` は0超〜365です。打切り・未到達は未到達のまま記録し、0秒や無限時間に置き換えません。オフライン方策は打切り時に予定外の復帰を行いません。
 
-`simulate:check` はファイルを書かずに再計算し、コミット済みの14成果物との一致を確認します。CI でも実行するため、定数・コア・方策を変えた場合は `npm run simulate` で結果を更新し、採用根拠も見直してください。`src/simulation/baseline.ts` は #4 / PR #18 の15方策・6周回の比較用スナップショットで、再生成対象ではありません。別の周回数・途中打切りでは同条件でない前後比較を省略します。
+`simulate:check` はファイルを書かずに再計算し、コミット済みの18成果物との一致を確認します。CI でも実行するため、定数・コア・方策を変えた場合は `npm run simulate` で結果を更新し、採用根拠も見直してください。`src/simulation/baseline.ts` は #4 / PR #18 の15方策・6周回の比較用スナップショットで、再生成対象ではありません。別の周回数・途中打切りでは同条件でない前後比較を省略します。
 
 ## 計算と方策
 
@@ -59,11 +59,15 @@ SVG は [Observable Plot の document オプション](https://observablehq.com/
 
 ## 未確定の範囲
 
+#23の自動購入は [24比較CSV](generated/automation.csv)・[購入イベント時系列](generated/automation-timeline.csv)・[12取得経路CSV](generated/automation-journeys.csv)・[比較図](generated/automation.svg) を追加しています。比較は2段階×1分/6h/12h×OFF/3方針で、段階内の開始状態を統一します。OFFは確認時だけ手動購入、ONは実コアのイベント精算だけです。別途、解禁1ptを支払う初期からの経路も比較します。コアが返すイベント時刻から上限停止・閾値到達を計算し、一定生産の外挿は使いません。[自動購入仕様・採用根拠](../automation.md) を参照してください。
+
+![上限1e9での自動購入比較](generated/automation.svg)
+
 固定生産試算（`projections.csv`）は1e9 / 1e12 / 1e15について、上限だけを変えた所要時間と、6時間で到達するために必要な生産量を計算します。この計算には設備の追加購入を含めません。
 
 正規突破経路（`breakthrough.csv` / `breakthrough-timeline.csv`）は、初期状態からスキル・通常転生・突破権・同一周回の1e9到達を検証します。突破優先の1分/6時間/12時間、1分の早期転生、既存スキル買切り後という5経路です。`max-days` を経路全体の打切りに使い、未到達ならそのまま記録します。`runs` は初期15方策の周回数で、突破経路の取得回数は実際の条件から決まります。条件・採用値・時間は [初回限界突破](../breakthrough.md) にまとめています。
 
-正規1e9の購入比較（`expansion.csv` / `expansion-timeline.csv`）は、1分確認・突破優先経路の実際の突破直前状態に `performBreakthrough` を実行し、購入なし / 既存3種 / 全5種を1分・6時間・12時間で比較する9ケースです。7日で打ち切り、突破後に転生しません。JSONには `assumed: false` / `actualSaveSupported: true` を記録し、全オフライン方策がv4セーブ・復元・24時間制限を通ります。権利取得前に打ち切った場合は設備比較を生成しません。#19の `EconomyContext` による仮定は削除しました。
+正規1e9の購入比較（`expansion.csv` / `expansion-timeline.csv`）は、1分確認・突破優先経路の実際の突破直前状態に `performBreakthrough` を実行し、購入なし / 既存3種 / 全5種を1分・6時間・12時間で比較する9ケースです。7日で打ち切り、突破後に転生しません。JSONには `assumed: false` / `actualSaveSupported: true` を記録し、全オフライン方策が現行v5セーブ・復元・24時間制限を通ります。権利取得前に打ち切った場合は設備比較を生成しません。#19の `EconomyContext` による仮定は削除しました。
 
 固定生産の感度分析は、正規の突破・購入経路とは別の比較です。研究・上位段階ボーナスなど未実装機能を含む将来の確定予測や「この設備数が必須」という結論には使えません。
 

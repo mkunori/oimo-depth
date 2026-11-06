@@ -10,7 +10,7 @@ import { SAVE_STORAGE_KEY } from './features/save/SaveRepository';
 import { advanceGame } from './core/game';
 import { prestigeGame, purchaseSkill } from './core/prestige';
 import type { GameState } from './core/state';
-import { createBreakthroughReadyState } from './test/progress';
+import { createAutomationReadyState, createBreakthroughReadyState } from './test/progress';
 import { performBreakthrough } from './core/breakthrough';
 
 let now = 0;
@@ -147,6 +147,8 @@ describe('minimal mining game', () => {
     renderGame();
     tickAfter(100);
 
+    await user.tab();
+    expect(document.activeElement?.tagName).toBe('SUMMARY');
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole('radio', { name: '×1' }));
     await user.keyboard('{ArrowRight}');
@@ -398,6 +400,53 @@ describe('equipment growth UI', () => {
       expect(screen.getByLabelText(`${name}の所有数`).textContent).toBe('0');
     }
     expect(screen.getByLabelText('現在SCORE').textContent).toBe('1,000,000');
+  });
+});
+
+describe('automation UI', () => {
+  function openAutomation() { fireEvent.click(screen.getByText(/自動購入: OFF/)); }
+
+  it('locks settings before acquisition, buys the skill with no immediate spending, and defaults OFF', () => {
+    seedGame(purchaseSkill(prestigeGame(advanceGame(createInitialState(), 1e6)), 'harvest'));
+    renderGame(); openAutomation();
+    // fieldset由来の無効化はDOMのdisabledプロパティではなく :disabled で評価する。
+    expect(screen.getByRole('checkbox', { name: '自動購入を有効にする' }).matches(':disabled')).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: '自動設備管理を強化' }));
+    expect(screen.getByRole('checkbox', { name: '自動購入を有効にする' }).matches(':disabled')).toBe(false);
+    expect((screen.getByRole('checkbox', { name: '自動購入を有効にする' }) as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByLabelText('自動設備管理のランク').textContent).toBe('1');
+    expect(screen.getByLabelText('作業員の所有数').textContent).toBe('0');
+  });
+
+  it('persists policy, equipment switches, priority swaps and immediate ON/OFF', () => {
+    seedGame({ ...createAutomationReadyState(), imo: 100, runEarnedScore: 100 });
+    const view = renderGame(); openAutomation();
+    fireEvent.change(screen.getByRole('combobox', { name: '購入方針' }), { target: { value: 'priority' } });
+    fireEvent.change(screen.getByRole('combobox', { name: '第1優先の設備' }), { target: { value: 'harvester' } });
+    expect((screen.getByRole('combobox', { name: '第3優先の設備' }) as HTMLSelectElement).value).toBe('worker');
+    fireEvent.click(screen.getByRole('checkbox', { name: '運搬車の自動購入' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: '自動購入を有効にする' }));
+    expect(screen.getByLabelText('作業員の所有数').textContent).toBe('6');
+    expect(screen.getByLabelText('運搬車の所有数').textContent).toBe('0');
+    expect(screen.getByLabelText('直近の自動購入台数').textContent).toBe('6');
+    const state = parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState;
+    expect(state.automation.priority[0]).toBe('harvester'); expect(state.automation.equipment.cart).toBe(false);
+    view.unmount(); renderGame(); fireEvent.click(screen.getByText(/自動購入: ON/));
+    expect((screen.getByRole('combobox', { name: '購入方針' }) as HTMLSelectElement).value).toBe('priority');
+    fireEvent.click(screen.getByRole('checkbox', { name: '自動購入を有効にする' }));
+    tickAfter(60); expect(screen.getByLabelText('作業員の所有数').textContent).toBe('6');
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.automation.enabled).toBe(false);
+  });
+
+  it('keeps settings OFF and reports a save error when applying ON fails', () => {
+    seedGame({ ...createAutomationReadyState(), imo: 100, runEarnedScore: 100 }); renderGame(); openAutomation();
+    const before = localStorage.getItem(SAVE_STORAGE_KEY);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
+    fireEvent.click(screen.getByRole('checkbox', { name: '自動購入を有効にする' }));
+    expect((screen.getByRole('checkbox', { name: '自動購入を有効にする' }) as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByLabelText('作業員の所有数').textContent).toBe('0');
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(before);
+    expect(screen.getByRole('alert').textContent).toContain('保存領域');
   });
 });
 

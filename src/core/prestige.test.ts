@@ -137,10 +137,10 @@ describe('basic skill tree', () => {
     { unspentPoints: Infinity },
     { unspentPoints: 0.5 },
     { unspentPoints: 100 },
-    { skillRanks: { breakthrough: 0, harvest: 4, discount: 0, startingImo: 0 } },
-    { skillRanks: { breakthrough: 0, harvest: -1, discount: 0, startingImo: 0 } },
-    { skillRanks: { breakthrough: 0, harvest: NaN, discount: 0, startingImo: 0 } },
-    { skillRanks: { breakthrough: 0, harvest: 0, discount: 1, startingImo: 0 } },
+    { skillRanks: { automation: 0, breakthrough: 0, harvest: 4, discount: 0, startingImo: 0 } },
+    { skillRanks: { automation: 0, breakthrough: 0, harvest: -1, discount: 0, startingImo: 0 } },
+    { skillRanks: { automation: 0, breakthrough: 0, harvest: NaN, discount: 0, startingImo: 0 } },
+    { skillRanks: { automation: 0, breakthrough: 0, harvest: 0, discount: 1, startingImo: 0 } },
   ])('rejects malformed permanent progression %#', (patch) => {
     const state = earnedPoints(1);
     const bad = { ...state, permanent: { ...state.permanent, ...patch } };

@@ -21,7 +21,7 @@ export function prestigeGame(state: GameState): GameState {
     unspentPoints: state.permanent.unspentPoints + reward,
   };
   const startingImo = getSkillBonuses(permanent).startingImo;
-  return { ...createInitialState(), imo: startingImo, runStartingImo: startingImo, permanent };
+  return { ...createInitialState(), imo: startingImo, runStartingImo: startingImo, permanent, automation: state.automation };
 }
 
 export function purchaseSkill(state: GameState, id: SkillId): GameState {

@@ -20,6 +20,7 @@ function skillEffect(id: SkillId, rank: number): string {
   if (type === 'harvest') return `収穫量 ×${formatNumber(1 + rank * perRank)}`;
   if (type === 'discount') return `設備価格 ${formatNumber(rank * perRank)}%割引`;
   if (type === 'breakthrough') return rank > 0 ? 'SCORE 1,000,000で上限1E9への限界突破が可能' : '限界突破は未解禁';
+  if (type === 'automation') return rank > 0 ? 'オンライン・オフラインの自動購入を設定可能（初期OFF）' : '自動購入は未解禁';
   return `次の転生後の初期所持芋 ${formatNumber(rank * perRank)} 芋`;
 }
 
@@ -65,7 +66,7 @@ export function PrestigePanel({ state, isPaused, notice, onPrestige, onBuySkill 
               {rank < definition.maxRank && <p>次の効果: {skillEffect(id, quote.nextRank)}</p>}
               <p className="skill-prerequisites">前提: {definition.prerequisites.length === 0 ? 'なし' : definition.prerequisites.map((required) => `${SKILLS[required.id].name} ランク${required.rank}`).join('、')}{definition.minimumPrestigeCount > 0 && `、累計転生${definition.minimumPrestigeCount}回以上`}</p>
               <button type="button" className="secondary-button" disabled={isPaused || !quote.canPurchase} aria-label={`${definition.name}を強化`} aria-describedby={`${id}-skill-reason`} onClick={() => onBuySkill(id)}>{quote.cost === null ? '最大ランク' : `${quote.cost}ptで強化`}</button>
-              <p className="shop-note" id={`${id}-skill-reason`}>{isPaused ? 'セーブの確認が必要なため強化を停止しています。' : quote.reason ?? (id === 'startingImo' ? '次の転生から適用されます。SCORE には加算しません。' : id === 'breakthrough' ? '取得後、採掘欄の「限界突破する」から現在の周回を継続できます。' : '取得するとすぐに効果が反映されます。')}</p>
+              <p className="shop-note" id={`${id}-skill-reason`}>{isPaused ? 'セーブの確認が必要なため強化を停止しています。' : quote.reason ?? (id === 'startingImo' ? '次の転生から適用されます。SCORE には加算しません。' : id === 'breakthrough' ? '取得後、採掘欄の「限界突破する」から現在の周回を継続できます。' : id === 'automation' ? '取得後、設備欄の「自動購入」でONにしてください。取得だけでは購入しません。' : '取得するとすぐに効果が反映されます。')}</p>
             </article>
           );
         })}

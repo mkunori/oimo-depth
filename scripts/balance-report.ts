@@ -4,6 +4,7 @@ import { getProductionPerSecond } from '../src/core/game';
 import type { SimulationSuite } from '../src/simulation/suite';
 import { EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS } from '../src/data/equipment';
 import { SCORE_CAP_STAGES } from '../src/data/scoreCaps';
+import { AUTOMATION_POLICIES } from '../src/data/automation';
 
 const number = (value: number) => new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 }).format(value);
 const axisNumber = (value: number) => new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(value);
@@ -61,14 +62,17 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
   }));
   const compactBenchmarks = suite.benchmarks.map(({ result: { trace: _trace, ...result }, ...benchmark }) => ({ ...benchmark, result }));
   const compactExpansion = suite.expansion.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
-  const compactJourneys = suite.breakthroughJourneys.map(({ trace: _trace, runs, expansion, ...journey }) => {
+  const compactJourney = ({ trace: _trace, runs, expansion, ...journey }: SimulationSuite['breakthroughJourneys'][number]) => {
     const { trace: _expansionTrace, ...afterExpansion } = expansion ?? {};
     return { ...journey, expansion: expansion ? afterExpansion : null,
       runs: runs.map(({ result: { trace: _runTrace, ...result }, ...run }) => ({ ...run, result })) };
-  });
-  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, ...metadata } = suite;
+  };
+  const compactJourneys = suite.breakthroughJourneys.map(compactJourney);
+  const compactAutomation = { journeys: suite.automation.journeys.map(compactJourney),
+    trials: suite.automation.trials.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result })) };
+  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, ...metadata } = suite;
   const files: Record<string, string> = {
-    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys }),
+    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation }),
     'runs.csv': csv([
       ['scenario', 'run', 'completed', 'start_seconds', 'duration_seconds', 'score100k_observed_seconds', 'score100k_production_seconds',
         'score1m_observed_seconds', 'score1m_production_seconds', 'reward', 'capacity_at_end', 'bought_units', 'purchase_decisions',
@@ -110,6 +114,21 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     'breakthrough-timeline.csv': csv([
       ['scenario', 'run', 'event', 'wall_seconds', 'score', 'imo', 'capacity', 'actual_production', 'prestige_count', 'score_cap', ...EQUIPMENT_IDS],
       ...suite.breakthroughJourneys.flatMap((journey) => journey.trace.map((point) => [journey.scenario.id, point.run, point.kind, point.elapsedSeconds, point.score, point.imo, point.production, point.actualProduction, point.prestigeCount, point.scoreCap, ...EQUIPMENT_IDS.map((id) => point.equipmentCounts[id])])),
+    ]),
+    'automation.csv': csv([
+      ['scenario', 'stage', 'policy', 'visit_seconds', 'completed', 'seconds', 'idle_at_cap_seconds', 'automatic_purchases', 'production', ...EQUIPMENT_IDS],
+      ...suite.automation.trials.map((trial) => [trial.scenario.id, trial.stage, trial.policy, trial.scenario.visitSeconds, String(trial.result.completed), trial.result.elapsedSeconds,
+        trial.result.idleAtCapSeconds, trial.result.automaticPurchases, getProductionPerSecond(trial.result.state), ...EQUIPMENT_IDS.map((id) => trial.result.state.equipmentCounts[id])]),
+    ]),
+    'automation-timeline.csv': csv([
+      ['scenario', 'event', 'seconds', 'score', 'imo', 'production', 'actual_production', 'score_cap', ...EQUIPMENT_IDS],
+      ...suite.automation.trials.flatMap((trial) => trial.result.trace.map((point) => [trial.scenario.id, point.kind, point.elapsedSeconds, point.score, point.imo, point.production, point.actualProduction, point.scoreCap, ...EQUIPMENT_IDS.map((id) => point.equipmentCounts[id])])),
+    ]),
+    'automation-journeys.csv': csv([
+      ['scenario', 'policy', 'visit_seconds', 'completed', 'first_1m_seconds', 'permission_seconds', 'breakthrough_seconds', 'prestige_count_at_breakthrough', 'points_earned', 'expansion_seconds', 'total_seconds'],
+      ...suite.automation.journeys.map((journey) => [journey.scenario.id, journey.scenario.automation ?? 'off', journey.scenario.visitSeconds, String(journey.completed), journey.firstScore1mSeconds,
+        journey.permissionAtSeconds, journey.breakthroughAtSeconds, journey.beforeBreakthrough?.permanent.prestigeCount ?? null,
+        journey.runs.reduce((sum, run) => sum + run.reward, 0), journey.expansion?.elapsedSeconds ?? null, journey.elapsedSeconds]),
     ]),
   };
   const lines = [
@@ -196,16 +215,26 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     ...suite.breakthroughJourneys.map((journey) => `| ${journey.scenario.label} | ${time(journey.firstScore1mSeconds)} | ${time(journey.permissionAtSeconds)} | ${journey.beforeBreakthrough?.permanent.prestigeCount ?? '未到達'}回 / ${journey.runs.reduce((sum, run) => sum + run.reward, 0)}pt | ${time(journey.breakthroughAtSeconds)} | ${journey.expansion?.completed ? time(journey.expansion.elapsedSeconds) : '未到達 / 打切り'} | ${time(journey.elapsedSeconds)} | ${time(journey.expansion?.idleAtCapSeconds)} |`), '',
     '通常転生は突破権を保持して周回上限を1e6へ戻します。同じ周回での突破は一度だけで、次周回の再突破には追加ptを使いません。突破後の通常転生報酬もSCORE1e6以上で2ptのままです。1e9で停止し、先の突破は未実装です。', '',
     '## 正規の上限1e9・設備購入比較', '',
-    '1分確認・突破優先経路の実際の突破直前状態を共通の開始条件にします。取得済みの権利でコアのperformBreakthroughを実行し、購入なし・既存3種・全5種を比較します。仮の権利やポイントは付与しません。全オフライン方策でv4セーブの保存・復元・24h制限を通します。', '',
+    '1分確認・突破優先経路の実際の突破直前状態を共通の開始条件にします。取得済みの権利でコアのperformBreakthroughを実行し、購入なし・既存3種・全5種を比較します。仮の権利やポイントは付与しません。全オフライン方策で現行v5セーブの保存・復元・24h制限を通します。', '',
     '| 確認方策 | 購入 | 1e9までの追加時間 | 到達時生産 | 深層掘削機 | 芋精製プラント |', '| --- | --- | ---: | ---: | ---: | ---: |',
     ...suite.expansion.map((trial) => `| ${trial.scenario.label} | ${trial.policy === 'fixed' ? '購入なし' : trial.policy === 'existing' ? '既存3種のみ' : '追加2種を含む5種'} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '7日で打切り'} | ${number(trial.finalProduction)} /秒 | ${trial.result.state.equipmentCounts.deepDrill} | ${trial.result.state.equipmentCounts.refinery} |`), '',
     '上位設備の解禁条件は獲得SCOREではなく周回の上限段階です。固定生産の感度分析との差は、実際の設備購入・台数マイルストーンによるものです。', '',
+    '## 自動購入ON/OFFと方針比較（#23）', '',
+    '自動設備管理は収穫1・転生1回以上・1ptで解禁し、初期OFF。均等は最少所有数、収穫効率は価格÷マイルストーン込み増分の最小設備を目標に貯めます。同率は掲載順。指定優先は買える設備へ順番にフォールバックし、資金を保留しません。オンライン・放置とも同じ購入イベント駆動APIを使用し、上限で手動操作を待ちます。', '',
+    '以下は同じ取得済み状態・同じ開始設備を使い、OFFでは確認時だけ手動購入、ONでは自動購入のみ。1e6と1e9の開始状態は別で、ON/OFFを段階内で比較します。自動処理中の購入時点もCSVに記録します。', '',
+    '| 段階 | 確認間隔 | 方針 | 上限を確認 | 上限停止 | 自動購入台数 | 到達生産 |', '| --- | --- | --- | ---: | ---: | ---: | ---: |',
+    ...suite.automation.trials.map((trial) => `| ${trial.stage === 0 ? '1e6' : '1e9'} | ${time(trial.scenario.visitSeconds)} | ${trial.policy === 'off' ? 'OFF・手動' : AUTOMATION_POLICIES[trial.policy as keyof typeof AUTOMATION_POLICIES]} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '打切り'} | ${time(trial.result.idleAtCapSeconds)} | ${trial.result.automaticPurchases} | ${number(getProductionPerSecond(trial.result.state))}/秒 |`), '',
+    '## 自動購入の解禁コストを含む取得経路', '',
+    'OFFは従来の10pt突破経路、ONは収穫1→自動設備管理→収穫3→割引1→突破の11pt経路です。自動スキルを取るまでは手動購入し、取得後にONへ設定します。転生・突破は確認したときだけ手動。旧経路を選べるため、必須の追加コストにはしません。', '',
+    '| 確認間隔 | 方針 | 最初の1e6 | 突破権取得 | 突破時刻 / 転生回数 | 突破後1e9 | 総時間 |', '| --- | --- | ---: | ---: | --- | ---: | ---: |',
+    ...suite.automation.journeys.map((journey) => `| ${time(journey.scenario.visitSeconds)} | ${journey.scenario.automation ? AUTOMATION_POLICIES[journey.scenario.automation] : 'OFF・手動'} | ${time(journey.firstScore1mSeconds)} | ${time(journey.permissionAtSeconds)} | ${time(journey.breakthroughAtSeconds)} / ${journey.beforeBreakthrough?.permanent.prestigeCount ?? '未到達'}回 | ${journey.expansion?.completed ? time(journey.expansion.elapsedSeconds) : '打切り'} | ${time(journey.elapsedSeconds)} |`), '',
     '## 検証範囲と未確定事項', '', '| 項目 | 区分 | 内容 |', '| --- | --- | --- |',
     ...suite.coverage.map((row) => `| ${row.feature} | ${row.status} | ${row.detail} |`), '',
     '## 図と機械可読データ', '',
     '- [初周の SCORE 曲線](first-run.svg)', '- [経過時間と転生回数](prestige.svg)', '- [桁拡張の固定生産試算](projection.svg)',
     '- [正規1e9の設備購入比較](expansion.svg) / [比較CSV](expansion.csv) / [購入時系列](expansion-timeline.csv)',
     '- [突破までの成長と上限](breakthrough.svg) / [経路CSV](breakthrough.csv) / [全経路時系列](breakthrough-timeline.csv)',
+    '- [自動購入の成長比較](automation.svg) / [方針比較CSV](automation.csv) / [購入時系列](automation-timeline.csv) / [取得経路CSV](automation-journeys.csv)',
     '- [全結果 JSON](results.json) / [周回 CSV](runs.csv) / [時系列 CSV](timeline.csv) / [将来試算 CSV](projections.csv)', '',
     '再生成方法・方策の定義・後続 Issue の判断材料は [検証ガイド](../README.md) を参照してください。', '');
   files['report.md'] = lines.join('\n');
@@ -262,5 +291,15 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     marks: [Plot.lineY(journeyPoints.filter((point) => point.score > 0), { x: 'hours', y: 'score', stroke: 'id', z: 'series' }),
       Plot.lineY(journeyPoints, { x: 'hours', y: 'scoreCap', stroke: 'id', strokeDasharray: '4,4', curve: 'step-after' })],
   }, journeySelected.map((journey, index) => ({ label: journey.scenario.label, color: colors[index]! })), '実コアで取得・突破・保存。破線: 現周回の上限');
+  const automaticTrials = suite.automation.trials.filter((trial) => trial.stage === 1 && trial.scenario.visitSeconds === 21_600);
+  const autoDomain = automaticTrials.map((trial) => trial.scenario.id);
+  const autoPoints = automaticTrials.flatMap((trial) => trial.result.trace.filter((point) => point.elapsedSeconds > 0).map((point) => ({ ...point, id: trial.scenario.id, hours: point.elapsedSeconds / 3_600 })));
+  files['automation.svg'] = chart('automation', {
+    ariaLabel: '同じ突破後状態から、6時間復帰での自動購入OFFと3方針を比較。自動転生・突破はしない。',
+    x: { type: 'log', label: '突破後の経過時間 (hours, log)', tickFormat: axisNumber, grid: true },
+    y: { type: 'log', label: 'SCORE (log)', domain: [1e6, 1e9], grid: true },
+    color: { domain: autoDomain, range: colors.slice(0, 4) },
+    marks: [Plot.lineY(autoPoints, { x: 'hours', y: 'score', stroke: 'id' })],
+  }, automaticTrials.map((trial, index) => ({ label: trial.policy === 'off' ? 'OFF / 復帰時だけ手動購入' : AUTOMATION_POLICIES[trial.policy as keyof typeof AUTOMATION_POLICIES], color: colors[index]! })), '上限1e9・6時間復帰。ONは購入イベント時刻も記録、上限後は停止');
   return files;
 }

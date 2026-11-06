@@ -48,5 +48,6 @@ export function useMiningGame() {
     prestige: session.prestige,
     buySkill: session.buySkill,
     breakthrough: session.breakthrough,
+    setAutomation: session.setAutomation,
   };
 }

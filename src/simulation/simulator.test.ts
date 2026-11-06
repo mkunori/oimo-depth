@@ -171,6 +171,39 @@ describe('simulation policy boundaries', () => {
 });
 
 describe('equipment growth comparison', () => {
+  it('compares actual automation policies from equal seeds, with a low-cost unlock path', () => {
+    const suite = runSuite();
+    expect(suite.automation.trials).toHaveLength(24);
+    expect(suite.automation.journeys).toHaveLength(12);
+    for (const trial of suite.automation.trials) {
+      expect(trial.result.completed).toBe(true);
+      expect(trial.result.state.permanent).toEqual(trial.initialState.permanent);
+      expect(trial.result.state.scoreCapStage).toBe(trial.stage);
+      expect(trial.result.trace.every((point) => point.score <= point.scoreCap)).toBe(true);
+      expect(trial.result.automaticPurchases > 0).toBe(trial.policy !== 'off');
+      expect(trial.result.trace.some((point) => point.kind === 'automatic-purchase')).toBe(trial.policy !== 'off');
+    }
+    for (const stage of [0, 1]) {
+      const inputs = suite.automation.trials.filter((trial) => trial.stage === stage);
+      for (const trial of inputs) {
+        expect(trial.initialState.equipmentCounts).toEqual(inputs[0]!.initialState.equipmentCounts);
+        expect(trial.initialState.imo).toBe(inputs[0]!.initialState.imo);
+        expect(trial.initialState.permanent).toEqual(inputs[0]!.initialState.permanent);
+      }
+    }
+    for (const journey of suite.automation.journeys) {
+      expect(journey.completed).toBe(true);
+      expect(journey.beforeBreakthrough?.permanent.prestigeCount).toBe(journey.scenario.automation ? 6 : 5);
+    }
+    const efficient = suite.automation.journeys.find((journey) => journey.scenario.automation === 'efficient' && journey.scenario.visitSeconds === 21_600)!;
+    const off = suite.automation.journeys.find((journey) => !journey.scenario.automation && journey.scenario.visitSeconds === 21_600)!;
+    expect(efficient.permissionAtSeconds!).toBeLessThan(off.permissionAtSeconds!);
+    const initial = suite.automation.trials.find((trial) => trial.stage === 0 && trial.policy === 'efficient')!.initialState;
+    const continuous = simulateRun(initial, { ...idle, automation: 'efficient' }, 86_400);
+    expect(continuous.completed).toBe(true);
+    expect(continuous.state.equipmentCounts).toEqual(advanceGame(initial, 86_400).equipmentCounts);
+  });
+
   it('keeps the initial band within 25% of the established timing baseline', () => {
     const scenario = SCENARIOS.find((item) => item.id === 'active-60-cap')!;
     const current = simulateCampaign(scenario);

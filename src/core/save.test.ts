@@ -59,7 +59,7 @@ describe('offline settlement', () => {
     const result = settleOffline(createSave(owned, SAVED_AT), SAVED_AT + 3_600_000);
 
     expect(result.save.gameState).toEqual({ ...owned, imo: 7_290, runEarnedScore: 7_300 });
-    expect(result.report).toEqual({ elapsedSeconds: 3_600, appliedSeconds: 3_600, earnedImo: 7_200, reachedScore: 7_300, clockReversed: false });
+    expect(result.report).toEqual({ elapsedSeconds: 3_600, appliedSeconds: 3_600, earnedImo: 7_200, reachedScore: 7_300, clockReversed: false, automaticPurchases: 0 });
   });
 
   it('limits a 48 hour absence to 24 hours', () => {

@@ -7,7 +7,7 @@ import { SavePanel } from './features/save/SavePanel';
 import { PrestigePanel } from './features/prestige/PrestigePanel';
 
 export default function App() {
-  const { state, snapshot, purchase, exportText, importSave, reset, dismissReport, prestige, buySkill, breakthrough } = useMiningGame();
+  const { state, snapshot, purchase, exportText, importSave, reset, dismissReport, prestige, buySkill, breakthrough, setAutomation } = useMiningGame();
   const isCapped = state.runEarnedScore >= getScoreCap(state);
   const isPaused = snapshot.status !== 'ready';
 
@@ -22,7 +22,7 @@ export default function App() {
       </header>
       <div className="game-layout">
         <MiningPanel state={state} production={getProductionPerSecond(state)} isCapped={isCapped} isPaused={isPaused} onBreakthrough={breakthrough} />
-        <Shop state={state} isCapped={isCapped} isPaused={isPaused} onPurchase={purchase} milestoneNotice={snapshot.milestoneNotice} />
+        <Shop state={state} isCapped={isCapped} isPaused={isPaused} onPurchase={purchase} milestoneNotice={snapshot.milestoneNotice} automaticPurchases={snapshot.automaticPurchases} onAutomationChange={setAutomation} />
       </div>
       <PrestigePanel state={state} isPaused={isPaused} notice={snapshot.progressNotice} onPrestige={prestige} onBuySkill={buySkill} />
       <SavePanel snapshot={snapshot} onExport={exportText} onImport={importSave} onReset={reset} onDismissReport={dismissReport} />

@@ -1,4 +1,7 @@
-import { advanceGame, getEquipmentAvailability, getEquipmentPrice, getProductionPerSecond } from '../core/game';
+import { advanceWithAutomation, getEquipmentAvailability, getEquipmentPrice, getNextAutomaticPurchaseSeconds, getProductionPerSecond } from '../core/game';
+import type { AutomaticProgress } from '../core/game';
+import { AUTOMATION_POLICIES } from '../data/automation';
+import type { AutomationPolicy } from '../data/automation';
 import { getScoreCap } from '../data/scoreCaps';
 import { getPrestigeReward, prestigeGame } from '../core/prestige';
 import { createSave, parseSave, serializeSave, settleOffline } from '../core/save';
@@ -21,6 +24,7 @@ export interface Scenario {
   readonly skillPlan: SkillPlan;
   readonly prestigeAt: 'early' | 'cap';
   readonly equipmentIds?: readonly EquipmentId[];
+  readonly automation?: AutomationPolicy;
 }
 
 export interface Milestone {
@@ -33,7 +37,7 @@ export interface Milestone {
 export interface TracePoint {
   readonly elapsedSeconds: number;
   readonly run: number;
-  readonly kind: 'start' | 'decision' | 'cap-reached' | 'end' | 'prestige';
+  readonly kind: 'start' | 'decision' | 'cap-reached' | 'end' | 'prestige' | 'automatic-purchase';
   readonly score: number;
   readonly imo: number;
   readonly production: number;
@@ -52,6 +56,7 @@ export interface RunResult {
   readonly idleAtCapSeconds: number;
   readonly purchases: number;
   readonly purchaseDecisions: number;
+  readonly automaticPurchases: number;
   readonly score100k: Milestone | null;
   readonly score1m: Milestone | null;
   readonly state: GameState;
@@ -66,6 +71,7 @@ function positive(value: number, label: string): void {
 }
 
 export function validateScenario(scenario: Scenario): void {
+  if (scenario.automation !== undefined && !Object.hasOwn(AUTOMATION_POLICIES, scenario.automation)) throw new RangeError('Unknown automation policy.');
   if (scenario.equipmentIds && (new Set(scenario.equipmentIds).size !== scenario.equipmentIds.length
     || scenario.equipmentIds.some((id) => !EQUIPMENT_IDS.includes(id)))) throw new RangeError('Invalid equipment selection.');
   if (!['online', 'offline'].includes(scenario.presence)
@@ -95,6 +101,7 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
   let idle = 0;
   let purchases = 0;
   let purchaseDecisions = 0;
+  let automaticPurchases = 0;
   let score100k: Milestone | null = initial.runEarnedScore >= PRESTIGE_BALANCE.unlockScore ? { productionSeconds: 0, observedSeconds: 0 } : null;
   let score1m: Milestone | null = initial.runEarnedScore >= INITIAL_BALANCE.scoreCap ? { productionSeconds: 0, observedSeconds: 0 } : null;
   const trace: TracePoint[] = [];
@@ -106,6 +113,7 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
       prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: state.equipmentCounts });
   };
   const invest = () => {
+    if (state.automation.enabled) return; // 自動購入ONでは手動購入を混ぜず、実コアの精算に委譲する。
     const result = investEquipment(state, scenario.equipment, equipmentIds);
     state = result.state;
     purchases += result.purchased;
@@ -113,28 +121,41 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
   };
   const advance = (seconds: number, isObservation: boolean) => {
     const before = state;
-    const rate = getProductionPerSecond(before);
     let applied = seconds;
+    let progress: AutomaticProgress;
     if (scenario.presence === 'offline') {
       // 実際のエクスポート/読込と同じ検証を経由し、復帰時のコア関数を呼ぶ。
       const saved = parseSave(serializeSave(createSave(before, 0)));
-      const result = settleOffline(saved, Math.round(seconds * 1_000));
+      const result = settleOffline(saved, Math.round(seconds * 1_000), true);
       state = result.save.gameState;
       applied = result.report.appliedSeconds;
-    } else state = advanceGame(before, seconds);
-    const crossing = (threshold: number): Milestone | null => before.runEarnedScore < threshold && state.runEarnedScore >= threshold
-      ? { productionSeconds: credited + (threshold - before.runEarnedScore) / rate, observedSeconds: elapsed + seconds } : null;
+      progress = result.progress!;
+    } else { progress = advanceWithAutomation(before, seconds, before.automation.enabled); state = progress.state; }
+    automaticPurchases += progress.purchaseCount;
+    purchases += progress.purchaseCount;
+    for (const event of progress.events) {
+      const production = getProductionPerSecond(event.state);
+      trace.push({ elapsedSeconds: elapsed + event.seconds, run: 1, kind: 'automatic-purchase', score: event.state.runEarnedScore,
+        imo: event.state.imo, production, actualProduction: production, prestigeCount: event.state.permanent.prestigeCount,
+        scoreCap, equipmentCounts: event.state.equipmentCounts });
+    }
+    const transitions = [{ seconds: 0, state: before }, ...progress.events, { seconds: applied, state }];
+    const crossing = (threshold: number): Milestone | null => {
+      if (before.runEarnedScore >= threshold || state.runEarnedScore < threshold) return null;
+      const index = transitions.findIndex((point) => point.state.runEarnedScore >= threshold);
+      const previous = transitions[index - 1]!;
+      return { productionSeconds: credited + previous.seconds + (threshold - previous.state.runEarnedScore) / getProductionPerSecond(previous.state), observedSeconds: elapsed + seconds };
+    };
     if (isObservation) {
       score100k ??= crossing(PRESTIGE_BALANCE.unlockScore);
       score1m ??= crossing(INITIAL_BALANCE.scoreCap);
     }
-    const toCap = (scoreCap - before.runEarnedScore) / rate;
-    if (before.runEarnedScore < scoreCap && state.runEarnedScore >= scoreCap) {
-      trace.push({ elapsedSeconds: elapsed + Math.min(seconds, toCap), run: 1, kind: 'cap-reached',
-        score: state.runEarnedScore, imo: state.imo, production: rate, actualProduction: 0,
-        prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: before.equipmentCounts });
+    if (before.runEarnedScore < scoreCap && progress.capAtSeconds !== null) {
+      trace.push({ elapsedSeconds: elapsed + progress.capAtSeconds, run: 1, kind: 'cap-reached',
+        score: state.runEarnedScore, imo: state.imo, production: getProductionPerSecond(state), actualProduction: 0,
+        prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: state.equipmentCounts });
     }
-    idle += Math.max(0, applied - toCap);
+    idle += progress.capAtSeconds === null ? 0 : Math.max(0, applied - progress.capAtSeconds);
     credited += applied;
     discarded += seconds - applied;
     elapsed += seconds;
@@ -152,10 +173,10 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
     else {
       const milestones = [target, PRESTIGE_BALANCE.unlockScore, INITIAL_BALANCE.scoreCap]
         .filter((score) => score > state.runEarnedScore).map((score) => (score - state.runEarnedScore) / rate);
-      const affordability = scenario.equipment === 'none' ? [] : equipmentIds.map((id) =>
+      const affordability = scenario.equipment === 'none' || state.automation.enabled ? [] : equipmentIds.map((id) =>
         (getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) - state.imo) / rate);
       // わずかな時間を進め、価格直前の浮動小数点端数でゼロ時間ループにならないようにする。
-      delta = Math.max(TIME_EPSILON, Math.min(...milestones, ...affordability) + TIME_EPSILON);
+      delta = Math.max(TIME_EPSILON, Math.min(...milestones, ...affordability, getNextAutomaticPurchaseSeconds(state) ?? Infinity) + TIME_EPSILON);
     }
     if (elapsed + delta > maxSeconds) {
       // オフライン方策では、設定にない途中復帰を作らない。
@@ -170,7 +191,7 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
   record('end');
   return { completed: state.runEarnedScore >= target && elapsed === observed, elapsedSeconds: elapsed, lastObservationSeconds: observed,
     creditedSeconds: credited, discardedOfflineSeconds: discarded, idleAtCapSeconds: idle,
-    purchases, purchaseDecisions, score100k, score1m, state, trace };
+    purchases, purchaseDecisions, automaticPurchases, score100k, score1m, state, trace };
 }
 
 export interface CampaignRun {
@@ -193,7 +214,7 @@ export function simulateCampaign(scenario: Scenario, runCount = 6, maxSeconds = 
     const result = simulateRun(state, scenario, maxSeconds - elapsed);
     trace.push(...result.trace.map((point) => ({ ...point, run, elapsedSeconds: point.elapsedSeconds + elapsed })));
     const reward = result.completed ? getPrestigeReward(result.state) : 0;
-    const afterPrestige = result.completed ? investSkills(prestigeGame(result.state), scenario.skillPlan) : null;
+    const afterPrestige = result.completed ? investSkills(prestigeGame(result.state), scenario.skillPlan, scenario.automation) : null;
     runs.push({ run, startsAtSeconds: elapsed, result, reward, afterPrestige });
     elapsed += result.elapsedSeconds;
     state = afterPrestige ?? result.state;
