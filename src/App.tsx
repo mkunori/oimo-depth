@@ -4,9 +4,10 @@ import { MiningPanel } from './features/mining/MiningPanel';
 import { useMiningGame } from './features/mining/useMiningGame';
 import { Shop } from './features/shop/Shop';
 import { SavePanel } from './features/save/SavePanel';
+import { PrestigePanel } from './features/prestige/PrestigePanel';
 
 export default function App() {
-  const { state, snapshot, purchase, exportText, importSave, reset, dismissReport } = useMiningGame();
+  const { state, snapshot, purchase, exportText, importSave, reset, dismissReport, prestige, buySkill } = useMiningGame();
   const isCapped = state.runEarnedScore >= INITIAL_BALANCE.scoreCap;
   const isPaused = snapshot.status !== 'ready';
 
@@ -23,6 +24,7 @@ export default function App() {
         <MiningPanel state={state} production={getProductionPerSecond(state)} isCapped={isCapped} isPaused={isPaused} />
         <Shop state={state} isCapped={isCapped} isPaused={isPaused} onPurchase={purchase} />
       </div>
+      <PrestigePanel state={state} isPaused={isPaused} notice={snapshot.progressNotice} onPrestige={prestige} onBuySkill={buySkill} />
       <SavePanel snapshot={snapshot} onExport={exportText} onImport={importSave} onReset={reset} onDismissReport={dismissReport} />
       <footer className="app-footer">
         <p>このブラウザに自動保存します。大切な進行はセーブ管理からエクスポートして保管してください。</p>

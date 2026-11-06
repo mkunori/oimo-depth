@@ -45,5 +45,7 @@ export function useMiningGame() {
     importSave: session.importSave,
     reset: session.reset,
     dismissReport: session.dismissReport,
+    prestige: session.prestige,
+    buySkill: session.buySkill,
   };
 }

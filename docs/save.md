@@ -1,4 +1,4 @@
-# 保存・オフライン進行（v1）
+# 保存・オフライン進行（v2）
 
 ## 保存形式と検証
 
@@ -6,19 +6,25 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 ```json
 {
-  "saveVersion": 1,
+  "saveVersion": 2,
   "savedAt": 1700000000000,
   "gameState": {
     "imo": 0,
     "runEarnedScore": 0,
-    "equipmentCounts": { "worker": 0, "cart": 0, "harvester": 0 }
+    "runStartingImo": 0,
+    "equipmentCounts": { "worker": 0, "cart": 0, "harvester": 0 },
+    "permanent": {
+      "prestigeCount": 0,
+      "unspentPoints": 0,
+      "skillRanks": { "harvest": 0, "discount": 0, "startingImo": 0 }
+    }
   }
 }
 ```
 
 `src/core/save.ts` が外部テキストを `unknown` として検証します。残高・累計・設備の数値制約には既存コアを使い、次の価格が安全な整数の範囲内であることも確認します。欠落・負数・NaN/Infinity・小数の設備数・上限超過・未対応バージョンは拒否します。保存時刻は非負整数で JavaScript Date の範囲内です。未知の追加フィールドは採用せず、既知の値をコピーします。
 
-将来の転生・上限突破・装備で状態形式を変える場合はバージョンを上げ、`parseSave` のバージョン判定部分に旧形式からのマイグレーションを追加してください。現段階では旧形式・未来の形式を推測して読み込みません。
+v1 は周回の値・保存時刻を維持し、開始時支給0・恒久データ未取得として v2 へ移行します。v2 は恒久データ・ランク・前提・ポイントの整合性も検証します。詳細は [転生と基本スキル](prestige.md) を参照してください。今後形式を変える場合もバージョンを上げ、明示的に移行します。未知の形式を推測して読み込みません。
 
 ## 時間の精算
 
@@ -35,7 +41,7 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 `GameSession` は保存領域と `{ wallNow, monotonicNow }` の時計を引数で受け取ります。初回 `start()` だけが読込・精算・保存を行い、React StrictMode の effect 再実行でも繰り返しません。進行中は単調時計の実経過秒数を使い、250ms 間隔で描画します。
 
-保存は10秒ごと・設備購入直後・非表示時（`visibilitychange` / `pagehide`）です。非表示時は直前の時間を精算して保存し、通常タイマーを停止扱いにします。復帰時（`visibilitychange` / `pageshow`）に壁時計からオフライン精算します。非表示・復帰イベントが重複してもそれぞれ一度しか処理しません。ページを閉じるイベントが届かなかった場合、最後の自動保存時刻以降を次回起動で計算します。
+保存は10秒ごと・設備購入直後・転生とスキル購入直後・非表示時（`visibilitychange` / `pagehide`）です。非表示時は直前の時間を精算して保存し、通常タイマーを停止扱いにします。復帰時（`visibilitychange` / `pageshow`）に壁時計からオフライン精算します。非表示・復帰イベントが重複してもそれぞれ一度しか処理しません。ページを閉じるイベントが届かなかった場合、最後の自動保存時刻以降を次回起動で計算します。
 
 `useMiningGame` はブラウザイベント・タイマーの登録と解除を担当します。`useSyncExternalStore` でセッションを購読し、React の state updater 内では保存や時計参照を行いません。
 

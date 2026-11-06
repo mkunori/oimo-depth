@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { EquipmentIcon } from '../../components/EquipmentIcon';
 import { formatNumber } from '../../components/formatNumber';
-import { getEquipmentPrice, getPurchaseQuote } from '../../core/game';
+import { getEquipmentPrice, getEquipmentProductionPerUnit, getPurchaseQuote } from '../../core/game';
 import type { PurchaseMode } from '../../core/game';
 import type { GameState } from '../../core/state';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../../data/equipment';
@@ -40,7 +40,7 @@ export function Shop({ state, isCapped, isPaused, onPurchase }: ShopProps) {
         {EQUIPMENT_IDS.map((id) => {
           const definition = EQUIPMENT[id];
           const quote = getPurchaseQuote(state, id, mode);
-          const nextPrice = getEquipmentPrice(id, state.equipmentCounts[id]);
+          const nextPrice = getEquipmentPrice(id, state.equipmentCounts[id], state.permanent);
           const disabled = isPaused || isCapped || quote.quantity === 0;
           return (
             <li key={id}>
@@ -51,7 +51,7 @@ export function Shop({ state, isCapped, isPaused, onPurchase }: ShopProps) {
                     <h3 id={`${id}-title`}>{definition.name}</h3>
                     <span className="owned-count">所有 <output aria-label={`${definition.name}の所有数`} aria-live="off">{formatNumber(state.equipmentCounts[id])}</output> 台</span>
                   </div>
-                  <p className="equipment-effect">1台あたり +{formatNumber(definition.productionPerUnit)} 芋 / 秒</p>
+                  <p className="equipment-effect">1台あたり +{formatNumber(getEquipmentProductionPerUnit(id, state.permanent))} 芋 / 秒</p>
                   <p className="equipment-price">次の1台 <strong>{formatNumber(nextPrice)} 芋</strong></p>
                 </div>
                 <button

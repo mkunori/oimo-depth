@@ -84,7 +84,8 @@ export function SavePanel({ snapshot, onExport, onImport, onReset, onDismissRepo
           {pending && (
             <div className="save-confirmation" role="group" aria-label={pending.type === 'import' ? 'インポートの確認' : '初期化の確認'}>
               <h3>{pending.type === 'import' ? 'このセーブに置き換えますか？' : '最初からやり直しますか？'}</h3>
-              {pending.type === 'import' && <p>所持芋 {formatNumber(pending.save.gameState.imo)} / SCORE {formatNumber(pending.save.gameState.runEarnedScore)}</p>}
+              {pending.type === 'import' && <><p>所持芋 {formatNumber(pending.save.gameState.imo)} / SCORE {formatNumber(pending.save.gameState.runEarnedScore)}</p><p>累計転生 {formatNumber(pending.save.gameState.permanent.prestigeCount)}回 / 未使用 {formatNumber(pending.save.gameState.permanent.unspentPoints)}pt</p></>}
+              {pending.type === 'reset' && <p>転生回数・ポイント・取得スキルを含むすべての進行を削除します。</p>}
               <p>現在の進行は上書きされ、元に戻せません。必要な場合は先にエクスポートしてください。</p>
               <div className="confirmation-actions">
                 <button type="button" className="secondary-button" disabled={replacementBlocked} ref={confirmation} onClick={confirm}>{pending.type === 'import' ? 'このセーブに置き換える' : '初期化を実行'}</button>

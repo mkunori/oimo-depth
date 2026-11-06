@@ -8,9 +8,11 @@
 
 | フィールド | 意味・制約 |
 | --- | --- |
-| `imo` | 設備購入に使う残高。有限かつ `0 <= imo <= runEarnedScore` |
+| `imo` | 設備購入に使う残高。有限かつ `0 <= imo <= runEarnedScore + runStartingImo` |
 | `runEarnedScore` | 現周回で収穫した芋の累計。購入で減らない。有限かつ初期上限以下 |
 | `equipmentCounts` | `worker` / `cart` / `harvester` の所有数。非負の安全な整数 |
+| `runStartingImo` | この周回の開始時に支給した芋。SCORE に含めない |
+| `permanent` | 転生回数・未使用ポイント・取得スキル。転生で維持する |
 
 初期状態は残高・累計・全設備数が 0 です。状態型は readonly とし、各更新関数は入力やネストした所有数を変更しません。変化のない購入・時間更新は元の状態を返します。
 
@@ -26,9 +28,9 @@
 | `cart` | 運搬車 | 100 | 1.20 | 10 |
 | `harvester` | 自動収穫機 | 1,000 | 1.25 | 100 |
 
-所有数 n のとき次の1台の価格は `ceil(basePrice * priceMultiplier ** n)` です。**各台の価格を切り上げてから合計**します。作業員の最初の10台は `10, 12, 14, 16, 18, 21, 24, 27, 31, 36`（合計 209）です。
+所有数 n のとき次の1台の価格は `ceil(basePrice * priceMultiplier ** n * equipmentPriceMultiplier)` です。スキルの割引後に**各台の価格を切り上げてから合計**します。割引なしで作業員の最初の10台は `10, 12, 14, 16, 18, 21, 24, 27, 31, 36`（合計 209）です。
 
-生産能力は `baseProduction + sum(count * productionPerUnit)` です。今回は倍率ボーナスを実装していません。
+生産能力は `(baseProduction + sum(count * productionPerUnit)) * productionMultiplier` です。倍率・割引・初期所持芋は取得済スキルから計算します。仮値と開始額の扱いは [転生と基本スキル](prestige.md) を参照してください。
 
 収穫量は `min(生産能力 * 経過秒数, 上限 - runEarnedScore)` で制限し、実際に増えた SCORE と同量だけ残高を増やします。上限時は購入で残高が減っても収穫は再開しません。`getProductionPerSecond` は上限到達後も設備の生産能力を返します。
 
@@ -68,9 +70,9 @@ const purchased = purchaseEquipment(harvested, 'worker', 10);
 ## 後続 Issue の差し替え点
 
 - 巨大数対応: `GameState` の金額・累計、`EquipmentDefinition` の価格・生産量、`src/core/game.ts` の演算・比較・丸め・有限値検証をまとめて任意精度の数値表現へ変更してください。価格指数計算も含むため、型だけの変更では対応できません。
-- 倍率ボーナス: `getProductionPerSecond` に集約した生産計算へ追加します。今回の状態には仮のボーナス項目を置きません。
-- 転生・限界突破: 初期状態と上限定数を境界として仕様確定後に拡張します。転生リセットや上限変更は未実装です。
+- 倍率ボーナス: `getProductionPerSecond` と `getSkillBonuses` に集約しています。ボーナス値自体は保存せずスキルから算出します。
+- 転生・限界突破: 初期転生と基本スキルは `src/core/prestige.ts` / `src/data/skills.ts` に実装しています。上限変更は後続 Issue の対象です。
 - オフライン計算・保存: `src/core/save.ts` が保存形式の検証と経過時間の上限制御を行い、`advanceGame` に渡します。保存領域・時計・React との接続は `src/features/save/` に分離しています。詳細は [保存とオフライン進行](save.md) を参照してください。
-- 深度・地層・スキルツリー・装備・上位転生のモデルは仕様確定を待ちます。
+- 深度・地層・上位のスキル枝・装備・上位転生のモデルは仕様確定を待ちます。
 
 テストは `npm test`、型チェックは `npm run typecheck`、本番ビルドは `npm run build` で実行します。

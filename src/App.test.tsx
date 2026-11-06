@@ -7,6 +7,9 @@ import App from './App';
 import { createSave, parseSave, serializeSave } from './core/save';
 import { createInitialState } from './core/state';
 import { SAVE_STORAGE_KEY } from './features/save/SaveRepository';
+import { advanceGame } from './core/game';
+import { prestigeGame, purchaseSkill } from './core/prestige';
+import type { GameState } from './core/state';
 
 let now = 0;
 
@@ -16,12 +19,17 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
   vi.spyOn(performance, 'now').mockImplementation(() => now);
   vi.spyOn(Date, 'now').mockImplementation(() => 1_700_000_000_000 + Math.floor(now));
+  // jsdom にない dialog API だけを補い、実際のフォーカス制御は Edge で確認する。
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function(this: HTMLDialogElement) { this.open = true; } });
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function(this: HTMLDialogElement) { this.open = false; } });
 });
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   vi.useRealTimers();
+  Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal');
+  Reflect.deleteProperty(HTMLDialogElement.prototype, 'close');
 });
 
 function tickAfter(seconds: number) {
@@ -46,7 +54,7 @@ describe('minimal mining game', () => {
     const progress = screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement;
     expect(progress.value).toBe(0);
     expect(progress.max).toBe(1_000_000);
-    expect(screen.getAllByRole('article')).toHaveLength(3);
+    expect(within(screen.getByRole('region', { name: '設備' })).getAllByRole('article')).toHaveLength(3);
     for (const button of within(screen.getByRole('region', { name: '設備' })).getAllByRole('button')) {
       expect((button as HTMLButtonElement).disabled).toBe(true);
     }
@@ -160,8 +168,8 @@ describe('minimal mining game', () => {
     expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
     expect((screen.getByRole('progressbar') as HTMLProgressElement).value).toBe(1_000_000);
     expect(screen.getByText('上限到達 — 収穫が停止しました')).toBeTruthy();
-    expect(screen.getByText('転生は後続Issueで実装予定です。')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /転生/ })).toBeNull();
+    expect(screen.getByText(/転生で2ptを獲得し/)).toBeTruthy();
+    expect((screen.getByRole('button', { name: '転生する' }) as HTMLButtonElement).disabled).toBe(false);
     for (const button of within(screen.getByRole('region', { name: '設備' })).getAllByRole('button')) {
       expect((button as HTMLButtonElement).disabled).toBe(true);
       fireEvent.click(button);
@@ -328,5 +336,116 @@ describe('save management UI', () => {
     expect(screen.getByRole('alert').textContent).toContain('保存領域の読み書きに失敗');
     expect(screen.getByLabelText('所持芋').textContent).toBe('100');
     expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(original);
+  });
+});
+
+function seedGame(state: GameState) {
+  localStorage.setItem(SAVE_STORAGE_KEY, serializeSave(createSave(state, Date.now())));
+}
+
+function confirmPrestige(points: number) {
+  fireEvent.click(screen.getByRole('button', { name: '転生する' }));
+  fireEvent.click(screen.getByRole('button', { name: `転生を実行（${points}pt）` }));
+}
+
+describe('prestige and skill UI', () => {
+  it.each([[99_999, '0', true], [100_000, '1', false], [999_999, '1', false], [1_000_000, '2', false]] as const)(
+    'previews the reward at SCORE %s', (score, reward, disabled) => {
+      seedGame({ ...createInitialState(), imo: score, runEarnedScore: score });
+      renderGame();
+      expect(screen.getByLabelText('獲得見込みポイント').textContent).toBe(reward);
+      expect((screen.getByRole('button', { name: '転生する' }) as HTMLButtonElement).disabled).toBe(disabled);
+    },
+  );
+
+  it('cancels without resetting, then confirms exactly one reset and reward under StrictMode', () => {
+    seedGame({ ...createInitialState(), imo: 90_000, runEarnedScore: 100_000, equipmentCounts: { worker: 3, cart: 1, harvester: 0 } });
+    renderGame();
+    fireEvent.click(screen.getByRole('button', { name: '転生する' }));
+    expect(screen.getByRole('dialog', { name: '転生して次の周回へ進みますか？' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(screen.getByLabelText('所持芋').textContent).toBe('90,000');
+    expect(screen.getByLabelText('作業員の所有数').textContent).toBe('3');
+    confirmPrestige(1);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByLabelText('所持芋').textContent).toBe('0');
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('0');
+    expect(screen.getByLabelText('作業員の所有数').textContent).toBe('0');
+    expect(screen.getByLabelText('累計転生回数').textContent).toBe('1');
+    expect(screen.getByLabelText('未使用ポイント').textContent).toBe('1');
+    expect(screen.getByText(/転生しました。1pt/)).toBeTruthy();
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.permanent.unspentPoints).toBe(1);
+  });
+
+  it('completes a capped run, buys harvest and discount, and immediately displays their effects', () => {
+    seedGame(advanceGame(createInitialState(), 1_000_000));
+    renderGame();
+    confirmPrestige(2);
+    fireEvent.click(screen.getByRole('button', { name: '豊かな収穫を強化' }));
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('1.5');
+    expect(screen.getByLabelText('未使用ポイント').textContent).toBe('1');
+    expect(screen.getByLabelText('豊かな収穫のランク').textContent).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: '設備の目利きを強化' }));
+    expect(screen.getByLabelText('未使用ポイント').textContent).toBe('0');
+    expect(within(screen.getByRole('article', { name: '作業員' })).getByText('9 芋')).toBeTruthy();
+    expect(within(screen.getByRole('article', { name: '作業員' })).getByText(/1台あたり \+1.5/)).toBeTruthy();
+    tickAfter(10);
+    expect(screen.getByLabelText('所持芋').textContent).toBe('15');
+    fireEvent.click(screen.getByRole('button', { name: '作業員を1台購入' }));
+    expect(screen.getByLabelText('所持芋').textContent).toBe('6');
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('15');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('3');
+  });
+
+  it('shows prerequisite, insufficient-point and max-rank reasons', () => {
+    const first = prestigeGame(advanceGame(createInitialState(), 1_000_000));
+    seedGame(first);
+    const view = renderGame();
+    expect(within(screen.getByRole('article', { name: '設備の目利き' })).getByText('前提スキルが未取得です。')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '豊かな収穫を強化' }));
+    expect(within(screen.getByRole('article', { name: '豊かな収穫' })).getByText('転生ポイントが足りません。')).toBeTruthy();
+    view.unmount();
+    let maximum = createInitialState();
+    for (let index = 0; index < 3; index += 1) maximum = prestigeGame(advanceGame(maximum, 1_000_000));
+    for (let index = 0; index < 3; index += 1) maximum = purchaseSkill(maximum, 'harvest');
+    seedGame(maximum);
+    renderGame();
+    expect(within(screen.getByRole('article', { name: '豊かな収穫' })).getByText('最大ランクに到達しています。')).toBeTruthy();
+    expect((screen.getByRole('button', { name: '豊かな収穫を強化' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('retains permanent growth through reload and manual export/import', () => {
+    seedGame(advanceGame(createInitialState(), 1_000_000));
+    const view = renderGame();
+    confirmPrestige(2);
+    fireEvent.click(screen.getByRole('button', { name: '豊かな収穫を強化' }));
+    view.unmount();
+    renderGame();
+    expect(screen.getByLabelText('累計転生回数').textContent).toBe('1');
+    expect(screen.getByLabelText('未使用ポイント').textContent).toBe('1');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('1.5');
+    openSavePanel();
+    fireEvent.click(screen.getByRole('button', { name: 'セーブをエクスポート' }));
+    const exported = (screen.getByLabelText('エクスポート用セーブ（全選択してコピー）') as HTMLTextAreaElement).value;
+    fireEvent.click(screen.getByRole('button', { name: '設備の目利きを強化' }));
+    fireEvent.change(screen.getByLabelText('インポートするセーブテキスト'), { target: { value: exported } });
+    fireEvent.click(screen.getByRole('button', { name: 'インポート内容を確認' }));
+    fireEvent.click(screen.getByRole('button', { name: 'このセーブに置き換える' }));
+    expect(screen.getByLabelText('未使用ポイント').textContent).toBe('1');
+    expect(screen.getByLabelText('設備の目利きのランク').textContent).toBe('0');
+    expect(screen.getByLabelText('豊かな収穫のランク').textContent).toBe('1');
+  });
+
+  it('requests a new confirmation when the final click crosses the 2pt boundary', () => {
+    seedGame({ ...createInitialState(), imo: 999_999, runEarnedScore: 999_999 });
+    renderGame();
+    fireEvent.click(screen.getByRole('button', { name: '転生する' }));
+    now += 2_000;
+    fireEvent.click(screen.getByRole('button', { name: '転生を実行（1pt）' }));
+    expect(screen.getByRole('alert').textContent).toContain('最新の報酬');
+    expect(screen.getByLabelText('累計転生回数').textContent).toBe('0');
+    fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
+    expect(screen.getByLabelText('未使用ポイント').textContent).toBe('2');
+    expect(screen.getByLabelText('累計転生回数').textContent).toBe('1');
   });
 });

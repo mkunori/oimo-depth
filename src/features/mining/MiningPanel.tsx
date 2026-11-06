@@ -3,6 +3,7 @@ import { getEquipmentPrice } from '../../core/game';
 import type { GameState } from '../../core/state';
 import { INITIAL_BALANCE } from '../../data/balance';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../../data/equipment';
+import { getPrestigeReward } from '../../core/prestige';
 
 interface MiningPanelProps {
   readonly state: GameState;
@@ -13,11 +14,11 @@ interface MiningPanelProps {
 
 export function MiningPanel({ state, production, isCapped, isPaused }: MiningPanelProps) {
   const affordable = EQUIPMENT_IDS.find(
-    (id) => getEquipmentPrice(id, state.equipmentCounts[id]) <= state.imo,
+    (id) => getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) <= state.imo,
   );
   const goal = isPaused ? '進行を一時停止しています。セーブ管理の案内を確認してください。' : isCapped
-    ? '転生は後続Issueで実装予定です。'
-    : affordable
+    ? '転生で2ptを獲得し、スキルを強化して次の周回へ進みましょう。'
+    : getPrestigeReward(state) > 0 ? '転生で1ptを獲得できます。SCORE 上限まで進むと2ptになります。' : affordable
       ? `${EQUIPMENT[affordable].name}を購入できます。設備を増やして、収穫を速くしましょう。`
       : `芋を貯めて、次の設備を購入しましょう。SCORE ${formatNumber(INITIAL_BALANCE.scoreCap)} が今回の目標です。`;
 
@@ -45,6 +46,7 @@ export function MiningPanel({ state, production, isCapped, isPaused }: MiningPan
         </div>
         <progress id="score-progress" value={state.runEarnedScore} max={INITIAL_BALANCE.scoreCap} />
         <p className="score-note">この周回の累計収穫。設備を買っても減りません。</p>
+        {state.runStartingImo > 0 && <p className="score-note">開始時の支給芋 {formatNumber(state.runStartingImo)} は SCORE に含みません。</p>}
       </div>
       <p className={`mining-status ${isCapped ? 'is-capped' : ''}`} role="status">
         <span className="status-dot" aria-hidden="true" />
