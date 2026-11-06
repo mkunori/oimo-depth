@@ -9,6 +9,8 @@ import type { Scenario } from './simulator';
 import { simulateCampaign, simulateRun } from './simulator';
 import { projectFixedProduction } from './projections';
 import { SKILL_PLANS } from './policies';
+import { EQUIPMENT_BASELINE } from './baseline';
+import { simulateExpansion } from './expansion';
 
 export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 6, maxSeconds = 90 * 86_400) {
   if (scenarios.length === 0 || new Set(scenarios.map((scenario) => scenario.id)).size !== scenarios.length) {
@@ -26,6 +28,9 @@ export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 
     parameters: { balance: INITIAL_BALANCE, equipment: EQUIPMENT, prestige: PRESTIGE_BALANCE,
       skills: SKILLS, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
     runCount, maxSeconds, skillPlans: SKILL_PLANS, coverage: COVERAGE, campaigns, benchmarks,
+    equipmentBaseline: EQUIPMENT_BASELINE,
+    expansion: lastCompleted?.result.state.runEarnedScore === INITIAL_BALANCE.scoreCap
+      ? simulateExpansion(lastCompleted.result.state) : [],
     projectionReference: referenceProduction === null ? null : {
       scenarioId: reference!.scenario.id, run: lastCompleted!.run, production: referenceProduction,
     },

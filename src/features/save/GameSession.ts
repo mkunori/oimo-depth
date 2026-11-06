@@ -1,4 +1,4 @@
-import { advanceGame, purchaseEquipment } from '../../core/game';
+import { advanceGame, getEquipmentMilestones, purchaseEquipment } from '../../core/game';
 import type { PurchaseMode } from '../../core/game';
 import { createSave, parseSave, SaveDataError, serializeSave, settleOffline } from '../../core/save';
 import type { OfflineReport, SaveData } from '../../core/save';
@@ -24,6 +24,7 @@ export interface SessionSnapshot {
   readonly report: OfflineReport | null;
   readonly savedAt: number | null;
   readonly progressNotice: string | null;
+  readonly milestoneNotice: { readonly id: EquipmentId; readonly counts: readonly number[]; readonly multiplier: number } | null;
 }
 
 const AUTOSAVE_INTERVAL_MS = 10_000;
@@ -38,7 +39,7 @@ export class GameSession {
   private lastAutosave = 0;
   private stateAt = 0;
   private snapshot: SessionSnapshot = {
-    gameState: createInitialState(), status: 'loading', message: null, report: null, savedAt: null, progressNotice: null,
+    gameState: createInitialState(), status: 'loading', message: null, report: null, savedAt: null, progressNotice: null, milestoneNotice: null,
   };
 
   constructor(storage: SaveStorage, private readonly clock: SessionClock) {
@@ -114,7 +115,11 @@ export class GameSession {
   purchase = (id: EquipmentId, mode: PurchaseMode): void => {
     this.tick();
     if (this.snapshot.status !== 'ready' || this.hidden || this.snapshot.gameState.runEarnedScore >= INITIAL_BALANCE.scoreCap) return;
-    this.update({ gameState: purchaseEquipment(this.snapshot.gameState, id, mode) });
+    const before = this.snapshot.gameState.equipmentCounts[id];
+    const gameState = purchaseEquipment(this.snapshot.gameState, id, mode);
+    const milestones = getEquipmentMilestones(id, gameState.equipmentCounts[id]);
+    const counts = milestones.achieved.filter((milestone) => milestone.count > before).map((milestone) => milestone.count);
+    this.update({ gameState, milestoneNotice: counts.length > 0 ? { id, counts, multiplier: milestones.multiplier } : null });
     this.persist();
   };
 
@@ -123,7 +128,7 @@ export class GameSession {
       const save = createSave(gameState, this.stateAt);
       this.repository.write(save);
       this.lastAutosave = this.clock.monotonicNow();
-      this.update({ gameState: save.gameState, savedAt: save.savedAt, progressNotice, report: null });
+      this.update({ gameState: save.gameState, savedAt: save.savedAt, progressNotice, report: null, milestoneNotice: null });
       return true;
     } catch (error) { this.fail(error); return false; }
   }
@@ -185,7 +190,7 @@ export class GameSession {
       this.repository.write(save);
       this.stateAt = save.savedAt;
       this.lastTick = this.lastAutosave = this.clock.monotonicNow();
-      this.update({ gameState: save.gameState, status: 'ready', savedAt: save.savedAt, message: null, report: null, progressNotice: null });
+      this.update({ gameState: save.gameState, status: 'ready', savedAt: save.savedAt, message: null, report: null, progressNotice: null, milestoneNotice: null });
       return true;
     } catch (error) { this.fail(error); return false; }
   }

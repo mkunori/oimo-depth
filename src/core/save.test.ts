@@ -104,9 +104,9 @@ describe('permanent growth saves and migration', () => {
   it('migrates an actual v1 save while preserving all run values and its timestamp', () => {
     const legacy = { saveVersion: 1, savedAt: SAVED_AT, gameState: { imo: 90.5, runEarnedScore: 100.5, equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } };
     const migrated = parseSave(JSON.stringify(legacy));
-    expect(migrated.saveVersion).toBe(2);
+    expect(migrated.saveVersion).toBe(SAVE_VERSION);
     expect(migrated.savedAt).toBe(SAVED_AT);
-    expect(migrated.gameState).toEqual({ ...createInitialState(), ...legacy.gameState });
+    expect(migrated.gameState).toEqual({ ...createInitialState(), ...legacy.gameState, equipmentCounts: { ...createInitialState().equipmentCounts, ...legacy.gameState.equipmentCounts } });
     expect(parseSave(serializeSave(migrated))).toEqual(migrated);
     expect(settleOffline(migrated, SAVED_AT + 1_000).save.gameState.imo).toBe(92.5);
   });

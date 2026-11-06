@@ -39,11 +39,26 @@ function setup(storage = new MemoryStorage()) {
 }
 
 describe('prestige persistence and migration', () => {
-  it('migrates v1 after offline settlement and commits v2 without losing equipment', () => {
+  it('retains actual v2 progress and raw text if a v3 migration write fails', () => {
+    const game = setup();
+    const legacyState = { ...createInitialState(), imo: 90, runEarnedScore: 100,
+      equipmentCounts: { worker: 10, cart: 0, harvester: 0 } };
+    const text = JSON.stringify({ saveVersion: 2, savedAt: START, gameState: legacyState });
+    game.storage.value = text;
+    game.storage.failWrites = true;
+    game.session.start();
+    expect(game.storage.value).toBe(text);
+    expect(game.session.getSnapshot().status).toBe('unavailable');
+    expect(game.session.getSnapshot().gameState.equipmentCounts.worker).toBe(10);
+    expect(game.session.getSnapshot().gameState.equipmentCounts.deepDrill).toBe(0);
+    expect(parseSave(game.session.exportText()).gameState.equipmentCounts.worker).toBe(10);
+  });
+
+  it('migrates v1 after offline settlement and commits v3 without losing equipment', () => {
     const game = setup();
     game.storage.value = JSON.stringify({ saveVersion: 1, savedAt: START - 1_000, gameState: { imo: 90, runEarnedScore: 100, equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } });
     game.session.start();
-    expect(JSON.parse(game.storage.value!).saveVersion).toBe(2);
+    expect(JSON.parse(game.storage.value!).saveVersion).toBe(3);
     expect(game.session.getSnapshot().gameState.imo).toBe(92);
     expect(game.session.getSnapshot().gameState.runEarnedScore).toBe(102);
     expect(game.session.getSnapshot().gameState.equipmentCounts.worker).toBe(1);
@@ -63,7 +78,7 @@ describe('prestige persistence and migration', () => {
 
   it.each([
     JSON.stringify({ saveVersion: 2, savedAt: START, gameState: { imo: 0, runEarnedScore: 0, equipmentCounts: { worker: 0, cart: 0, harvester: 0 } } }),
-    JSON.stringify({ saveVersion: 3, savedAt: START, gameState: createInitialState() }),
+    JSON.stringify({ saveVersion: 4, savedAt: START, gameState: createInitialState() }),
   ])('preserves malformed v2 or future text without fallback %#', (text) => {
     const game = setup();
     game.storage.value = text;

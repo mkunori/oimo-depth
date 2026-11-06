@@ -13,3 +13,6 @@ const scientific = new Intl.NumberFormat('ja-JP', {
 export function formatNumber(value: number): string {
   return (value >= 1e9 ? scientific : standard).format(value);
 }
+
+const multiplier = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 5 });
+export function formatMultiplier(value: number): string { return multiplier.format(value); }

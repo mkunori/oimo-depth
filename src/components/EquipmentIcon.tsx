@@ -17,6 +17,12 @@ export function EquipmentIcon({ id }: { readonly id: EquipmentId }) {
         <circle cx="14" cy="36" r="6" />
         <circle cx="35" cy="36" r="5" />
       </>}
+      {id === 'deepDrill' && <>
+        <path d="M9 39h30M14 39V18l10-11 10 11v21M19 21h10M20 25h8l-8 5h8l-8 5h8M24 7V3M10 18h28" />
+      </>}
+      {id === 'refinery' && <>
+        <path d="M6 40V20h15v20M27 40V13h15v27M3 40h42M11 20V7h5v13M27 24h-6M34 13V4h5v9M10 27h7M10 33h7M31 21h7M31 28h7M31 35h7" />
+      </>}
     </svg>
   );
 }

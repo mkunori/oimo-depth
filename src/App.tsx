@@ -22,7 +22,7 @@ export default function App() {
       </header>
       <div className="game-layout">
         <MiningPanel state={state} production={getProductionPerSecond(state)} isCapped={isCapped} isPaused={isPaused} />
-        <Shop state={state} isCapped={isCapped} isPaused={isPaused} onPurchase={purchase} />
+        <Shop state={state} isCapped={isCapped} isPaused={isPaused} onPurchase={purchase} milestoneNotice={snapshot.milestoneNotice} />
       </div>
       <PrestigePanel state={state} isPaused={isPaused} notice={snapshot.progressNotice} onPrestige={prestige} onBuySkill={buySkill} />
       <SavePanel snapshot={snapshot} onExport={exportText} onImport={importSave} onReset={reset} onDismissReport={dismissReport} />
