@@ -19,6 +19,7 @@ function skillEffect(id: SkillId, rank: number): string {
   const { type, perRank } = SKILLS[id].effect;
   if (type === 'harvest') return `収穫量 ×${formatNumber(1 + rank * perRank)}`;
   if (type === 'discount') return `設備価格 ${formatNumber(rank * perRank)}%割引`;
+  if (type === 'breakthrough') return rank > 0 ? 'SCORE 1,000,000で上限1E9への限界突破が可能' : '限界突破は未解禁';
   return `次の転生後の初期所持芋 ${formatNumber(rank * perRank)} 芋`;
 }
 
@@ -45,8 +46,8 @@ export function PrestigePanel({ state, isPaused, notice, onPrestige, onBuySkill 
           <div><dt>累計転生回数</dt><dd><output aria-label="累計転生回数" aria-live="off">{formatNumber(state.permanent.prestigeCount)}</output> 回</dd></div>
           <div><dt>未使用ポイント</dt><dd><output aria-label="未使用ポイント" aria-live="off">{formatNumber(state.permanent.unspentPoints)}</output> pt</dd></div>
         </dl>
-        <p>SCORE {formatNumber(PRESTIGE_BALANCE.unlockScore)} で転生解禁。上限未満なら1pt、上限 {formatNumber(INITIAL_BALANCE.scoreCap)} なら2ptを獲得します。</p>
-        <p>転生すると所持芋・今周回のSCORE・設備をリセットし、転生回数・未使用ポイント・スキルを引き継ぎます。</p>
+        <p>SCORE {formatNumber(PRESTIGE_BALANCE.unlockScore)} で転生解禁。SCORE {formatNumber(INITIAL_BALANCE.scoreCap)} 未満なら1pt、以上なら2ptを獲得します。突破後も報酬は2ptです。</p>
+        <p>転生すると所持芋・今周回のSCORE・設備をリセットし、上限を1,000,000に戻します。転生回数・未使用ポイント・スキル・突破権は引き継ぎます。</p>
         <p className="prestige-reward">獲得見込み: <output aria-label="獲得見込みポイント" aria-live="off">{reward}</output> pt</p>
         <button type="button" ref={trigger} className="secondary-button" disabled={isPaused || reward === 0} onClick={() => { setConfirmationError(null); setConfirming(true); }} aria-describedby="prestige-reason">転生する</button>
         <p id="prestige-reason" className="shop-note">{isPaused ? 'セーブの確認が必要なため転生を停止しています。' : reward === 0 ? `SCORE ${formatNumber(PRESTIGE_BALANCE.unlockScore)} まで採掘しましょう。` : '転生後は下のスキルで次の周回を強化できます。'}</p>
@@ -62,18 +63,18 @@ export function PrestigePanel({ state, isPaused, notice, onPrestige, onBuySkill 
               <div className="skill-heading"><h3 id={`${id}-skill-title`}>{definition.name}</h3><span>ランク <output aria-label={`${definition.name}のランク`} aria-live="off">{rank}</output> / {definition.maxRank}</span></div>
               <p>現在: {skillEffect(id, rank)}</p>
               {rank < definition.maxRank && <p>次の効果: {skillEffect(id, quote.nextRank)}</p>}
-              <p className="skill-prerequisites">前提: {definition.prerequisites.length === 0 ? 'なし' : definition.prerequisites.map((required) => `${SKILLS[required.id].name} ランク${required.rank}`).join('、')}</p>
+              <p className="skill-prerequisites">前提: {definition.prerequisites.length === 0 ? 'なし' : definition.prerequisites.map((required) => `${SKILLS[required.id].name} ランク${required.rank}`).join('、')}{definition.minimumPrestigeCount > 0 && `、累計転生${definition.minimumPrestigeCount}回以上`}</p>
               <button type="button" className="secondary-button" disabled={isPaused || !quote.canPurchase} aria-label={`${definition.name}を強化`} aria-describedby={`${id}-skill-reason`} onClick={() => onBuySkill(id)}>{quote.cost === null ? '最大ランク' : `${quote.cost}ptで強化`}</button>
-              <p className="shop-note" id={`${id}-skill-reason`}>{isPaused ? 'セーブの確認が必要なため強化を停止しています。' : quote.reason ?? (id === 'startingImo' ? '次の転生から適用されます。SCORE には加算しません。' : '取得するとすぐに効果が反映されます。')}</p>
+              <p className="shop-note" id={`${id}-skill-reason`}>{isPaused ? 'セーブの確認が必要なため強化を停止しています。' : quote.reason ?? (id === 'startingImo' ? '次の転生から適用されます。SCORE には加算しません。' : id === 'breakthrough' ? '取得後、採掘欄の「限界突破する」から現在の周回を継続できます。' : '取得するとすぐに効果が反映されます。')}</p>
             </article>
           );
         })}
       </div>
-      <p className="shop-note">現在の収穫倍率 ×{formatNumber(bonuses.productionMultiplier)} / 設備割引 {formatNumber(bonuses.equipmentDiscountPercent)}% / 次周回の初期所持芋 {formatNumber(bonuses.startingImo)} 芋。SCORE 上限は変わりません。</p>
+      <p className="shop-note">現在の収穫倍率 ×{formatNumber(bonuses.productionMultiplier)} / 設備割引 {formatNumber(bonuses.equipmentDiscountPercent)}% / 次周回の初期所持芋 {formatNumber(bonuses.startingImo)} 芋。スキル取得だけでは上限は変わりません。限界突破は採掘欄で実行します。</p>
       {confirming && (
         <dialog ref={dialog} className="prestige-dialog" aria-labelledby="prestige-dialog-title" aria-describedby="prestige-dialog-description" onCancel={() => setConfirming(false)}>
           <h2 id="prestige-dialog-title">転生して次の周回へ進みますか？</h2>
-          <p id="prestige-dialog-description">現在の所持芋・SCORE・設備がリセットされます。取り消せません。転生回数・ポイント・スキルは引き継ぎます。</p>
+          <p id="prestige-dialog-description">現在の所持芋・SCORE・設備がリセットされ、SCORE上限は1,000,000に戻ります。取り消せません。転生回数・ポイント・スキル・突破権は引き継ぎます。上限に再到達すれば追加ポイントなしで再突破できます。</p>
           <p>獲得する転生ポイント: <strong>{reward} pt</strong></p>
           <p>再開時の所持芋 {formatNumber(bonuses.startingImo)} / SCORE 0</p>
           {confirmationError && <p role="alert">{confirmationError}</p>}

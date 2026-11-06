@@ -4,8 +4,9 @@ import { createEmptyEquipmentCounts, EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS } from
 import { SKILL_IDS } from '../data/skills';
 import { createInitialPermanent } from './state';
 import type { PermanentProgress } from './state';
+import type { ScoreCapStage } from '../data/scoreCaps';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -39,7 +40,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 | 3 = SAVE_VERSION): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 | 4 = SAVE_VERSION): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (typeof state.imo !== 'number' || typeof state.runEarnedScore !== 'number') {
@@ -58,18 +59,22 @@ function readGameState(value: unknown, version: 1 | 2 | 3 = SAVE_VERSION): GameS
   if (version >= 2) {
     const savedPermanent = record(state.permanent);
     const ranks = record(savedPermanent.skillRanks);
-    const skillRanks = { harvest: 0, discount: 0, startingImo: 0 };
+    const skillRanks = { ...createInitialPermanent().skillRanks };
     for (const id of SKILL_IDS) {
-      if (typeof ranks[id] !== 'number') throw new SaveDataError('スキルのランクが正しくありません。');
-      skillRanks[id] = ranks[id];
+      const rank = version < 4 && id === 'breakthrough' && ranks[id] === undefined ? 0 : ranks[id];
+      if (typeof rank !== 'number' || (version < 4 && id === 'breakthrough' && rank !== 0)) throw new SaveDataError('スキルのランクが正しくありません。');
+      skillRanks[id] = rank;
     }
     if (typeof savedPermanent.prestigeCount !== 'number' || typeof savedPermanent.unspentPoints !== 'number'
       || typeof state.runStartingImo !== 'number') throw new SaveDataError('恒久データが正しくありません。');
     permanent = { prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks };
   }
+  if ((version === 4 && state.scoreCapStage !== 0 && state.scoreCapStage !== 1)
+    || (version < 4 && state.scoreCapStage !== undefined && state.scoreCapStage !== 0)) throw new SaveDataError('SCORE上限段階が正しくありません。');
   const result: GameState = {
     imo: state.imo, runEarnedScore: state.runEarnedScore, equipmentCounts,
     runStartingImo: version === 1 ? 0 : state.runStartingImo as number,
+    scoreCapStage: version < 4 ? 0 : state.scoreCapStage as ScoreCapStage,
     permanent,
   };
   try {
@@ -92,7 +97,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt));

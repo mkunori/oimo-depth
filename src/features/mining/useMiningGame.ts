@@ -47,5 +47,6 @@ export function useMiningGame() {
     dismissReport: session.dismissReport,
     prestige: session.prestige,
     buySkill: session.buySkill,
+    breakthrough: session.breakthrough,
   };
 }

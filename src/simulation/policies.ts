@@ -1,5 +1,4 @@
-import { getEquipmentAvailability, getEquipmentPrice, getEquipmentPurchaseGain, INITIAL_ECONOMY, purchaseEquipment } from '../core/game';
-import type { EconomyContext } from '../core/game';
+import { getEquipmentAvailability, getEquipmentPrice, getEquipmentPurchaseGain, purchaseEquipment } from '../core/game';
 import { purchaseSkill } from '../core/prestige';
 import type { GameState } from '../core/state';
 import { EQUIPMENT_IDS } from '../data/equipment';
@@ -12,12 +11,14 @@ export const SKILL_PLANS = {
   discount: ['harvest', 'discount', 'discount', 'harvest', 'harvest', 'startingImo', 'startingImo'],
   startingImo: ['harvest', 'startingImo', 'startingImo', 'harvest', 'harvest', 'discount', 'discount'],
   save: [],
+  breakthrough: ['harvest', 'harvest', 'harvest', 'discount', 'breakthrough'],
+  'late-breakthrough': ['harvest', 'harvest', 'harvest', 'discount', 'discount', 'startingImo', 'startingImo', 'breakthrough'],
 } as const satisfies Record<string, readonly SkillId[]>;
 export type SkillPlan = keyof typeof SKILL_PLANS;
 
 /** 指定順の次ランクを買えなければ貯める。安い下位候補へ勝手に振り替えない。 */
 export function investSkills(state: GameState, plan: SkillPlan): GameState {
-  const targetRanks = { harvest: 0, discount: 0, startingImo: 0 };
+  const targetRanks = { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0 };
   for (const id of SKILL_PLANS[plan]) {
     targetRanks[id] += 1;
     if (state.permanent.skillRanks[id] >= targetRanks[id]) continue;
@@ -34,15 +35,17 @@ function payback(state: GameState, id: EquipmentId): number {
 }
 
 /** 現在買える設備だけで選ぶ局所方策。将来を見通した最適化ではない。 */
-export function investEquipment(state: GameState, policy: EquipmentPolicy, context: EconomyContext = INITIAL_ECONOMY, allowed: readonly EquipmentId[] = EQUIPMENT_IDS) {
+export function investEquipment(state: GameState, policy: EquipmentPolicy, allowed: readonly EquipmentId[] = EQUIPMENT_IDS) {
   if (policy === 'none') return { state, purchased: 0 };
   let purchased = 0;
   while (true) {
-    const affordable = allowed.filter((id) => getEquipmentAvailability(id, context).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) <= state.imo);
+    const affordable = allowed.filter((id) => getEquipmentAvailability(id, state).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) <= state.imo);
     const id = policy === 'highest-tier' ? affordable.at(-1)
       : affordable.sort((left, right) => payback(state, left) - payback(state, right))[0];
     if (id === undefined) return { state, purchased };
-    state = purchaseEquipment(state, id, 1, context);
+    const next = purchaseEquipment(state, id, 1);
+    if (next === state) return { state, purchased };
+    state = next;
     purchased += 1;
   }
 }

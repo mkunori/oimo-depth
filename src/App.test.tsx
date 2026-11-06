@@ -10,6 +10,8 @@ import { SAVE_STORAGE_KEY } from './features/save/SaveRepository';
 import { advanceGame } from './core/game';
 import { prestigeGame, purchaseSkill } from './core/prestige';
 import type { GameState } from './core/state';
+import { createBreakthroughReadyState } from './test/progress';
+import { performBreakthrough } from './core/breakthrough';
 
 let now = 0;
 
@@ -396,6 +398,75 @@ describe('equipment growth UI', () => {
       expect(screen.getByLabelText(`${name}の所有数`).textContent).toBe('0');
     }
     expect(screen.getByLabelText('現在SCORE').textContent).toBe('1,000,000');
+  });
+});
+
+describe('breakthrough UI', () => {
+  it('offers prestige when locked and explains skill prerequisites', () => {
+    seedGame(advanceGame(createInitialState(), 1e6)); renderGame();
+    expect((screen.getByRole('button', { name: '限界突破する' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: '転生する' }) as HTMLButtonElement).disabled).toBe(false);
+    const node = screen.getByRole('article', { name: '限界突破の心得' });
+    expect(within(node).getByText(/収穫 ランク3.*目利き ランク1.*転生5回/)).toBeTruthy();
+    expect(within(node).getByText('3ptで強化')).toBeTruthy();
+    expect(screen.getByText(/スキルを強化して限界突破を解禁/)).toBeTruthy();
+  });
+
+  it('cancels then performs a no-reset breakthrough once, resumes production and survives reload', () => {
+    const state = { ...createBreakthroughReadyState(), imo: 1234,
+      equipmentCounts: { ...createInitialState().equipmentCounts, worker: 10 } };
+    seedGame(state); const view = renderGame();
+    const trigger = screen.getByRole('button', { name: '限界突破する' });
+    expect((trigger as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('button', { name: '転生する' }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(trigger);
+    expect(screen.getByRole('dialog', { name: '転生せずに限界突破しますか？' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState).toEqual(state);
+    fireEvent.click(trigger); fireEvent.click(screen.getByRole('button', { name: '限界突破を実行' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState).toEqual({ ...state, scoreCapStage: 1 });
+    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1e9);
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('1,000,000');
+    expect(screen.getByLabelText('所持芋').textContent).toBe('1,234');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('30');
+    tickAfter(1);
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('1,000,030');
+    view.unmount(); renderGame();
+    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1e9);
+    expect((screen.getByRole('button', { name: '限界突破する' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText(/1E9より先の限界突破は未実装/)).toBeTruthy();
+  });
+
+  it('keeps the dialog and capped state if saving the transition fails', () => {
+    seedGame(createBreakthroughReadyState()); renderGame();
+    fireEvent.click(screen.getByRole('button', { name: '限界突破する' }));
+    const raw = localStorage.getItem(SAVE_STORAGE_KEY);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
+    fireEvent.click(screen.getByRole('button', { name: '限界突破を実行' }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1e6);
+    expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(raw);
+    expect(screen.getByText(/限界突破できませんでした/)).toBeTruthy();
+  });
+
+  it('unlocks both higher equipment, stops at 1e9 and resets only the run on prestige', () => {
+    const state = { ...performBreakthrough(createBreakthroughReadyState()), imo: 100_000_000, runEarnedScore: 100_000_000 };
+    seedGame(state); renderGame();
+    for (const name of ['深層掘削機', '芋精製プラント']) {
+      const button = within(screen.getByRole('article', { name })).getByRole('button');
+      expect((button as HTMLButtonElement).disabled).toBe(false); fireEvent.click(button);
+      expect(screen.getByLabelText(`${name}の所有数`).textContent).toBe('1');
+    }
+    tickAfter(1e9);
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('1E9');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
+    expect(screen.getByText(/SCORE 1E9到達/)).toBeTruthy();
+    confirmPrestige(2);
+    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1e6);
+    expect(screen.getByLabelText('限界突破の心得のランク').textContent).toBe('1');
+    expect(screen.getByLabelText('深層掘削機の所有数').textContent).toBe('0');
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.scoreCapStage).toBe(0);
   });
 });
 

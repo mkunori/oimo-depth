@@ -14,7 +14,8 @@ export function assertPermanentProgress(permanent: PermanentProgress): void {
     if (!Number.isSafeInteger(rank) || rank < 0 || rank > definition.maxRank) {
       throw new RangeError('Invalid skill rank.');
     }
-    if (rank > 0 && definition.prerequisites.some((required) => permanent.skillRanks[required.id] < required.rank)) {
+    if (rank > 0 && (permanent.prestigeCount < definition.minimumPrestigeCount
+      || definition.prerequisites.some((required) => permanent.skillRanks[required.id] < required.rank))) {
       throw new RangeError('Skill prerequisites are not satisfied.');
     }
     spent += definition.costs.slice(0, rank).reduce<number>((sum, cost) => sum + cost, 0);
@@ -48,6 +49,7 @@ export function getSkillPurchase(permanent: PermanentProgress, id: SkillId) {
   const reason = rank >= definition.maxRank ? '最大ランクに到達しています。'
     : definition.prerequisites.some((required) => permanent.skillRanks[required.id] < required.rank)
       ? '前提スキルが未取得です。'
-      : cost !== null && permanent.unspentPoints < cost ? '転生ポイントが足りません。' : null;
+      : permanent.prestigeCount < definition.minimumPrestigeCount ? `累計転生${definition.minimumPrestigeCount}回が必要です。`
+        : cost !== null && permanent.unspentPoints < cost ? '転生ポイントが足りません。' : null;
   return { cost, nextRank: Math.min(rank + 1, definition.maxRank), reason, canPurchase: reason === null };
 }

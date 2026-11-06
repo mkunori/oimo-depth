@@ -9,7 +9,7 @@ import { SCENARIOS } from './scenarios';
 import { simulateCampaign, simulateRun } from './simulator';
 import type { Scenario } from './simulator';
 import { runSuite } from './suite';
-import { ASSUMED_EXPANSION, simulateExpansion } from './expansion';
+import { BREAKTHROUGH_SCENARIOS, simulateBreakthroughJourney, simulateExpansion } from './expansion';
 import { EQUIPMENT_BASELINE } from './baseline';
 
 const idle: Scenario = { id: 'test', label: 'analytic baseline', visitSeconds: null,
@@ -186,15 +186,28 @@ describe('equipment growth comparison', () => {
     }
   });
 
-  it('runs explicit no-reset 1e9 assumptions without enabling the actual game or save format', () => {
-    const current = simulateCampaign(SCENARIOS.find((item) => item.id === 'active-60-cap')!);
-    const seed = current.runs.at(-1)!.result.state;
+  it('earns real permission and reaches 1e9 without resetting the breakthrough run', () => {
+    const journeys = BREAKTHROUGH_SCENARIOS.map((scenario) => simulateBreakthroughJourney(scenario));
+    for (const journey of journeys) {
+      expect(journey.completed).toBe(true);
+      expect(journey.beforeBreakthrough?.scoreCapStage).toBe(0);
+      expect(journey.beforeBreakthrough?.runEarnedScore).toBe(1e6);
+      expect(journey.afterBreakthrough).toEqual({ ...journey.beforeBreakthrough, scoreCapStage: 1 });
+      expect(journey.state.permanent).toEqual(journey.beforeBreakthrough?.permanent);
+      expect(journey.state.runEarnedScore).toBe(1e9);
+      expect(journey.expansion!.state.equipmentCounts.deepDrill).toBeGreaterThan(0);
+      expect(journey.expansion!.trace.at(-1)?.actualProduction).toBe(0);
+    }
+    expect(journeys[0]!.state.permanent.prestigeCount).toBe(5);
+    expect(journeys[3]!.state.permanent.prestigeCount).toBe(10);
+    expect(journeys[4]!.state.permanent.prestigeCount).toBe(8);
+    const seed = journeys[0]!.beforeBreakthrough!;
     const snapshot = JSON.stringify(seed);
     const cases = simulateExpansion(seed);
     expect(cases).toHaveLength(9);
     for (const trial of cases) {
-      expect(trial.assumed).toBe(true);
-      expect(trial.actualSaveSupported).toBe(false);
+      expect(trial.assumed).toBe(false);
+      expect(trial.actualSaveSupported).toBe(true);
       expect(trial.result.completed).toBe(true);
       expect(trial.result.state.runEarnedScore).toBe(1e9);
       expect(trial.result.state.permanent).toEqual(seed.permanent);
@@ -213,7 +226,9 @@ describe('equipment growth comparison', () => {
     expect(expanded.finalProduction / existing.finalProduction).toBeGreaterThan(3);
     expect(expanded.finalProduction / existing.finalProduction).toBeLessThan(20);
     expect(JSON.stringify(seed)).toBe(snapshot);
-    expect(() => simulateCampaign({ ...SCENARIOS[0]!, economy: ASSUMED_EXPANSION })).toThrow(RangeError);
     expect(() => simulateExpansion(createInitialState())).toThrow(RangeError);
+    const censored = simulateBreakthroughJourney(BREAKTHROUGH_SCENARIOS[1]!, 900);
+    expect(censored.completed).toBe(false);
+    expect(censored.beforeBreakthrough).toBeNull();
   });
 });

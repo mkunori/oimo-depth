@@ -9,9 +9,10 @@
 | フィールド | 意味・制約 |
 | --- | --- |
 | `imo` | 設備購入に使う残高。有限かつ `0 <= imo <= runEarnedScore + runStartingImo` |
-| `runEarnedScore` | 現周回で収穫した芋の累計。購入で減らない。有限かつ初期上限以下 |
+| `runEarnedScore` | 現周回で収穫した芋の累計。購入で減らない。有限かつ現周回の上限以下 |
 | `equipmentCounts` | `worker` / `cart` / `harvester` / `deepDrill` / `refinery` の所有数。非負の安全な整数。後半2種は初期上限で0のみ許可 |
 | `runStartingImo` | この周回の開始時に支給した芋。SCORE に含めない |
+| `scoreCapStage` | 現周回の上限段階。0: 1e6、1: 1e9。段階1には突破権と前段階の到達が必要 |
 | `permanent` | 転生回数・未使用ポイント・取得スキル。転生で維持する |
 
 初期状態は残高・累計・全設備数が 0 です。状態型は readonly とし、各更新関数は入力やネストした所有数を変更しません。変化のない購入・時間更新は元の状態を返します。
@@ -63,7 +64,7 @@ const purchased = purchaseEquipment(harvested, 'worker', 10);
 
 `getEquipmentMilestones(id, count)` は現在倍率・次の閾値と倍率・達成済み節目を返します。`getEquipmentPurchaseGain` は次の1台で所有済み分も強化される効果を含めた生産増分を返し、シミュレーターの回収時間計算に使います。
 
-`getEquipmentAvailability` は獲得SCOREではなく上限段階と設備定義の `unlockAtScoreCap` を比較します。追加2種は上限1e9で解禁する定義です。購入・生産・進行APIには仮定試算用の任意引数 `EconomyContext`（上限1e6または1e9）がありますが、通常の呼出しは常に初期上限1e6です。未解禁設備の見積もりは0台・0円、購入は状態を維持し、不正な所有状態は拒否します。App・保存・転生には上限段階の変更を実装せず、#20で正式な遷移・検証を追加します。
+`getEquipmentAvailability(id, state)` は獲得SCOREではなく現周回の上限と設備定義の `unlockAtScoreCap` を比較します。追加2種は初回突破後の上限1e9で解禁します。上限到達中・未解禁設備の見積もりは0台・0円、購入は状態を維持し、不正な所有状態は拒否します。#19の仮定用 `EconomyContext` は削除し、全APIが `getScoreCap(state)` を使います。権利と段階の制約、非リセット遷移は [初回限界突破](breakthrough.md) を参照してください。
 
 ## 入力検証と数値の限界
 
@@ -77,7 +78,7 @@ const purchased = purchaseEquipment(harvested, 'worker', 10);
 
 - 巨大数対応: `GameState` の金額・累計、`EquipmentDefinition` の価格・生産量、`src/core/game.ts` の演算・比較・丸め・有限値検証をまとめて任意精度の数値表現へ変更してください。価格指数計算も含むため、型だけの変更では対応できません。
 - 倍率ボーナス: `getProductionPerSecond` / `getEquipmentMilestones` / `getSkillBonuses` に集約しています。ボーナス値自体は保存せず所有数・スキルから算出します。
-- 転生・限界突破: 初期転生と基本スキルは `src/core/prestige.ts` / `src/data/skills.ts` に実装しています。上限変更は後続 Issue の対象です。
+- 転生・限界突破: 初期転生は `src/core/prestige.ts`、権利は `src/data/skills.ts`、1e6→1e9の非リセット遷移は `src/core/breakthrough.ts` に実装しています。段階表は `src/data/scoreCaps.ts`。1e12以降は未実装です。
 - オフライン計算・保存: `src/core/save.ts` が保存形式の検証と経過時間の上限制御を行い、`advanceGame` に渡します。保存領域・時計・React との接続は `src/features/save/` に分離しています。詳細は [保存とオフライン進行](save.md) を参照してください。
 - 深度・地層・上位のスキル枝・装備・上位転生のモデルは仕様確定を待ちます。
 

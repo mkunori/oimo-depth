@@ -10,8 +10,9 @@ describe('createInitialState', () => {
       imo: 0,
       runEarnedScore: 0,
       runStartingImo: 0,
+      scoreCapStage: 0,
       equipmentCounts: { worker: 0, cart: 0, harvester: 0, deepDrill: 0, refinery: 0 },
-      permanent: { prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0 } },
+      permanent: { prestigeCount: 0, unspentPoints: 0, skillRanks: { breakthrough: 0, harvest: 0, discount: 0, startingImo: 0 } },
     });
     expect(getProductionPerSecond(state)).toBe(1);
   });

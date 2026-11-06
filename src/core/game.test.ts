@@ -77,14 +77,14 @@ describe('advanceGame', () => {
     expect(advanceGame(after, 1_000)).toBe(after);
   });
 
-  it('stops exactly at the cap and does not restart after buying equipment', () => {
+  it('stops exactly at the cap and rejects purchases until breakthrough or prestige', () => {
     const capped = advanceGame(createInitialState(), SCORE_CAP);
     const purchased = purchaseEquipment(capped, 'worker', 1);
 
     expect(capped.imo).toBe(SCORE_CAP);
-    expect(purchased.imo).toBe(SCORE_CAP - 10);
+    expect(purchased).toBe(capped);
     expect(purchased.runEarnedScore).toBe(SCORE_CAP);
-    expect(getProductionPerSecond(purchased)).toBe(2);
+    expect(getProductionPerSecond(purchased)).toBe(1);
     expect(advanceGame(purchased, 100)).toBe(purchased);
   });
 

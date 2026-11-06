@@ -1,7 +1,9 @@
 import { formatNumber } from '../../components/formatNumber';
-import { getEquipmentPrice } from '../../core/game';
+import { getEquipmentAvailability, getEquipmentPrice } from '../../core/game';
+import { getScoreCap } from '../../data/scoreCaps';
+import { canBreakthrough } from '../../core/breakthrough';
+import { BreakthroughControl } from '../prestige/BreakthroughControl';
 import type { GameState } from '../../core/state';
-import { INITIAL_BALANCE } from '../../data/balance';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../../data/equipment';
 import { getPrestigeReward } from '../../core/prestige';
 
@@ -10,17 +12,21 @@ interface MiningPanelProps {
   readonly production: number;
   readonly isCapped: boolean;
   readonly isPaused: boolean;
+  readonly onBreakthrough: () => boolean;
 }
 
-export function MiningPanel({ state, production, isCapped, isPaused }: MiningPanelProps) {
+export function MiningPanel({ state, production, isCapped, isPaused, onBreakthrough }: MiningPanelProps) {
+  const scoreCap = getScoreCap(state);
   const affordable = EQUIPMENT_IDS.find(
-    (id) => getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) <= state.imo,
+    (id) => getEquipmentAvailability(id, state).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) <= state.imo,
   );
   const goal = isPaused ? '進行を一時停止しています。セーブ管理の案内を確認してください。' : isCapped
-    ? '転生で2ptを獲得し、スキルを強化して次の周回へ進みましょう。'
-    : getPrestigeReward(state) > 0 ? '転生で1ptを獲得できます。SCORE 上限まで進むと2ptになります。' : affordable
+    ? canBreakthrough(state) ? '限界突破でこの周回を続けるか、転生で2ptを獲得して次の周回へ進めます。'
+      : state.scoreCapStage === 1 ? 'SCORE 1E9到達。次の桁の突破は未実装です。通常転生で次の周回へ進めます。'
+        : '転生で2ptを獲得し、スキルを強化して限界突破を解禁しましょう。'
+    : getPrestigeReward(state) > 0 ? state.scoreCapStage === 1 ? '上位設備を増やしてSCORE 1E9へ進みましょう。通常転生も2ptで選べます。' : '転生できます。SCORE 1,000,000以上なら2ptになります。' : affordable
       ? `${EQUIPMENT[affordable].name}を購入できます。設備を増やして、収穫を速くしましょう。`
-      : `芋を貯めて、次の設備を購入しましょう。SCORE ${formatNumber(INITIAL_BALANCE.scoreCap)} が今回の目標です。`;
+      : `芋を貯めて、次の設備を購入しましょう。SCORE ${formatNumber(scoreCap)} が今回の目標です。`;
 
   return (
     <section className="mining-panel panel" aria-labelledby="mining-title">
@@ -42,9 +48,9 @@ export function MiningPanel({ state, production, isCapped, isPaused }: MiningPan
       <div className="score-block">
         <div className="score-heading">
           <label htmlFor="score-progress">SCORE</label>
-          <span><output aria-label="現在SCORE" aria-live="off">{formatNumber(state.runEarnedScore)}</output> / {formatNumber(INITIAL_BALANCE.scoreCap)}</span>
+          <span><output aria-label="現在SCORE" aria-live="off">{formatNumber(state.runEarnedScore)}</output> / <output aria-label="SCORE上限">{formatNumber(scoreCap)}</output></span>
         </div>
-        <progress id="score-progress" value={state.runEarnedScore} max={INITIAL_BALANCE.scoreCap} />
+        <progress id="score-progress" value={state.runEarnedScore} max={scoreCap} />
         <p className="score-note">この周回の累計収穫。設備を買っても減りません。</p>
         {state.runStartingImo > 0 && <p className="score-note">開始時の支給芋 {formatNumber(state.runStartingImo)} は SCORE に含みません。</p>}
       </div>
@@ -57,6 +63,7 @@ export function MiningPanel({ state, production, isCapped, isPaused }: MiningPan
         <h3 id="goal-title">次の目標</h3>
         <p>{goal}</p>
       </aside>
+      <BreakthroughControl state={state} isPaused={isPaused} onBreakthrough={onBreakthrough} />
     </section>
   );
 }

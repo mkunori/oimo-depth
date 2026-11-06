@@ -4,13 +4,14 @@ import { createSave, parseSave, SaveDataError, serializeSave, settleOffline } fr
 import type { OfflineReport, SaveData } from '../../core/save';
 import { createInitialState } from '../../core/state';
 import type { GameState } from '../../core/state';
-import { INITIAL_BALANCE } from '../../data/balance';
 import type { EquipmentId } from '../../data/equipment';
 import { SaveConflictError, SaveRepository } from './SaveRepository';
 import type { SaveStorage } from './SaveRepository';
 import { getPrestigeReward, prestigeGame, purchaseSkill } from '../../core/prestige';
 import { SKILLS } from '../../data/skills';
 import type { SkillId } from '../../data/skills';
+import { getScoreCap } from '../../data/scoreCaps';
+import { performBreakthrough } from '../../core/breakthrough';
 
 export interface SessionClock {
   wallNow(): number;
@@ -114,7 +115,7 @@ export class GameSession {
 
   purchase = (id: EquipmentId, mode: PurchaseMode): void => {
     this.tick();
-    if (this.snapshot.status !== 'ready' || this.hidden || this.snapshot.gameState.runEarnedScore >= INITIAL_BALANCE.scoreCap) return;
+    if (this.snapshot.status !== 'ready' || this.hidden || this.snapshot.gameState.runEarnedScore >= getScoreCap(this.snapshot.gameState)) return;
     const before = this.snapshot.gameState.equipmentCounts[id];
     const gameState = purchaseEquipment(this.snapshot.gameState, id, mode);
     const milestones = getEquipmentMilestones(id, gameState.equipmentCounts[id]);
@@ -149,6 +150,14 @@ export class GameSession {
     const gameState = purchaseSkill(this.snapshot.gameState, id);
     return gameState !== this.snapshot.gameState
       && this.commitProgress(gameState, `${SKILLS[id].name}をランク${gameState.permanent.skillRanks[id]}に強化しました。`);
+  };
+
+  breakthrough = (): boolean => {
+    this.tick();
+    if (this.hidden || this.snapshot.status !== 'ready') return false;
+    const gameState = performBreakthrough(this.snapshot.gameState);
+    return gameState !== this.snapshot.gameState
+      && this.commitProgress(gameState, '限界突破しました。SCORE上限が1E9になり、同じ周回で採掘を再開します。');
   };
 
   hide(): void {
