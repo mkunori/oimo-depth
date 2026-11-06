@@ -121,7 +121,7 @@ describe('event-driven simulation', () => {
       expect(campaign.trace.every((point) => point.equipmentCounts.deepDrill === 0 && point.equipmentCounts.refinery === 0)).toBe(true);
       expect(campaign.runs.every((run) => getProductionPerSecond(run.result.state) > 0)).toBe(true);
     }
-  });
+  }, 15_000); // 全方策を2回生成して比較するため、共有CI向けに個別の実行時間を確保する。
 
   it.each([0, -1, NaN, Infinity])('rejects invalid horizon %s', (seconds) => {
     expect(() => simulateRun(createInitialState(), idle, seconds)).toThrow(RangeError);

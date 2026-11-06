@@ -88,7 +88,7 @@ describe('automated equipment buying', () => {
     expect(once.permanent).toBe(initial.permanent);
     expect(once.scoreCapStage).toBe(1);
     expect(initial.runEarnedScore).toBe(1e6);
-  });
+  }, 15_000); // 数十万回の更新を含む数値回帰。共有CIのCPU速度を合否条件にしない。
 
   it('balances owned counts, includes milestone marginal gains, and uses stable tie order', () => {
     const base = { ...automated('balanced'), imo: 10_000, runEarnedScore: 10_000 };
