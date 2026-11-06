@@ -102,6 +102,18 @@ describe('event-driven simulation', () => {
     const second = runSuite();
     expect(first).toEqual(second);
     expect(first.campaigns).toHaveLength(15);
+    expect(first.research).toHaveLength(18);
+    for (const trial of first.research) {
+      expect(trial.result.completed).toBe(true);
+      expect(trial.initialState.runEarnedScore).toBe(1e9);
+      expect(trial.initialState.permanent.deepResearchUnlocked).toBe(true);
+      expect(trial.initialState.permanent.skillRanks.automation > 0).toBe(trial.automated);
+      expect(trial.result.state.runEarnedScore).toBe(1e12);
+      expect(trial.result.state.equipmentCounts.veinExtractor).toBeGreaterThan(0);
+      expect(trial.result.state.equipmentCounts.concentrator).toBeGreaterThan(0);
+      expect(trial.result.trace.filter((point) => point.kind === 'research-purchase').every((point) => point.elapsedSeconds % trial.scenario.visitSeconds! === 0)).toBe(true);
+      if (trial.policy !== 'equipment-only') expect(trial.result.elapsedSeconds).toBeLessThanOrEqual(first.research.find((other) => other.automated === trial.automated && other.scenario.visitSeconds === trial.scenario.visitSeconds && other.policy === 'equipment-only')!.result.elapsedSeconds);
+    }
     for (const campaign of first.campaigns) {
       expect(campaign.completedRuns).toBe(6);
       expect(campaign.state.permanent.prestigeCount).toBe(6);

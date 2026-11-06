@@ -1,4 +1,4 @@
-# 保存・オフライン進行（v5）
+# 保存・オフライン進行（v6）
 
 ## 保存形式と検証
 
@@ -6,15 +6,17 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 ```json
 {
-  "saveVersion": 5,
+  "saveVersion": 6,
   "savedAt": 1700000000000,
   "gameState": {
     "imo": 0,
     "runEarnedScore": 0,
     "runStartingImo": 0,
     "scoreCapStage": 0,
-    "equipmentCounts": { "worker": 0, "cart": 0, "harvester": 0, "deepDrill": 0, "refinery": 0 },
+    "researchRanks": { "geology": 0, "resonance": 0 },
+    "equipmentCounts": { "worker": 0, "cart": 0, "harvester": 0, "deepDrill": 0, "refinery": 0, "veinExtractor": 0, "concentrator": 0 },
     "permanent": {
+      "deepResearchUnlocked": false,
       "prestigeCount": 0,
       "unspentPoints": 0,
       "skillRanks": { "harvest": 0, "discount": 0, "startingImo": 0, "breakthrough": 0, "automation": 0 }
@@ -22,8 +24,8 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
     "automation": {
       "enabled": false,
       "policy": "efficient",
-      "equipment": { "worker": true, "cart": true, "harvester": true, "deepDrill": true, "refinery": true },
-      "priority": ["worker", "cart", "harvester", "deepDrill", "refinery"]
+      "equipment": { "worker": true, "cart": true, "harvester": true, "deepDrill": true, "refinery": true, "veinExtractor": true, "concentrator": true },
+      "priority": ["worker", "cart", "harvester", "deepDrill", "refinery", "veinExtractor", "concentrator"]
     }
   }
 }
@@ -37,7 +39,9 @@ v4は上限段階と全4スキルが必須です。段階0は上限1e6・上位2
 
 ## 時間の精算
 
-現在はv5です。上記v1〜v3の補完に加え、v4の段階・突破権・残高・設備・スキルを保持して、自動スキル0と全体OFFの既定設定を補います。v5は全5スキル・自動設定が必須です。自動精算で生じた任意の `automationRemainder: { score, imo }` は厳格な精度範囲内でのみ保存・復元し、転生で消去します。設定は周回と分けて維持します。方針・設備フラグ・優先順・権利なしON・不正端数の拒否と計算精度は [自動購入仕様](automation.md) を参照してください。
+v5で全5スキルと自動設定を追加しました。v1〜v4は段階・突破権・残高・設備・スキルを保持し、自動スキル0と全体OFFの既定設定を補います。現行v6はさらに研究権限・研究ランク・全7設備を必須とします。v1〜v5には新設備0・研究ランク0・研究権限falseを補完します。v5の旧5設備の設定と優先順を検証して保持し、新設備の個別フラグはON・優先順は末尾に追加します。全体ON/OFFと方針は維持します。旧形式で新設備所有や段階2を主張するデータを拒否します。[研究仕様](research.md) を参照してください。
+
+自動精算で生じた任意の `automationRemainder: { score, imo }` は厳格な精度範囲内でのみ保存・復元し、転生で消去します。設定は周回と分けて維持します。方針・設備フラグ・優先順・権利なしON・不正端数の拒否と計算精度は [自動購入仕様](automation.md) を参照してください。
 
 `settleOffline(save, now)` は時計や保存領域にアクセスしない純粋関数です。同じ保存データと現在時刻から同じ状態・報告を返します。
 

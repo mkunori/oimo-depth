@@ -49,5 +49,8 @@ export function useMiningGame() {
     buySkill: session.buySkill,
     breakthrough: session.breakthrough,
     setAutomation: session.setAutomation,
+    deepResearch: session.deepResearch,
+    buyResearch: session.buyResearch,
+    resetResearch: session.resetResearch,
   };
 }

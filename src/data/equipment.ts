@@ -52,6 +52,14 @@ export const EQUIPMENT = Object.freeze({
     name: '芋精製プラント', basePrice: 20_000_000, priceMultiplier: 1.22, productionPerUnit: 15_000,
     unlockAtScoreCap: 1_000_000_000, milestones: [],
   }),
+  veinExtractor: Object.freeze({
+    name: '地脈抽出機', basePrice: 100_000_000, priceMultiplier: 1.2, productionPerUnit: 500_000,
+    unlockAtScoreCap: 1_000_000_000_000, milestones: EQUIPMENT_MILESTONES,
+  }),
+  concentrator: Object.freeze({
+    name: '芋濃縮炉', basePrice: 1_000_000_000, priceMultiplier: 1.25, productionPerUnit: 8_000_000,
+    unlockAtScoreCap: 1_000_000_000_000, milestones: [],
+  }),
 } satisfies Record<string, EquipmentDefinition>);
 
 export type EquipmentId = keyof typeof EQUIPMENT;

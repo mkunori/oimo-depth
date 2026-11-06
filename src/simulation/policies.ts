@@ -34,7 +34,7 @@ export function investSkills(state: GameState, plan: SkillPlan, automation?: Aut
 
 function payback(state: GameState, id: EquipmentId): number {
   return getEquipmentPrice(id, state.equipmentCounts[id], state.permanent)
-    / getEquipmentPurchaseGain(id, state.equipmentCounts[id], state.permanent);
+    / getEquipmentPurchaseGain(id, state.equipmentCounts[id], state.permanent, state.researchRanks);
 }
 
 /** 現在買える設備だけで選ぶ局所方策。将来を見通した最適化ではない。 */

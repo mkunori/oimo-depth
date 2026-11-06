@@ -70,9 +70,23 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
   const compactJourneys = suite.breakthroughJourneys.map(compactJourney);
   const compactAutomation = { journeys: suite.automation.journeys.map(compactJourney),
     trials: suite.automation.trials.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result })) };
-  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, ...metadata } = suite;
+  const compactResearch = suite.research.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
+  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, ...metadata } = suite;
   const files: Record<string, string> = {
-    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation }),
+    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch }),
+    'research.csv': csv([
+      ['scenario', 'automated', 'policy', 'visit_seconds', 'completed', 'before_research_seconds', 'after_research_seconds', 'total_seconds', 'idle_at_cap_seconds',
+        'cap_only_fixed_production_seconds', 'initial_production', 'final_production', 'production_multiplier', 'geology_rank', 'resonance_rank', ...EQUIPMENT_IDS],
+      ...suite.research.map((trial) => [trial.scenario.id, String(trial.automated), trial.policy, trial.scenario.visitSeconds, String(trial.result.completed),
+        trial.beforeResearchSeconds, trial.result.elapsedSeconds, trial.totalSeconds, trial.result.idleAtCapSeconds, trial.capOnlySeconds,
+        trial.initialProduction, trial.finalProduction, trial.productionMultiplier, trial.result.state.researchRanks.geology, trial.result.state.researchRanks.resonance,
+        ...EQUIPMENT_IDS.map((id) => trial.result.state.equipmentCounts[id])]),
+    ]),
+    'research-timeline.csv': csv([
+      ['scenario', 'event', 'seconds', 'score', 'imo', 'production', 'actual_production', 'geology_rank', 'resonance_rank', ...EQUIPMENT_IDS],
+      ...suite.research.flatMap((trial) => trial.result.trace.map((point) => [trial.scenario.id, point.kind, point.elapsedSeconds, point.score, point.imo,
+        point.production, point.actualProduction, point.researchRanks.geology, point.researchRanks.resonance, ...EQUIPMENT_IDS.map((id) => point.equipmentCounts[id])])),
+    ]),
     'runs.csv': csv([
       ['scenario', 'run', 'completed', 'start_seconds', 'duration_seconds', 'score100k_observed_seconds', 'score100k_production_seconds',
         'score1m_observed_seconds', 'score1m_production_seconds', 'reward', 'capacity_at_end', 'bought_units', 'purchase_decisions',
@@ -213,9 +227,9 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '突破優先は収穫3・割引1・限界突破の心得1の順で計10ptを支出します。心得は3pt・転生5回以上が条件です。早期方策も権利取得後は1e6へ進み、転生せず突破します。既存スキル買切り後の経路は計15ptを支出します。初期15方策とは別に、実際の取得・突破・保存・購入を測定します。', '',
     '| 方策 | 最初の1e6 | 権利取得まで | 突破時の転生回数 / 獲得pt | 突破時刻 | 突破後1e9まで | 全体 | 1e9停止待ち |', '| --- | ---: | ---: | --- | ---: | ---: | ---: | ---: |',
     ...suite.breakthroughJourneys.map((journey) => `| ${journey.scenario.label} | ${time(journey.firstScore1mSeconds)} | ${time(journey.permissionAtSeconds)} | ${journey.beforeBreakthrough?.permanent.prestigeCount ?? '未到達'}回 / ${journey.runs.reduce((sum, run) => sum + run.reward, 0)}pt | ${time(journey.breakthroughAtSeconds)} | ${journey.expansion?.completed ? time(journey.expansion.elapsedSeconds) : '未到達 / 打切り'} | ${time(journey.elapsedSeconds)} | ${time(journey.expansion?.idleAtCapSeconds)} |`), '',
-    '通常転生は突破権を保持して周回上限を1e6へ戻します。同じ周回での突破は一度だけで、次周回の再突破には追加ptを使いません。突破後の通常転生報酬もSCORE1e6以上で2ptのままです。1e9で停止し、先の突破は未実装です。', '',
+    '通常転生は突破権を保持して周回上限を1e6へ戻します。各段階の突破は同一周回で一度だけで、次周回の再突破には追加ptを使いません。通常転生報酬はSCORE1e6以上で2ptのままです。1e9で停止した後は手動の地層研究で1e12へ進めます。下記の既存比較は1e9までです。', '',
     '## 正規の上限1e9・設備購入比較', '',
-    '1分確認・突破優先経路の実際の突破直前状態を共通の開始条件にします。取得済みの権利でコアのperformBreakthroughを実行し、購入なし・既存3種・全5種を比較します。仮の権利やポイントは付与しません。全オフライン方策で現行v5セーブの保存・復元・24h制限を通します。', '',
+    '1分確認・突破優先経路の実際の突破直前状態を共通の開始条件にします。取得済みの権利でコアのperformBreakthroughを実行し、購入なし・既存3種・解禁済み5種を比較します。仮の権利やポイントは付与しません。全オフライン方策で現行v6セーブの保存・復元・24h制限を通します。', '',
     '| 確認方策 | 購入 | 1e9までの追加時間 | 到達時生産 | 深層掘削機 | 芋精製プラント |', '| --- | --- | ---: | ---: | ---: | ---: |',
     ...suite.expansion.map((trial) => `| ${trial.scenario.label} | ${trial.policy === 'fixed' ? '購入なし' : trial.policy === 'existing' ? '既存3種のみ' : '追加2種を含む5種'} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '7日で打切り'} | ${number(trial.finalProduction)} /秒 | ${trial.result.state.equipmentCounts.deepDrill} | ${trial.result.state.equipmentCounts.refinery} |`), '',
     '上位設備の解禁条件は獲得SCOREではなく周回の上限段階です。固定生産の感度分析との差は、実際の設備購入・台数マイルストーンによるものです。', '',
@@ -228,6 +242,12 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     'OFFは従来の10pt突破経路、ONは収穫1→自動設備管理→収穫3→割引1→突破の11pt経路です。自動スキルを取るまでは手動購入し、取得後にONへ設定します。転生・突破は確認したときだけ手動。旧経路を選べるため、必須の追加コストにはしません。', '',
     '| 確認間隔 | 方針 | 最初の1e6 | 突破権取得 | 突破時刻 / 転生回数 | 突破後1e9 | 総時間 |', '| --- | --- | ---: | ---: | --- | ---: | ---: |',
     ...suite.automation.journeys.map((journey) => `| ${time(journey.scenario.visitSeconds)} | ${journey.scenario.automation ? AUTOMATION_POLICIES[journey.scenario.automation] : 'OFF・手動'} | ${time(journey.firstScore1mSeconds)} | ${time(journey.permissionAtSeconds)} | ${time(journey.breakthroughAtSeconds)} / ${journey.beforeBreakthrough?.permanent.prestigeCount ?? '未到達'}回 | ${journey.expansion?.completed ? time(journey.expansion.elapsedSeconds) : '打切り'} | ${time(journey.elapsedSeconds)} |`), '',
+    '## 地層研究と第2突破（#24）', '',
+    '初期状態から正規の転生・スキル購入・初回突破・1e9到達を経由し、無料の深層解析を実行します。手動経路は自動購入スキルを取得しません。ON/OFFの開始設備は取得経路が異なるため、研究あり/なしと研究配分を同一経路内で比較してください。', '',
+    '研究強化は確認時にだけ手動購入し、指定した研究の買えるランクを優先してから他方を買います。その後、OFFは設備を手動購入、ONは実コアで自動購入します。6h/12hの途中に研究を捏造しません。設備のみは研究ランク0の対照。上限だけ拡張した固定生産試算もCSVに併記します。', '',
+    '| 確認 | 購入 | 研究方策 | 突破後1e12まで | 上限停止待ち | 開始→到達の生産倍率 | 地層/共鳴 | 抽出機/濃縮炉 |', '| --- | --- | --- | ---: | ---: | ---: | --- | --- |',
+    ...suite.research.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.policy} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '打切り'} | ${time(trial.result.idleAtCapSeconds)} | ×${number(trial.productionMultiplier)} | ${trial.result.state.researchRanks.geology}/${trial.result.state.researchRanks.resonance} | ${trial.result.state.equipmentCounts.veinExtractor}/${trial.result.state.equipmentCounts.concentrator} |`), '',
+    'これは方策別の到達観測時間で、プレイヤー全体の平均ではありません。研究で全収穫は最大8倍、新設備はさらに最大8倍。上限到達時は生産・購入が停止し、研究の自動実行や1e12より先への突破はありません。', '',
     '## 検証範囲と未確定事項', '', '| 項目 | 区分 | 内容 |', '| --- | --- | --- |',
     ...suite.coverage.map((row) => `| ${row.feature} | ${row.status} | ${row.detail} |`), '',
     '## 図と機械可読データ', '',
@@ -235,6 +255,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '- [正規1e9の設備購入比較](expansion.svg) / [比較CSV](expansion.csv) / [購入時系列](expansion-timeline.csv)',
     '- [突破までの成長と上限](breakthrough.svg) / [経路CSV](breakthrough.csv) / [全経路時系列](breakthrough-timeline.csv)',
     '- [自動購入の成長比較](automation.svg) / [方針比較CSV](automation.csv) / [購入時系列](automation-timeline.csv) / [取得経路CSV](automation-journeys.csv)',
+    '- [研究・新設備の成長比較](research.svg) / [比較CSV](research.csv) / [研究・購入時系列](research-timeline.csv)',
     '- [全結果 JSON](results.json) / [周回 CSV](runs.csv) / [時系列 CSV](timeline.csv) / [将来試算 CSV](projections.csv)', '',
     '再生成方法・方策の定義・後続 Issue の判断材料は [検証ガイド](../README.md) を参照してください。', '');
   files['report.md'] = lines.join('\n');
@@ -301,5 +322,15 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     color: { domain: autoDomain, range: colors.slice(0, 4) },
     marks: [Plot.lineY(autoPoints, { x: 'hours', y: 'score', stroke: 'id' })],
   }, automaticTrials.map((trial, index) => ({ label: trial.policy === 'off' ? 'OFF / 復帰時だけ手動購入' : AUTOMATION_POLICIES[trial.policy as keyof typeof AUTOMATION_POLICIES], color: colors[index]! })), '上限1e9・6時間復帰。ONは購入イベント時刻も記録、上限後は停止');
+  const researchTrials = suite.research.filter((trial) => trial.scenario.visitSeconds === 60 && trial.policy !== 'resonance-first');
+  const researchPoints = researchTrials.flatMap((trial) => trial.result.trace.map((point) => ({ ...point, id: trial.scenario.id, minutes: point.elapsedSeconds / 60 })));
+  files['research.svg'] = chart('research', {
+    ariaLabel: '正規の第2突破後、1分確認での研究あり・なしと手動・自動購入のSCORE成長比較。',
+    x: { label: '1E9からの追加時間 (minutes)', grid: true },
+    y: { type: 'log', label: 'SCORE (log)', domain: [1e9, 1e12], grid: true },
+    color: { domain: researchTrials.map((trial) => trial.scenario.id), range: colors.slice(0, 4) },
+    marks: [Plot.lineY(researchPoints, { x: 'minutes', y: 'score', stroke: 'id' })],
+  }, researchTrials.map((trial, index) => ({ label: `${trial.automated ? '自動' : '手動'} / ${trial.policy === 'equipment-only' ? '新設備のみ' : '新設備と研究'}`, color: colors[index]! })),
+  '1分確認・正規の深層解析後。研究は確認時のみ手動購入、ON/OFFで取得経路は異なる');
   return files;
 }

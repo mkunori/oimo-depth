@@ -54,7 +54,7 @@ describe('first SCORE breakthrough', () => {
     expect(getScoreCap(after)).toBe(1e9);
     expect(getProductionPerSecond(after)).toBe(getProductionPerSecond(state));
     expect(performBreakthrough(after)).toBe(after);
-    expect(getBreakthrough(after).reason).toContain('未実装');
+    expect(getBreakthrough(after).reason).toContain('地層研究');
     const continued = advanceGame(after, 1);
     expect(continued.runEarnedScore - after.runEarnedScore).toBeCloseTo(getProductionPerSecond(after), 6);
     expect(continued.imo - after.imo).toBeCloseTo(getProductionPerSecond(after), 6);

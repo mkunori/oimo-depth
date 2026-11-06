@@ -4,20 +4,24 @@ import type { SkillId } from '../data/skills';
 import type { ScoreCapStage } from '../data/scoreCaps';
 import { createDefaultAutomation } from '../data/automation';
 import type { AutomationSettings } from '../data/automation';
+import { createEmptyResearch } from '../data/research';
+import type { ResearchRanks } from '../data/research';
 
 /** 転生で引き継ぐデータ。将来の恒久データはこの境界に追加する。 */
 export interface PermanentProgress {
+  readonly deepResearchUnlocked: boolean;
   readonly prestigeCount: number;
   readonly unspentPoints: number;
   readonly skillRanks: Readonly<Record<SkillId, number>>;
 }
 
 export function createInitialPermanent(): PermanentProgress {
-  return { prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
+  return { deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
 }
 
 /** 転生時に初期化するデータ。初期所持芋は収穫累計とは別に管理する。 */
 export interface RunState {
+  readonly researchRanks: ResearchRanks;
   /** 設備購入で消費する芋の残高。 */
   readonly imo: number;
   /** 現周回の累計獲得量。購入では減らさず、収穫上限の判定に使う。 */
@@ -40,6 +44,7 @@ export function createInitialState(): GameState {
     runEarnedScore: 0,
     runStartingImo: 0,
     scoreCapStage: 0,
+    researchRanks: createEmptyResearch(),
     equipmentCounts: createEmptyEquipmentCounts(),
     permanent: createInitialPermanent(),
     automation: createDefaultAutomation(),

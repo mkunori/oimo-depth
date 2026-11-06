@@ -4,6 +4,7 @@ import { EQUIPMENT, EQUIPMENT_IDS } from '../../data/equipment';
 import type { EquipmentId } from '../../data/equipment';
 import { getEquipmentAvailability } from '../../core/game';
 import type { GameState } from '../../core/state';
+import { formatNumber } from '../../components/formatNumber';
 
 interface Props {
   readonly state: GameState;
@@ -36,7 +37,7 @@ export function AutomationPanel({ state, isPaused, automaticPurchases, onChange 
         <div className="automation-equipment">
           {EQUIPMENT_IDS.map((id) => <div key={id}>
             <label className="automation-toggle"><input type="checkbox" checked={settings.equipment[id]} onChange={(e) => onChange({ ...settings, equipment: { ...settings.equipment, [id]: e.currentTarget.checked } })} />{EQUIPMENT[id].name}の自動購入</label>
-            {!getEquipmentAvailability(id, state).unlocked && <p className="shop-note">上限1E9で解禁。現在は購入対象から除外します。</p>}
+            {!getEquipmentAvailability(id, state).unlocked && <p className="shop-note">上限{formatNumber(getEquipmentAvailability(id, state).requiredScoreCap)}で解禁。現在は購入対象から除外します。</p>}
           </div>)}
         </div>
         {settings.policy === 'priority' && <div className="automation-priority">
@@ -48,7 +49,7 @@ export function AutomationPanel({ state, isPaused, automaticPurchases, onChange 
       </fieldset>
       <p>現在の方針: {AUTOMATION_POLICIES[settings.policy]} / 自動購入 {settings.enabled ? 'ON' : 'OFF'}</p>
       <p aria-live="off">直近の自動購入: <output aria-label="直近の自動購入台数">{automaticPurchases}</output> 台</p>
-      <p className="shop-note">全体がOFFなら購入しません。設備別設定は初期ONです。上限で停止し、転生・限界突破は手動で行います。手動購入も使えます。</p>
+      <p className="shop-note">全体がOFFなら購入しません。設備別設定は初期ONです。上限で停止し、転生・限界突破・研究は手動で行います。手動購入も使えます。</p>
     </div>
   </details>;
 }

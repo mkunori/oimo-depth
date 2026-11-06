@@ -7,8 +7,10 @@ import type { PermanentProgress } from './state';
 import type { ScoreCapStage } from '../data/scoreCaps';
 import { createDefaultAutomation, readAutomation } from '../data/automation';
 import type { AutomationSettings } from '../data/automation';
+import { createEmptyResearch, RESEARCH_IDS } from '../data/research';
+import type { ResearchRanks } from '../data/research';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -43,7 +45,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 = SAVE_VERSION): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 = SAVE_VERSION): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (typeof state.imo !== 'number' || typeof state.runEarnedScore !== 'number') {
@@ -52,7 +54,9 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 = SAVE_VERSION
   const equipmentCounts = createEmptyEquipmentCounts();
   for (const id of EQUIPMENT_IDS) {
     const isNewId = !(INITIAL_EQUIPMENT_IDS as readonly string[]).includes(id);
-    const count = version < 3 && isNewId && counts[id] === undefined ? 0 : counts[id];
+    const introduced = id === 'veinExtractor' || id === 'concentrator' ? 6 : isNewId ? 3 : 1;
+    const count = version < introduced && counts[id] === undefined ? 0 : counts[id];
+    if (version < introduced && count !== 0) throw new SaveDataError('旧形式に未対応の設備があります。');
     if (typeof count !== 'number') {
       throw new SaveDataError('設備の所有数が正しくありません。');
     }
@@ -71,12 +75,26 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 = SAVE_VERSION
     }
     if (typeof savedPermanent.prestigeCount !== 'number' || typeof savedPermanent.unspentPoints !== 'number'
       || typeof state.runStartingImo !== 'number') throw new SaveDataError('恒久データが正しくありません。');
-    permanent = { prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks };
+    if (version >= 6 && typeof savedPermanent.deepResearchUnlocked !== 'boolean') throw new SaveDataError('研究権限が正しくありません。');
+    permanent = { prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks,
+      deepResearchUnlocked: version >= 6 ? savedPermanent.deepResearchUnlocked as boolean : false };
   }
-  if ((version >= 4 && state.scoreCapStage !== 0 && state.scoreCapStage !== 1)
+  if ((version >= 4 && state.scoreCapStage !== 0 && state.scoreCapStage !== 1 && !(version >= 6 && state.scoreCapStage === 2))
     || (version < 4 && state.scoreCapStage !== undefined && state.scoreCapStage !== 0)) throw new SaveDataError('SCORE上限段階が正しくありません。');
   let automation: AutomationSettings;
-  try { automation = version < 5 ? createDefaultAutomation() : readAutomation(state.automation); }
+  try {
+    if (version < 5) automation = createDefaultAutomation();
+    else if (version === 5) {
+      const previousIds = EQUIPMENT_IDS.filter((id) => id !== 'veinExtractor' && id !== 'concentrator');
+      const old = record(state.automation);
+      const selected = record(old.equipment);
+      if (Object.keys(selected).length !== previousIds.length || previousIds.some((id) => typeof selected[id] !== 'boolean')
+        || !Array.isArray(old.priority) || old.priority.length !== previousIds.length
+        || new Set(old.priority).size !== previousIds.length || old.priority.some((id) => !previousIds.includes(id))) throw new Error();
+      automation = readAutomation({ ...old, equipment: { ...selected, veinExtractor: true, concentrator: true },
+        priority: [...old.priority, 'veinExtractor', 'concentrator'] });
+    } else automation = readAutomation(state.automation);
+  }
   catch { throw new SaveDataError('自動購入設定が正しくありません。'); }
   const carry = version >= 5 && state.automationRemainder !== undefined ? record(state.automationRemainder) : null;
   if (carry && (typeof carry.score !== 'number' || typeof carry.imo !== 'number')) throw new SaveDataError('自動購入の計算端数が正しくありません。');
@@ -86,6 +104,11 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 = SAVE_VERSION
     scoreCapStage: version < 4 ? 0 : state.scoreCapStage as ScoreCapStage,
     permanent,
     automation,
+    researchRanks: version < 6 ? createEmptyResearch() : (() => {
+      const ranks = record(state.researchRanks);
+      if (RESEARCH_IDS.some((id) => typeof ranks[id] !== 'number')) throw new SaveDataError('研究ランクが正しくありません。');
+      return Object.fromEntries(RESEARCH_IDS.map((id) => [id, ranks[id]])) as ResearchRanks;
+    })(),
     ...(carry ? { automationRemainder: { score: carry.score as number, imo: carry.imo as number } } : {}),
   };
   try {
@@ -108,7 +131,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt));

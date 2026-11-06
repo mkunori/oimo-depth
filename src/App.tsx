@@ -5,9 +5,10 @@ import { useMiningGame } from './features/mining/useMiningGame';
 import { Shop } from './features/shop/Shop';
 import { SavePanel } from './features/save/SavePanel';
 import { PrestigePanel } from './features/prestige/PrestigePanel';
+import { ResearchPanel } from './features/research/ResearchPanel';
 
 export default function App() {
-  const { state, snapshot, purchase, exportText, importSave, reset, dismissReport, prestige, buySkill, breakthrough, setAutomation } = useMiningGame();
+  const { state, snapshot, purchase, exportText, importSave, reset, dismissReport, prestige, buySkill, breakthrough, setAutomation, deepResearch, buyResearch, resetResearch } = useMiningGame();
   const isCapped = state.runEarnedScore >= getScoreCap(state);
   const isPaused = snapshot.status !== 'ready';
 
@@ -25,6 +26,7 @@ export default function App() {
         <Shop state={state} isCapped={isCapped} isPaused={isPaused} onPurchase={purchase} milestoneNotice={snapshot.milestoneNotice} automaticPurchases={snapshot.automaticPurchases} onAutomationChange={setAutomation} />
       </div>
       <PrestigePanel state={state} isPaused={isPaused} notice={snapshot.progressNotice} onPrestige={prestige} onBuySkill={buySkill} />
+      <ResearchPanel state={state} isPaused={isPaused} onBreakthrough={deepResearch} onPurchase={buyResearch} onReset={resetResearch} />
       <SavePanel snapshot={snapshot} onExport={exportText} onImport={importSave} onReset={reset} onDismissReport={dismissReport} />
       <footer className="app-footer">
         <p>このブラウザに自動保存します。大切な進行はセーブ管理からエクスポートして保管してください。</p>

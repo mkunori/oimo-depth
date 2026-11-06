@@ -13,6 +13,7 @@ import type { EquipmentId } from '../data/equipment';
 import { PRESTIGE_BALANCE } from '../data/skills';
 import { investEquipment, investSkills, SKILL_PLANS } from './policies';
 import type { EquipmentPolicy, SkillPlan } from './policies';
+import { purchaseResearch } from '../core/research';
 
 export interface Scenario {
   readonly id: string;
@@ -25,6 +26,7 @@ export interface Scenario {
   readonly prestigeAt: 'early' | 'cap';
   readonly equipmentIds?: readonly EquipmentId[];
   readonly automation?: AutomationPolicy;
+  readonly research?: 'geology-first' | 'resonance-first';
 }
 
 export interface Milestone {
@@ -37,7 +39,8 @@ export interface Milestone {
 export interface TracePoint {
   readonly elapsedSeconds: number;
   readonly run: number;
-  readonly kind: 'start' | 'decision' | 'cap-reached' | 'end' | 'prestige' | 'automatic-purchase';
+  readonly kind: 'start' | 'decision' | 'cap-reached' | 'end' | 'prestige' | 'automatic-purchase' | 'research-purchase';
+  readonly researchRanks: GameState['researchRanks'];
   readonly score: number;
   readonly imo: number;
   readonly production: number;
@@ -71,6 +74,7 @@ function positive(value: number, label: string): void {
 }
 
 export function validateScenario(scenario: Scenario): void {
+  if (scenario.research !== undefined && scenario.research !== 'geology-first' && scenario.research !== 'resonance-first') throw new RangeError('Unknown research policy.');
   if (scenario.automation !== undefined && !Object.hasOwn(AUTOMATION_POLICIES, scenario.automation)) throw new RangeError('Unknown automation policy.');
   if (scenario.equipmentIds && (new Set(scenario.equipmentIds).size !== scenario.equipmentIds.length
     || scenario.equipmentIds.some((id) => !EQUIPMENT_IDS.includes(id)))) throw new RangeError('Invalid equipment selection.');
@@ -110,9 +114,20 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
     const production = getProductionPerSecond(state);
     trace.push({ elapsedSeconds: elapsed, run: 1, kind, score: state.runEarnedScore, imo: state.imo, production,
       actualProduction: state.runEarnedScore >= scoreCap ? 0 : production,
-      prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: state.equipmentCounts });
+      prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: state.equipmentCounts, researchRanks: state.researchRanks });
   };
   const invest = () => {
+    // 研究は訪問時の手動操作だけ。ONでもオフライン進行中には実行しない。
+    if (scenario.research && state.scoreCapStage === 2) {
+      const order = scenario.research === 'geology-first' ? ['geology', 'resonance'] as const : ['resonance', 'geology'] as const;
+      for (const id of order) {
+        while (true) {
+          const next = purchaseResearch(state, id);
+          if (next === state) break;
+          state = next; record('research-purchase');
+        }
+      }
+    }
     if (state.automation.enabled) return; // 自動購入ONでは手動購入を混ぜず、実コアの精算に委譲する。
     const result = investEquipment(state, scenario.equipment, equipmentIds);
     state = result.state;
@@ -137,7 +152,7 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
       const production = getProductionPerSecond(event.state);
       trace.push({ elapsedSeconds: elapsed + event.seconds, run: 1, kind: 'automatic-purchase', score: event.state.runEarnedScore,
         imo: event.state.imo, production, actualProduction: production, prestigeCount: event.state.permanent.prestigeCount,
-        scoreCap, equipmentCounts: event.state.equipmentCounts });
+        scoreCap, equipmentCounts: event.state.equipmentCounts, researchRanks: event.state.researchRanks });
     }
     const transitions = [{ seconds: 0, state: before }, ...progress.events, { seconds: applied, state }];
     const crossing = (threshold: number): Milestone | null => {
@@ -153,7 +168,7 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
     if (before.runEarnedScore < scoreCap && progress.capAtSeconds !== null) {
       trace.push({ elapsedSeconds: elapsed + progress.capAtSeconds, run: 1, kind: 'cap-reached',
         score: state.runEarnedScore, imo: state.imo, production: getProductionPerSecond(state), actualProduction: 0,
-        prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: state.equipmentCounts });
+        prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: state.equipmentCounts, researchRanks: state.researchRanks });
     }
     idle += progress.capAtSeconds === null ? 0 : Math.max(0, applied - progress.capAtSeconds);
     credited += applied;
@@ -221,7 +236,7 @@ export function simulateCampaign(scenario: Scenario, runCount = 6, maxSeconds = 
     if (afterPrestige === null) break;
     trace.push({ elapsedSeconds: elapsed, run, kind: 'prestige', score: state.runEarnedScore, imo: state.imo,
       production: getProductionPerSecond(state), actualProduction: getProductionPerSecond(state),
-      prestigeCount: state.permanent.prestigeCount, scoreCap: INITIAL_BALANCE.scoreCap, equipmentCounts: state.equipmentCounts });
+      prestigeCount: state.permanent.prestigeCount, scoreCap: INITIAL_BALANCE.scoreCap, equipmentCounts: state.equipmentCounts, researchRanks: state.researchRanks });
   }
   return { scenario, requestedRuns: runCount, completedRuns: runs.filter((run) => run.result.completed).length, elapsedSeconds: elapsed, state, runs, trace };
 }
