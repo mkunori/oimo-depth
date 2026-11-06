@@ -1,4 +1,5 @@
-import { getEquipmentPrice, getEquipmentProductionPerUnit, purchaseEquipment } from '../core/game';
+import { getEquipmentAvailability, getEquipmentPrice, getEquipmentPurchaseGain, INITIAL_ECONOMY, purchaseEquipment } from '../core/game';
+import type { EconomyContext } from '../core/game';
 import { purchaseSkill } from '../core/prestige';
 import type { GameState } from '../core/state';
 import { EQUIPMENT_IDS } from '../data/equipment';
@@ -29,19 +30,19 @@ export function investSkills(state: GameState, plan: SkillPlan): GameState {
 
 function payback(state: GameState, id: EquipmentId): number {
   return getEquipmentPrice(id, state.equipmentCounts[id], state.permanent)
-    / getEquipmentProductionPerUnit(id, state.permanent);
+    / getEquipmentPurchaseGain(id, state.equipmentCounts[id], state.permanent);
 }
 
 /** 現在買える設備だけで選ぶ局所方策。将来を見通した最適化ではない。 */
-export function investEquipment(state: GameState, policy: EquipmentPolicy) {
+export function investEquipment(state: GameState, policy: EquipmentPolicy, context: EconomyContext = INITIAL_ECONOMY, allowed: readonly EquipmentId[] = EQUIPMENT_IDS) {
   if (policy === 'none') return { state, purchased: 0 };
   let purchased = 0;
   while (true) {
-    const affordable = EQUIPMENT_IDS.filter((id) => getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) <= state.imo);
+    const affordable = allowed.filter((id) => getEquipmentAvailability(id, context).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) <= state.imo);
     const id = policy === 'highest-tier' ? affordable.at(-1)
       : affordable.sort((left, right) => payback(state, left) - payback(state, right))[0];
     if (id === undefined) return { state, purchased };
-    state = purchaseEquipment(state, id, 1);
+    state = purchaseEquipment(state, id, 1, context);
     purchased += 1;
   }
 }

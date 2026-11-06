@@ -80,6 +80,9 @@ progress::-moz-progress-bar { background: var(--green); }
 .owned-count { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .owned-count output { color: var(--ink); font-weight: 650; }
 .equipment-effect { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.equipment-milestone { font-size: 11px; color: var(--green); margin-top: 6px; }
+.milestone-notice { padding: 12px; margin-top: 12px; border-left: 3px solid var(--green); background: #edf3e9; font-size: 12px; }
+.locked-label { font-size: 10px; border: 1px solid var(--muted); padding: 0 5px; color: var(--muted); }
 .equipment-price { font-size: 11px; margin-top: 8px; }
 .equipment-price strong { font-weight: 650; margin-left: 3px; }
 .purchase-button { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; min-height: 62px; width: 100%; padding: 8px; border: 1px solid var(--green); border-radius: 3px; background: var(--green); color: #fffdf8; font-size: 12px; }

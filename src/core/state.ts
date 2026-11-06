@@ -1,4 +1,5 @@
 import type { EquipmentId } from '../data/equipment';
+import { createEmptyEquipmentCounts } from '../data/equipment';
 import type { SkillId } from '../data/skills';
 
 /** 転生で引き継ぐデータ。将来の恒久データはこの境界に追加する。 */
@@ -31,7 +32,7 @@ export function createInitialState(): GameState {
     imo: 0,
     runEarnedScore: 0,
     runStartingImo: 0,
-    equipmentCounts: { worker: 0, cart: 0, harvester: 0 },
+    equipmentCounts: createEmptyEquipmentCounts(),
     permanent: createInitialPermanent(),
   };
 }

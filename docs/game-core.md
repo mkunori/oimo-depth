@@ -10,7 +10,7 @@
 | --- | --- |
 | `imo` | 設備購入に使う残高。有限かつ `0 <= imo <= runEarnedScore + runStartingImo` |
 | `runEarnedScore` | 現周回で収穫した芋の累計。購入で減らない。有限かつ初期上限以下 |
-| `equipmentCounts` | `worker` / `cart` / `harvester` の所有数。非負の安全な整数 |
+| `equipmentCounts` | `worker` / `cart` / `harvester` / `deepDrill` / `refinery` の所有数。非負の安全な整数。後半2種は初期上限で0のみ許可 |
 | `runStartingImo` | この周回の開始時に支給した芋。SCORE に含めない |
 | `permanent` | 転生回数・未使用ポイント・取得スキル。転生で維持する |
 
@@ -27,10 +27,12 @@
 | `worker` | 作業員 | 10 | 1.15 | 1 |
 | `cart` | 運搬車 | 100 | 1.20 | 10 |
 | `harvester` | 自動収穫機 | 1,000 | 1.25 | 100 |
+| `deepDrill` | 深層掘削機（未解禁） | 2,000,000 | 1.20 | 1,500 |
+| `refinery` | 芋精製プラント（未解禁） | 20,000,000 | 1.22 | 15,000 |
 
 所有数 n のとき次の1台の価格は `ceil(basePrice * priceMultiplier ** n * equipmentPriceMultiplier)` です。スキルの割引後に**各台の価格を切り上げてから合計**します。割引なしで作業員の最初の10台は `10, 12, 14, 16, 18, 21, 24, 27, 31, 36`（合計 209）です。
 
-生産能力は `(baseProduction + sum(count * productionPerUnit)) * productionMultiplier` です。倍率・割引・初期所持芋は取得済スキルから計算します。仮値と開始額の扱いは [転生と基本スキル](prestige.md) を参照してください。
+生産能力は `(baseProduction + sum(count * productionPerUnit * milestoneMultiplier)) * productionMultiplier` です。既存3設備は10 / 25 / 50台で、それぞれ追加倍率 ×1.1 / ×1.15 / ×1.25 を乗算します。効果は同じ設備の所有全台に適用し、基礎生産と他設備には適用しません。スキル倍率は合計後に適用します。達成状況は所有数から導出します。[設備拡張の仕様と採用根拠](equipment-growth.md) と [転生と基本スキル](prestige.md) を参照してください。
 
 収穫量は `min(生産能力 * 経過秒数, 上限 - runEarnedScore)` で制限し、実際に増えた SCORE と同量だけ残高を増やします。上限時は購入で残高が減っても収穫は再開しません。`getProductionPerSecond` は上限到達後も設備の生産能力を返します。
 
@@ -59,6 +61,10 @@ const purchased = purchaseEquipment(harvested, 'worker', 10);
 
 `PurchaseMode` は `1 | 10 | 'MAX'` です。×10 は買える数量が10台未満ならその数量を購入します。MAX は買える限り購入します。0台なら支出は0、状態は変わりません。上昇する価格列を順番に走査するため、個別購入と同じ価格・数量になります。現在の上限と定義では MAX の走査は設備ごとに数十台程度で終了します。
 
+`getEquipmentMilestones(id, count)` は現在倍率・次の閾値と倍率・達成済み節目を返します。`getEquipmentPurchaseGain` は次の1台で所有済み分も強化される効果を含めた生産増分を返し、シミュレーターの回収時間計算に使います。
+
+`getEquipmentAvailability` は獲得SCOREではなく上限段階と設備定義の `unlockAtScoreCap` を比較します。追加2種は上限1e9で解禁する定義です。購入・生産・進行APIには仮定試算用の任意引数 `EconomyContext`（上限1e6または1e9）がありますが、通常の呼出しは常に初期上限1e6です。未解禁設備の見積もりは0台・0円、購入は状態を維持し、不正な所有状態は拒否します。App・保存・転生には上限段階の変更を実装せず、#20で正式な遷移・検証を追加します。
+
 ## 入力検証と数値の限界
 
 - 負・NaN・Infinity の時間、不正な残高・累計、負・小数・安全な整数範囲外の所有数、不明な設備 ID、不正な購入モードは `RangeError` です。入力状態は一切変更しません。
@@ -70,7 +76,7 @@ const purchased = purchaseEquipment(harvested, 'worker', 10);
 ## 後続 Issue の差し替え点
 
 - 巨大数対応: `GameState` の金額・累計、`EquipmentDefinition` の価格・生産量、`src/core/game.ts` の演算・比較・丸め・有限値検証をまとめて任意精度の数値表現へ変更してください。価格指数計算も含むため、型だけの変更では対応できません。
-- 倍率ボーナス: `getProductionPerSecond` と `getSkillBonuses` に集約しています。ボーナス値自体は保存せずスキルから算出します。
+- 倍率ボーナス: `getProductionPerSecond` / `getEquipmentMilestones` / `getSkillBonuses` に集約しています。ボーナス値自体は保存せず所有数・スキルから算出します。
 - 転生・限界突破: 初期転生と基本スキルは `src/core/prestige.ts` / `src/data/skills.ts` に実装しています。上限変更は後続 Issue の対象です。
 - オフライン計算・保存: `src/core/save.ts` が保存形式の検証と経過時間の上限制御を行い、`advanceGame` に渡します。保存領域・時計・React との接続は `src/features/save/` に分離しています。詳細は [保存とオフライン進行](save.md) を参照してください。
 - 深度・地層・上位のスキル枝・装備・上位転生のモデルは仕様確定を待ちます。

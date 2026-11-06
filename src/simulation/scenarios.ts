@@ -20,10 +20,11 @@ export const SCENARIOS: readonly Scenario[] = [
 
 /** 未実装の挙動を現行実測へ混ぜない。後続の仕様確定後にシナリオへ追加する。 */
 export const COVERAGE = [
-  { feature: '通常設備・自動採掘・SCOREクリップ', status: 'core', detail: '実際のゲーム計算関数を使用' },
+  { feature: '既存設備・台数倍率・自動採掘・SCOREクリップ', status: 'core', detail: '実際のゲーム計算関数を使用。追加2設備は初期上限でロック' },
   { feature: '1〜6回の通常転生・3種の基本スキル', status: 'core', detail: '実際のポイントと前提に従って購入' },
   { feature: '復帰・24時間上限・セーブ復元', status: 'core', detail: '各復帰で保存形式を往復し settleOffline を実行' },
   { feature: '1e9 / 1e12 / 1e15', status: 'projection', detail: '固定生産力での必要時間・目標時間に必要な生産量のみ試算' },
+  { feature: '上位設備を含む1e9帯', status: 'assumed', detail: '1e6到達状態と上限1e9を仮定した購入比較。突破権・操作・保存段階は未実装' },
   { feature: '掘削・設備自動購入スキル・地層', status: 'not-modeled', detail: '計算式・効果未確定。常時操作は自動購入機能ではなく理想化した操作方策' },
   { feature: '限界突破の条件・費用・保持範囲', status: 'not-modeled', detail: '現行の上限は1e6。条件確定後に非リセット遷移を追加する' },
   { feature: '上位転生・装備モード・消費可能SCORE', status: 'not-modeled', detail: '#7/#8 の閾値・費用・倍率が未確定。仕様とコアの追加後に到達時間・構成差を検証する' },

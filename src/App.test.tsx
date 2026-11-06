@@ -54,7 +54,7 @@ describe('minimal mining game', () => {
     const progress = screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement;
     expect(progress.value).toBe(0);
     expect(progress.max).toBe(1_000_000);
-    expect(within(screen.getByRole('region', { name: '設備' })).getAllByRole('article')).toHaveLength(3);
+    expect(within(screen.getByRole('region', { name: '設備' })).getAllByRole('article')).toHaveLength(5);
     for (const button of within(screen.getByRole('region', { name: '設備' })).getAllByRole('button')) {
       expect((button as HTMLButtonElement).disabled).toBe(true);
     }
@@ -74,7 +74,7 @@ describe('minimal mining game', () => {
   it.each([
     ['×1', 100, '1', '90', '2'],
     ['×10', 100, '6', '9', '7'],
-    ['MAX', 1_000, '19', '108', '20'],
+    ['MAX', 1_000, '19', '108', '21.9'],
   ])('buys with %s and immediately updates the balance, score, count and rate', (mode, elapsed, count, balance, rate) => {
     renderGame();
     tickAfter(Number(elapsed));
@@ -90,8 +90,9 @@ describe('minimal mining game', () => {
       expect(within(worker).getAllByText('12 芋')).toHaveLength(2);
     }
     tickAfter(1);
-    expect(screen.getByLabelText('所持芋').textContent)
-      .toBe(new Intl.NumberFormat('ja-JP').format(Number(balance) + Number(rate)));
+    const displayed = Number(screen.getByLabelText('所持芋').textContent!.replaceAll(',', ''));
+    // 通貨は小数1桁切捨て。倍率の浮動小数点端数も表示桁の範囲で許容する。
+    expect(Math.abs(displayed - Number(balance) - Number(rate))).toBeLessThanOrEqual(0.1 + 1e-8);
   });
 
   it('connects the other equipment buttons to their corresponding core definitions', () => {
@@ -348,6 +349,56 @@ function confirmPrestige(points: number) {
   fireEvent.click(screen.getByRole('button', { name: `転生を実行（${points}pt）` }));
 }
 
+describe('equipment growth UI', () => {
+  it('announces 9->10 once and immediately updates the next goal and rate', () => {
+    seedGame({ ...createInitialState(), imo: 100, runEarnedScore: 1_000,
+      equipmentCounts: { ...createInitialState().equipmentCounts, worker: 9 } });
+    renderGame();
+    expect(screen.queryByText(/マイルストーン達成/)).toBeNull();
+    const worker = screen.getByRole('article', { name: '作業員' });
+    expect(within(worker).getByText(/次の目標 10台/)).toBeTruthy();
+    fireEvent.click(within(worker).getByRole('button'));
+    expect(screen.getByLabelText('作業員の所有数').textContent).toBe('10');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('12');
+    expect(within(worker).getByText(/次の目標 25台 → ×1.265/)).toBeTruthy();
+    expect(screen.getAllByText(/マイルストーン達成！/)).toHaveLength(1);
+    tickAfter(1);
+    expect(screen.getAllByText(/マイルストーン達成！/)).toHaveLength(1);
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.equipmentCounts.worker).toBe(10);
+  });
+
+  it('shows current/next cumulative multipliers around 25 and 50 units', () => {
+    for (const [count, next, current] of [[24, 25, '1.1'], [49, 50, '1.265']] as const) {
+      seedGame({ ...createInitialState(), imo: 200_000, runEarnedScore: 200_000,
+        equipmentCounts: { ...createInitialState().equipmentCounts, worker: count } });
+      const view = renderGame();
+      const worker = screen.getByRole('article', { name: '作業員' });
+      expect(within(worker).getByText(new RegExp(`台数倍率 ×${current}`))).toBeTruthy();
+      expect(within(worker).getByText(new RegExp(`次の目標 ${next}台`))).toBeTruthy();
+      fireEvent.click(within(worker).getByRole('button'));
+      expect(screen.getByLabelText('作業員の所有数').textContent).toBe(String(next));
+      expect(screen.getByText(new RegExp(`${next}台のマイルストーン達成`))).toBeTruthy();
+      view.unmount();
+    }
+  });
+
+  it('keeps both higher equipment locked through MAX and cap arrival', () => {
+    renderGame();
+    fireEvent.click(screen.getByRole('radio', { name: 'MAX' }));
+    tickAfter(1_000_000);
+    for (const name of ['深層掘削機', '芋精製プラント']) {
+      const row = screen.getByRole('article', { name });
+      const button = within(row).getByRole('button');
+      expect((button as HTMLButtonElement).disabled).toBe(true);
+      expect(button.textContent).toBe('未解禁');
+      expect(within(row).getByText(/SCORE 上限 1E9/)).toBeTruthy();
+      fireEvent.click(button);
+      expect(screen.getByLabelText(`${name}の所有数`).textContent).toBe('0');
+    }
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('1,000,000');
+  });
+});
+
 describe('prestige and skill UI', () => {
   it.each([[99_999, '0', true], [100_000, '1', false], [999_999, '1', false], [1_000_000, '2', false]] as const)(
     'previews the reward at SCORE %s', (score, reward, disabled) => {
@@ -359,7 +410,7 @@ describe('prestige and skill UI', () => {
   );
 
   it('cancels without resetting, then confirms exactly one reset and reward under StrictMode', () => {
-    seedGame({ ...createInitialState(), imo: 90_000, runEarnedScore: 100_000, equipmentCounts: { worker: 3, cart: 1, harvester: 0 } });
+    seedGame({ ...createInitialState(), imo: 90_000, runEarnedScore: 100_000, equipmentCounts: { ...createInitialState().equipmentCounts, worker: 3, cart: 1, harvester: 0 } });
     renderGame();
     fireEvent.click(screen.getByRole('button', { name: '転生する' }));
     expect(screen.getByRole('dialog', { name: '転生して次の周回へ進みますか？' })).toBeTruthy();

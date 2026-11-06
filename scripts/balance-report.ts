@@ -2,6 +2,8 @@ import { JSDOM } from 'jsdom';
 import * as Plot from '@observablehq/plot';
 import { getProductionPerSecond } from '../src/core/game';
 import type { SimulationSuite } from '../src/simulation/suite';
+import { EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS } from '../src/data/equipment';
+import { ASSUMED_EXPANSION } from '../src/simulation/expansion';
 
 const number = (value: number) => new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 }).format(value);
 const axisNumber = (value: number) => new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(value);
@@ -58,9 +60,10 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     runs: runs.map(({ result: { trace: _runTrace, ...result }, ...run }) => ({ ...run, result })),
   }));
   const compactBenchmarks = suite.benchmarks.map(({ result: { trace: _trace, ...result }, ...benchmark }) => ({ ...benchmark, result }));
-  const { campaigns: _campaigns, benchmarks: _benchmarks, ...metadata } = suite;
+  const compactExpansion = suite.expansion.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
+  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, ...metadata } = suite;
   const files: Record<string, string> = {
-    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks }),
+    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion }),
     'runs.csv': csv([
       ['scenario', 'run', 'completed', 'start_seconds', 'duration_seconds', 'score100k_observed_seconds', 'score100k_production_seconds',
         'score1m_observed_seconds', 'score1m_production_seconds', 'reward', 'capacity_at_end', 'bought_units', 'purchase_decisions',
@@ -76,13 +79,22 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
       ])),
     ]),
     'timeline.csv': csv([
-      ['scenario', 'run', 'event', 'wall_seconds', 'score', 'imo', 'capacity', 'actual_production', 'prestige_count', 'score_cap'],
+      ['scenario', 'run', 'event', 'wall_seconds', 'score', 'imo', 'capacity', 'actual_production', 'prestige_count', 'score_cap', ...EQUIPMENT_IDS],
       ...suite.campaigns.flatMap((campaign) => campaign.trace.map((point) => [campaign.scenario.id, point.run, point.kind,
-        point.elapsedSeconds, point.score, point.imo, point.production, point.actualProduction, point.prestigeCount, point.scoreCap])),
+        point.elapsedSeconds, point.score, point.imo, point.production, point.actualProduction, point.prestigeCount, point.scoreCap, ...EQUIPMENT_IDS.map((id) => point.equipmentCounts[id])])),
     ]),
     'projections.csv': csv([
       ['from', 'to', 'assumed_multiplier', 'production', 'seconds', 'target_seconds', 'required_production', 'required_multiplier_from_reference'],
       ...suite.projections.map((row) => [row.from, row.to, row.multiplier, row.production, row.seconds, row.targetSeconds, row.requiredProduction, row.requiredMultiplier]),
+    ]),
+    'expansion.csv': csv([
+      ['scenario', 'assumed', 'actual_save_supported', 'equipment_policy', 'completed', 'seconds', 'initial_production', 'final_production', ...EQUIPMENT_IDS],
+      ...suite.expansion.map((trial) => [trial.scenario.id, 'true', 'false', trial.policy, String(trial.result.completed), trial.result.elapsedSeconds,
+        getProductionPerSecond(trial.initialState), trial.finalProduction, ...EQUIPMENT_IDS.map((id) => trial.result.state.equipmentCounts[id])]),
+    ]),
+    'expansion-timeline.csv': csv([
+      ['scenario', 'assumed', 'event', 'seconds', 'score', 'production', ...EQUIPMENT_IDS],
+      ...suite.expansion.flatMap((trial) => trial.result.trace.map((point) => [trial.scenario.id, 'true', point.kind, point.elapsedSeconds, point.score, point.production, ...EQUIPMENT_IDS.map((id) => point.equipmentCounts[id])])),
     ]),
   };
   const lines = [
@@ -91,8 +103,8 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     'これは方策比較であり、最適解の探索やプレイヤー全体の平均ではありません。生産・価格・報酬・保存は実コアから計算しています。', '',
     '## 現行パラメータ', '',
     `基礎生産 ${number(suite.parameters.balance.baseProduction)}/秒、上限 ${number(suite.parameters.balance.scoreCap)}、転生解禁 ${number(suite.parameters.prestige.unlockScore)}、報酬 ${suite.parameters.prestige.earlyReward}/${suite.parameters.prestige.capReward}pt、オフライン上限 ${time(suite.parameters.offlineLimitSeconds)}。`, '',
-    '| 設備 | 基礎価格 | 台数価格倍率 | 1台あたり生産 |', '| --- | ---: | ---: | ---: |',
-    ...Object.values(suite.parameters.equipment).map((definition) => `| ${definition.name} | ${definition.basePrice} | ${definition.priceMultiplier} | ${definition.productionPerUnit}/秒 |`), '',
+    '| 設備 | 基礎価格 | 台数価格倍率 | 1台あたり基礎生産 | 解禁する上限 | 台数/追加倍率（乗算） |', '| --- | ---: | ---: | ---: | ---: | --- |',
+    ...Object.values(suite.parameters.equipment).map((definition) => `| ${definition.name} | ${definition.basePrice} | ${definition.priceMultiplier} | ${definition.productionPerUnit}/秒 | ${definition.unlockAtScoreCap} | ${definition.milestones.map((milestone) => `${milestone.count}台/×${milestone.multiplier}`).join('、') || 'なし'} |`), '',
     '| スキル | 各ランク費用 | 最大ランク | 効果種別 / 1ランクあたり | 前提 |', '| --- | --- | ---: | --- | --- |',
     ...Object.values(suite.parameters.skills).map((definition) => `| ${definition.name} | ${definition.costs.join('/')}pt | ${definition.maxRank} | ${definition.effect.type} / ${definition.effect.perRank} | ${definition.prerequisites.map((required) => `${required.id} ${required.rank}`).join(', ') || 'なし'} |`), '',
     '## 初回到達と周回時間', '',
@@ -103,6 +115,27 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     const first = campaign.runs[0];
     const last = campaign.runs.at(-1);
     lines.push(`| ${campaign.scenario.label} (\`${campaign.scenario.id}\`) | ${time(first?.result.score100k?.observedSeconds)} | ${time(first?.result.score1m?.observedSeconds)} | ${first?.result.completed ? time(first.result.elapsedSeconds) : '打切り'} | ${last?.result.completed ? time(last.result.elapsedSeconds) : '打切り'} | ${campaign.completedRuns}/${campaign.requestedRuns} | ${time(campaign.elapsedSeconds)} | ${campaign.runs.map((run) => run.reward).join('/')}pt |`);
+  }
+  lines.push('', '## Issue #4 からの設備変更前後', '',
+    `変更前は ${suite.equipmentBaseline.source} の固定スナップショット（コア \`${suite.equipmentBaseline.coreSha256}\`）。同じ方策の完了6周回だけを比較します。`, '',
+    '| 方策 | 初周 前→後 | 6周合計 前→後 | 初周停止時間 前→後 | 各周の分数 前→後 |', '| --- | --- | --- | --- | --- |');
+  for (const campaign of suite.campaigns) {
+    const before = suite.equipmentBaseline.campaigns.find((item) => item.id === campaign.scenario.id);
+    if (!before || campaign.requestedRuns !== 6 || campaign.completedRuns !== 6) continue;
+    lines.push(`| \`${campaign.scenario.id}\` | ${time(before.runs[0]?.seconds)} → ${time(campaign.runs[0]?.result.elapsedSeconds)} | ${time(before.elapsedSeconds)} → ${time(campaign.elapsedSeconds)} | ${time(before.runs[0]?.idleAtCapSeconds)} → ${time(campaign.runs[0]?.result.idleAtCapSeconds)} | ${before.runs.map((run) => number(run.seconds / 60)).join('/')} → ${campaign.runs.map((run) => number(run.result.elapsedSeconds / 60)).join('/')} |`);
+  }
+  lines.push('', '## 台数マイルストーンの到達可能性', '',
+    `初期上限1e6の${suite.runCount}周回で観測した最大所有数と、各台数を初めて確認した周回。未到達は仮定の1e9段階での確認と区別します。`, '',
+    '| 方策 | 設備 | 最大所有 | 10台 | 25台 | 50台 |', '| --- | --- | ---: | --- | --- | --- |');
+  for (const campaign of suite.campaigns.filter((item) => ['active-60-cap', 'continuous-cap', 'offline-6h-cap', 'offline-12h-cap'].includes(item.scenario.id))) {
+    for (const id of INITIAL_EQUIPMENT_IDS) {
+      const maximum = Math.max(...campaign.runs.map((run) => run.result.state.equipmentCounts[id]));
+      const reached = [10, 25, 50].map((count) => {
+        const point = campaign.trace.find((point) => point.equipmentCounts[id] >= count);
+        return point ? `第${point.run}周 / 累計${time(point.elapsedSeconds)}` : '未到達';
+      });
+      lines.push(`| \`${campaign.scenario.id}\` | ${suite.parameters.equipment[id].name} | ${maximum} | ${reached.join(' | ')} |`);
+    }
   }
   lines.push('', '未到達は0秒ではありません。早期転生では100万に届く前にリセットします。低頻度の早期方針でも、復帰時に上限へ達していれば実際の報酬は2ptです。', '',
     '## 成長・ポイント効率・待ち時間', '',
@@ -141,11 +174,17 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     suite.projectionReference ? `参照は \`${suite.projectionReference.scenarioId}\` の第${suite.projectionReference.run}周・上限到達時の生産能力 **${number(suite.projectionReference.production)} 芋/秒**。生産力を固定し、上限だけ広げたと仮定します。下記の倍率は実装済みスキルや設備ではありません。` : '完了した参照周回がないため試算しません。', '',
     '| 区間 | 仮定の生産倍率 | 所要時間 | 6時間到達に必要な生産量 | 参照生産量に対する必要倍率 |', '| --- | ---: | ---: | ---: | ---: |');
   for (const row of suite.projections) lines.push(`| ${row.from.toExponential(0)} → ${row.to.toExponential(0)} | ×${row.multiplier} | ${time(row.seconds)} | ${number(row.requiredProduction)} /秒 | ×${number(row.requiredMultiplier)} |`);
-  lines.push('', '6時間は1日4回確認する場合の設計比較用の目標で、決定済みの新仕様ではありません。設備追加・追加購入・研究・解禁費用・数値表現は未モデル化です。', '',
+  lines.push('', '6時間は1日4回確認する場合の設計比較用の目標で、決定済みの新仕様ではありません。この固定生産試算では設備追加・追加購入・研究・解禁費用・将来の数値表現をモデル化していません。', '',
+    '## 上限1e9・設備購入ありの仮定試算（#20の実装結果ではない）', '',
+    '参照周回の1e6到達状態を保持したまま、計算上の上限を1e9と仮定します。突破権・費用・操作は含めず、転生もしません。実際のゲームとv3セーブでは上位設備と1e9状態は未解禁です。仮定のオフラインは24h制限と同一の生産関数だけを使い、未実装の上限段階の保存互換は検証しません。', '',
+    '| 確認方策 | 購入 | 1e9までの追加時間 | 到達時生産 | 深層掘削機 | 芋精製プラント |', '| --- | --- | ---: | ---: | ---: | ---: |',
+    ...suite.expansion.map((trial) => `| ${trial.scenario.label} | ${trial.policy === 'fixed' ? '購入なし' : trial.policy === 'existing' ? '既存3種のみ' : '追加2種を含む5種'} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '7日で打切り'} | ${number(trial.finalProduction)} /秒 | ${trial.result.state.equipmentCounts.deepDrill} | ${trial.result.state.equipmentCounts.refinery} |`), '',
+    'この経済計算は初期上限では呼び出しません。上位設備の解禁条件は獲得SCOREではなく上限段階です。固定生産の試算との差は、実際に購入した台数・マイルストーンによるものです。', '',
     '## 検証範囲と未確定事項', '', '| 項目 | 区分 | 内容 |', '| --- | --- | --- |',
     ...suite.coverage.map((row) => `| ${row.feature} | ${row.status} | ${row.detail} |`), '',
     '## 図と機械可読データ', '',
     '- [初周の SCORE 曲線](first-run.svg)', '- [経過時間と転生回数](prestige.svg)', '- [桁拡張の固定生産試算](projection.svg)',
+    '- [1e9仮定の設備購入比較](expansion.svg) / [比較CSV](expansion.csv) / [購入時系列](expansion-timeline.csv)',
     '- [全結果 JSON](results.json) / [周回 CSV](runs.csv) / [時系列 CSV](timeline.csv) / [将来試算 CSV](projections.csv)', '',
     '再生成方法・方策の定義・後続 Issue の判断材料は [検証ガイド](../README.md) を参照してください。', '');
   files['report.md'] = lines.join('\n');
@@ -180,5 +219,16 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     marks: [Plot.ruleY([6], { stroke: '#888', strokeDasharray: '4,4' }), Plot.dot(projectionPoints, { x: 'stage', y: 'hours', stroke: 'factor', r: 5 })],
   }, ['×1', '×10', '×100', '×1000'].map((label, index) => ({ label: `仮定倍率 ${label}`, color: colors[index]! })),
   suite.projectionReference ? '固定生産の仮定による試算。破線: 設計比較用の6時間目標' : '完了した参照周回がないため、所要時間は未試算');
+  const expansionTrials = suite.expansion.filter((trial) => trial.scenario.presence === 'online' || trial.policy === 'expanded');
+  const expansionDomain = expansionTrials.map((trial) => trial.scenario.id);
+  const expansionPoints = expansionTrials.flatMap((trial) => trial.result.trace.filter((point) => point.elapsedSeconds > 0).map((point) => ({ ...point, id: trial.scenario.id, hours: point.elapsedSeconds / 3_600 })));
+  files['expansion.svg'] = chart('expansion', {
+    ariaLabel: '上限1e9を仮定した購入比較。突破操作と保存形式は未実装。',
+    x: { type: 'log', label: '1e6からの追加時間 (hours, log)', tickFormat: axisNumber, grid: true },
+    y: { type: 'log', label: '仮定の SCORE (log)', domain: [1e6, ASSUMED_EXPANSION.scoreCap], grid: true },
+    color: { domain: expansionDomain, range: colors },
+    marks: [Plot.lineY(expansionPoints, { x: 'hours', y: 'score', stroke: 'id' })],
+  }, expansionTrials.map((trial, index) => ({ label: `${trial.scenario.label} / ${trial.policy}`, color: colors[index]! })),
+  '未実装の上限1e9を仮定。購入なし / 既存3種 / 追加2種ありを比較');
   return files;
 }

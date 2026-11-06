@@ -9,6 +9,8 @@ import { SCENARIOS } from './scenarios';
 import { simulateCampaign, simulateRun } from './simulator';
 import type { Scenario } from './simulator';
 import { runSuite } from './suite';
+import { ASSUMED_EXPANSION, simulateExpansion } from './expansion';
+import { EQUIPMENT_BASELINE } from './baseline';
 
 const idle: Scenario = { id: 'test', label: 'analytic baseline', visitSeconds: null,
   presence: 'online', equipment: 'none', skillPlan: 'save', prestigeAt: 'cap' };
@@ -104,6 +106,7 @@ describe('event-driven simulation', () => {
       expect(campaign.completedRuns).toBe(6);
       expect(campaign.state.permanent.prestigeCount).toBe(6);
       expect(campaign.trace.every((point) => point.score <= 1_000_000 && point.scoreCap === 1_000_000 && point.imo >= 0)).toBe(true);
+      expect(campaign.trace.every((point) => point.equipmentCounts.deepDrill === 0 && point.equipmentCounts.refinery === 0)).toBe(true);
       expect(campaign.runs.every((run) => getProductionPerSecond(run.result.state) > 0)).toBe(true);
     }
   });
@@ -164,5 +167,53 @@ describe('simulation policy boundaries', () => {
     expect(() => projectFixedProduction(0)).toThrow(RangeError);
     expect(() => projectFixedProduction(Infinity)).toThrow(RangeError);
     expect(() => projectFixedProduction(1, -1)).toThrow(RangeError);
+  });
+});
+
+describe('equipment growth comparison', () => {
+  it('keeps the initial band within 25% of the established timing baseline', () => {
+    const scenario = SCENARIOS.find((item) => item.id === 'active-60-cap')!;
+    const current = simulateCampaign(scenario);
+    const old = EQUIPMENT_BASELINE.campaigns.find((item) => item.id === scenario.id)!;
+    const ratio = current.runs[0]!.result.elapsedSeconds / old.runs[0]!.seconds;
+    expect(ratio).toBeGreaterThanOrEqual(0.75);
+    expect(ratio).toBeLessThanOrEqual(1.25);
+    expect(current.elapsedSeconds / old.elapsedSeconds).toBeGreaterThanOrEqual(0.75);
+    for (const id of ['offline-6h-cap', 'offline-12h-cap']) {
+      const selected = SCENARIOS.find((item) => item.id === id)!;
+      const baseline = EQUIPMENT_BASELINE.campaigns.find((item) => item.id === id)!;
+      expect(simulateCampaign(selected).runs.map((run) => run.result.elapsedSeconds)).toEqual(baseline.runs.map((run) => run.seconds));
+    }
+  });
+
+  it('runs explicit no-reset 1e9 assumptions without enabling the actual game or save format', () => {
+    const current = simulateCampaign(SCENARIOS.find((item) => item.id === 'active-60-cap')!);
+    const seed = current.runs.at(-1)!.result.state;
+    const snapshot = JSON.stringify(seed);
+    const cases = simulateExpansion(seed);
+    expect(cases).toHaveLength(9);
+    for (const trial of cases) {
+      expect(trial.assumed).toBe(true);
+      expect(trial.actualSaveSupported).toBe(false);
+      expect(trial.result.completed).toBe(true);
+      expect(trial.result.state.runEarnedScore).toBe(1e9);
+      expect(trial.result.state.permanent).toEqual(seed.permanent);
+      expect(trial.result.trace.every((point) => point.score <= 1e9)).toBe(true);
+      if (trial.policy === 'expanded') {
+        expect(trial.result.state.equipmentCounts.deepDrill).toBeGreaterThan(0);
+        expect(trial.result.state.equipmentCounts.refinery).toBeGreaterThan(0);
+      } else {
+        expect(trial.result.state.equipmentCounts.deepDrill).toBe(0);
+        expect(trial.result.state.equipmentCounts.refinery).toBe(0);
+      }
+    }
+    const existing = cases.find((trial) => trial.scenario.presence === 'online' && trial.policy === 'existing')!;
+    const expanded = cases.find((trial) => trial.scenario.presence === 'online' && trial.policy === 'expanded')!;
+    expect(expanded.result.elapsedSeconds).toBeLessThan(existing.result.elapsedSeconds);
+    expect(expanded.finalProduction / existing.finalProduction).toBeGreaterThan(3);
+    expect(expanded.finalProduction / existing.finalProduction).toBeLessThan(20);
+    expect(JSON.stringify(seed)).toBe(snapshot);
+    expect(() => simulateCampaign({ ...SCENARIOS[0]!, economy: ASSUMED_EXPANSION })).toThrow(RangeError);
+    expect(() => simulateExpansion(createInitialState())).toThrow(RangeError);
   });
 });

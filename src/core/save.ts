@@ -1,11 +1,11 @@
 import { advanceGame, getEquipmentPrice } from './game';
 import type { GameState } from './state';
-import { EQUIPMENT_IDS } from '../data/equipment';
+import { createEmptyEquipmentCounts, EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS } from '../data/equipment';
 import { SKILL_IDS } from '../data/skills';
 import { createInitialPermanent } from './state';
 import type { PermanentProgress } from './state';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -39,22 +39,23 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 = SAVE_VERSION): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 = SAVE_VERSION): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (typeof state.imo !== 'number' || typeof state.runEarnedScore !== 'number') {
     throw new SaveDataError('所持芋・SCORE の値が正しくありません。');
   }
-  const equipmentCounts = { worker: 0, cart: 0, harvester: 0 };
+  const equipmentCounts = createEmptyEquipmentCounts();
   for (const id of EQUIPMENT_IDS) {
-    const count = counts[id];
+    const isNewId = !(INITIAL_EQUIPMENT_IDS as readonly string[]).includes(id);
+    const count = version < 3 && isNewId && counts[id] === undefined ? 0 : counts[id];
     if (typeof count !== 'number') {
       throw new SaveDataError('設備の所有数が正しくありません。');
     }
     equipmentCounts[id] = count;
   }
   let permanent: PermanentProgress = createInitialPermanent();
-  if (version === 2) {
+  if (version >= 2) {
     const savedPermanent = record(state.permanent);
     const ranks = record(savedPermanent.skillRanks);
     const skillRanks = { harvest: 0, discount: 0, startingImo: 0 };
@@ -91,7 +92,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { INITIAL_BALANCE } from '../data/balance';
-import { EQUIPMENT_IDS } from '../data/equipment';
+import { INITIAL_EQUIPMENT_IDS } from '../data/equipment';
 import type { EquipmentId } from '../data/equipment';
 import {
   advanceGame,
@@ -39,7 +39,7 @@ describe('advanceGame', () => {
   it('adds the production of all owned equipment', () => {
     const state: GameState = {
       ...createInitialState(),
-      equipmentCounts: { worker: 2, cart: 3, harvester: 4 },
+      equipmentCounts: { ...createInitialState().equipmentCounts, worker: 2, cart: 3, harvester: 4 },
     };
 
     expect(getProductionPerSecond(state)).toBe(433);
@@ -67,7 +67,7 @@ describe('advanceGame', () => {
     const before: GameState = {
       ...fundedState(SCORE_CAP - 1),
       imo: 123,
-      equipmentCounts: { worker: 10, cart: 10, harvester: 10 },
+      equipmentCounts: { ...createInitialState().equipmentCounts, worker: 10, cart: 10, harvester: 10 },
     };
     const after = advanceGame(before, Number.MAX_VALUE);
 
@@ -153,7 +153,7 @@ describe('equipment prices and purchases', () => {
       ...createInitialState(),
       imo: 9,
       runEarnedScore: 100,
-      equipmentCounts: { worker: 6, cart: 0, harvester: 0 },
+      equipmentCounts: { ...createInitialState().equipmentCounts, worker: 6, cart: 0, harvester: 0 },
     });
   });
 
@@ -165,12 +165,12 @@ describe('equipment prices and purchases', () => {
     expect(purchaseEquipment(state, 'worker', mode)).toBe(state);
   });
 
-  it.each(EQUIPMENT_IDS)('makes batch and individual purchases identical for %s', (id) => {
+  it.each(INITIAL_EQUIPMENT_IDS)('makes batch and individual purchases identical for %s', (id) => {
     for (const budget of [0, 10, 100, 209, 1_000.5, 50_000, SCORE_CAP]) {
       for (const alreadyOwned of [0, 3, 10]) {
         const initial = freezeState({
           ...fundedState(budget),
-          equipmentCounts: { worker: 0, cart: 0, harvester: 0, [id]: alreadyOwned },
+          equipmentCounts: { ...createInitialState().equipmentCounts, [id]: alreadyOwned },
         });
         for (const mode of [1, 10, 'MAX'] as const) {
           const quote = getPurchaseQuote(initial, id, mode);
@@ -197,7 +197,7 @@ describe('equipment prices and purchases', () => {
   it('preserves the spent-imo ledger across purchases and subsequent harvests', () => {
     let state = advanceGame(createInitialState(), 50_000);
     let spent = 0;
-    for (const id of EQUIPMENT_IDS) {
+    for (const id of INITIAL_EQUIPMENT_IDS) {
       const quote = getPurchaseQuote(state, id, 10);
       spent += quote.totalCost;
       state = purchaseEquipment(state, id, 10);
@@ -250,7 +250,7 @@ describe('state validation', () => {
     })),
     { ...fundedState(100), imo: 101 },
     ...[-1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1].map((worker) => ({
-      ...fundedState(100), equipmentCounts: { worker, cart: 0, harvester: 0 },
+      ...fundedState(100), equipmentCounts: { ...createInitialState().equipmentCounts, worker },
     })),
   ];
 
