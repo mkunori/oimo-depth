@@ -121,6 +121,27 @@ textarea { display: block; width: 100%; min-width: 0; resize: vertical; padding:
 .offline-stats dd { font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .offline-report > p { font-size: 12px; color: var(--muted); }
 
+.prestige-panel { margin-top: 24px; }
+.prestige-summary { padding: 20px 0; font-size: 13px; }
+.prestige-summary > p { margin-top: 12px; }
+.permanent-stats { display: flex; flex-wrap: wrap; gap: 16px 48px; }
+.permanent-stats dt { color: var(--muted); font-size: 12px; }
+.permanent-stats dd { font-size: 20px; font-weight: 650; }
+.prestige-reward { font-weight: 650; margin-bottom: 12px; }
+.progress-notice { border-left: 3px solid var(--green); padding: 10px 14px; background: #edf3e9; }
+.skill-tree { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.skill-node { border: 1px solid var(--line); padding: 16px; min-width: 0; font-size: 12px; }
+.skill-heading { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 12px; }
+.skill-heading h3 { font-size: 15px; }
+.skill-heading span { color: var(--muted); }
+.skill-prerequisites { margin: 10px 0; }
+.prestige-dialog { width: min(520px, calc(100% - 32px)); max-height: calc(100svh - 32px); overflow-y: auto; border: 1px solid var(--ink); border-radius: 4px; padding: 24px; background: #fffdf8; color: var(--ink); }
+.prestige-dialog::backdrop { background: #302d2570; }
+.prestige-dialog h2 { font-size: 20px; }
+.prestige-dialog > p { margin-top: 16px; font-size: 14px; }
+.prestige-dialog [role="alert"] { color: #92501f; }
+@media (max-width: 900px) { .skill-tree { grid-template-columns: 1fr; } }
+
 @media (max-width: 900px) {
   .app { padding: 32px 24px 24px; }
   .game-layout { grid-template-columns: 1fr; gap: 20px; }

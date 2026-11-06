@@ -1,8 +1,11 @@
 import { advanceGame, getEquipmentPrice } from './game';
 import type { GameState } from './state';
 import { EQUIPMENT_IDS } from '../data/equipment';
+import { SKILL_IDS } from '../data/skills';
+import { createInitialPermanent } from './state';
+import type { PermanentProgress } from './state';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -36,7 +39,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown): GameState {
+function readGameState(value: unknown, version: 1 | 2 = SAVE_VERSION): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (typeof state.imo !== 'number' || typeof state.runEarnedScore !== 'number') {
@@ -50,10 +53,27 @@ function readGameState(value: unknown): GameState {
     }
     equipmentCounts[id] = count;
   }
-  const result: GameState = { imo: state.imo, runEarnedScore: state.runEarnedScore, equipmentCounts };
+  let permanent: PermanentProgress = createInitialPermanent();
+  if (version === 2) {
+    const savedPermanent = record(state.permanent);
+    const ranks = record(savedPermanent.skillRanks);
+    const skillRanks = { harvest: 0, discount: 0, startingImo: 0 };
+    for (const id of SKILL_IDS) {
+      if (typeof ranks[id] !== 'number') throw new SaveDataError('スキルのランクが正しくありません。');
+      skillRanks[id] = ranks[id];
+    }
+    if (typeof savedPermanent.prestigeCount !== 'number' || typeof savedPermanent.unspentPoints !== 'number'
+      || typeof state.runStartingImo !== 'number') throw new SaveDataError('恒久データが正しくありません。');
+    permanent = { prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks };
+  }
+  const result: GameState = {
+    imo: state.imo, runEarnedScore: state.runEarnedScore, equipmentCounts,
+    runStartingImo: version === 1 ? 0 : state.runStartingImo as number,
+    permanent,
+  };
   try {
     advanceGame(result, 0);
-    for (const id of EQUIPMENT_IDS) getEquipmentPrice(id, equipmentCounts[id]);
+    for (const id of EQUIPMENT_IDS) getEquipmentPrice(id, equipmentCounts[id], permanent);
   } catch {
     throw new SaveDataError('セーブの数値が範囲外です。');
   }
@@ -71,11 +91,10 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  // マイグレーション追加時は、旧バージョンをここで変換してから値を検証する。
-  if (data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
-  return createSave(readGameState(data.gameState), timestamp(data.savedAt));
+  return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt));
 }
 
 export function serializeSave(save: SaveData): string {

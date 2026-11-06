@@ -1,0 +1,151 @@
+import { describe, expect, it } from 'vitest';
+import { advanceGame, getEquipmentPrice, getProductionPerSecond, getPurchaseQuote, purchaseEquipment } from './game';
+import { getPrestigeReward, prestigeGame, purchaseSkill } from './prestige';
+import { getSkillBonuses, getSkillPurchase } from './skills';
+import { createInitialState } from './state';
+import type { GameState } from './state';
+import type { SkillId } from '../data/skills';
+
+function atScore(score: number): GameState {
+  return { ...createInitialState(), imo: score, runEarnedScore: score };
+}
+
+function earnedPoints(runs: number): GameState {
+  let state = createInitialState();
+  for (let index = 0; index < runs; index += 1) state = prestigeGame(advanceGame(state, 1_000_000));
+  return state;
+}
+
+describe('prestige loop', () => {
+  it.each([[0, 0], [99_999.9, 0], [100_000, 1], [999_999.9, 1], [1_000_000, 2]])(
+    'previews and grants %s SCORE -> %s points', (score, points) => {
+      const state = atScore(score);
+      expect(getPrestigeReward(state)).toBe(points);
+      const next = prestigeGame(state);
+      expect(next.permanent.unspentPoints).toBe(points);
+      expect(next.permanent.prestigeCount).toBe(points > 0 ? 1 : 0);
+      if (points === 0) expect(next).toBe(state);
+      else expect(next.runEarnedScore).toBe(0);
+    },
+  );
+
+  it('resets only the run, preserves skills and unspent points, and cannot claim twice', () => {
+    let state = purchaseSkill(earnedPoints(2), 'harvest');
+    state = purchaseEquipment({ ...state, imo: 100_000, runEarnedScore: 100_000 }, 'cart', 10);
+    Object.freeze(state.permanent.skillRanks);
+    Object.freeze(state.permanent);
+    Object.freeze(state.equipmentCounts);
+    Object.freeze(state);
+    const next = prestigeGame(state);
+
+    expect(next.imo).toBe(0);
+    expect(next.runEarnedScore).toBe(0);
+    expect(next.equipmentCounts).toEqual(createInitialState().equipmentCounts);
+    expect(next.permanent.skillRanks).toEqual(state.permanent.skillRanks);
+    expect(next.permanent.unspentPoints).toBe(state.permanent.unspentPoints + 1);
+    expect(next.permanent.prestigeCount).toBe(3);
+    expect(getProductionPerSecond(next)).toBe(1.5);
+    expect(prestigeGame(next)).toBe(next);
+    expect(state.runEarnedScore).toBe(100_000);
+  });
+
+  it('returns from the cap to a progressing next run', () => {
+    const next = prestigeGame(atScore(1_000_000));
+    expect(advanceGame(next, 1).runEarnedScore).toBe(1);
+    expect(next.permanent.unspentPoints).toBe(2);
+  });
+});
+
+describe('basic skill tree', () => {
+  it('rejects insufficient points and unmet prerequisites without changing state', () => {
+    const empty = createInitialState();
+    expect(purchaseSkill(empty, 'harvest')).toBe(empty);
+    expect(getSkillPurchase(empty.permanent, 'harvest').reason).toContain('足りません');
+    const state = earnedPoints(1);
+    expect(purchaseSkill(state, 'discount')).toBe(state);
+    expect(purchaseSkill(state, 'startingImo')).toBe(state);
+    expect(getSkillPurchase(state.permanent, 'discount').reason).toContain('前提');
+  });
+
+  it('uses rising rank costs, rejects maximum ranks, and spends only points', () => {
+    let state = earnedPoints(3);
+    const before = state;
+    for (const cost of [1, 2, 3]) {
+      expect(getSkillPurchase(state.permanent, 'harvest').cost).toBe(cost);
+      state = purchaseSkill(state, 'harvest');
+    }
+    expect(state.permanent.unspentPoints).toBe(0);
+    expect(state.permanent.skillRanks.harvest).toBe(3);
+    expect(purchaseSkill(state, 'harvest')).toBe(state);
+    expect(getSkillPurchase(state.permanent, 'harvest').reason).toContain('最大ランク');
+    expect(state.imo).toBe(before.imo);
+    expect(state.runEarnedScore).toBe(before.runEarnedScore);
+    expect(state.permanent.prestigeCount).toBe(before.permanent.prestigeCount);
+  });
+
+  it('immediately increases production of both base harvest and equipment', () => {
+    const before = purchaseEquipment({ ...earnedPoints(1), imo: 100, runEarnedScore: 100 }, 'worker', 1);
+    const after = purchaseSkill(before, 'harvest');
+    expect(getProductionPerSecond(before)).toBe(2);
+    expect(getProductionPerSecond(after)).toBe(3);
+    expect(advanceGame(after, 1_000).runEarnedScore - after.runEarnedScore)
+      .toBe((advanceGame(before, 1_000).runEarnedScore - before.runEarnedScore) * 1.5);
+    expect(advanceGame(after, 1_000_000).runEarnedScore).toBe(1_000_000);
+  });
+
+  it('discounts every unit before rounding, with identical bulk and individual purchases', () => {
+    let skilled = purchaseSkill(earnedPoints(2), 'harvest');
+    skilled = purchaseSkill(skilled, 'discount');
+    skilled = purchaseSkill(skilled, 'discount');
+    expect(getSkillBonuses(skilled.permanent).equipmentDiscountPercent).toBe(20);
+    expect(getEquipmentPrice('worker', 0, skilled.permanent)).toBe(8);
+    expect(getEquipmentPrice('worker', 1, skilled.permanent)).toBe(10);
+    const state = { ...skilled, imo: 1_000, runEarnedScore: 1_000 };
+    for (const mode of [1, 10, 'MAX'] as const) {
+      const quote = getPurchaseQuote(state, 'worker', mode);
+      let individual = state;
+      for (let index = 0; index < quote.quantity; index += 1) individual = purchaseEquipment(individual, 'worker', 1);
+      expect(purchaseEquipment(state, 'worker', mode)).toEqual(individual);
+    }
+  });
+
+  it('grants starting imo only on the next prestige and never counts it as earned SCORE', () => {
+    const withHarvest = purchaseSkill(earnedPoints(2), 'harvest');
+    const skilled = purchaseSkill(withHarvest, 'startingImo');
+    expect(skilled.imo).toBe(0);
+    const next = prestigeGame({ ...skilled, imo: 100_000, runEarnedScore: 100_000 });
+    expect(next.imo).toBe(50);
+    expect(next.runStartingImo).toBe(50);
+    expect(next.runEarnedScore).toBe(0);
+    expect(getPrestigeReward(next)).toBe(0);
+    const purchased = purchaseEquipment(next, 'worker', 'MAX');
+    expect(purchased.imo).toBeGreaterThanOrEqual(0);
+    expect(purchased.runEarnedScore).toBe(0);
+    const capped = advanceGame(next, 1_000_000);
+    expect(capped.runEarnedScore).toBe(1_000_000);
+    expect(capped.imo).toBe(1_000_050);
+  });
+
+  it.each(['unknown', '__proto__'])('rejects unknown skill %s', (id) => {
+    expect(() => purchaseSkill(earnedPoints(1), id as SkillId)).toThrow(RangeError);
+  });
+
+  it.each([
+    { prestigeCount: -1 },
+    { prestigeCount: NaN },
+    { unspentPoints: -1 },
+    { unspentPoints: Infinity },
+    { unspentPoints: 0.5 },
+    { unspentPoints: 100 },
+    { skillRanks: { harvest: 4, discount: 0, startingImo: 0 } },
+    { skillRanks: { harvest: -1, discount: 0, startingImo: 0 } },
+    { skillRanks: { harvest: NaN, discount: 0, startingImo: 0 } },
+    { skillRanks: { harvest: 0, discount: 1, startingImo: 0 } },
+  ])('rejects malformed permanent progression %#', (patch) => {
+    const state = earnedPoints(1);
+    const bad = { ...state, permanent: { ...state.permanent, ...patch } };
+    expect(() => getPrestigeReward(bad)).toThrow(RangeError);
+    expect(() => purchaseSkill(bad, 'harvest')).toThrow(RangeError);
+    expect(() => getProductionPerSecond(bad)).toThrow(RangeError);
+  });
+});

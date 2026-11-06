@@ -150,6 +150,7 @@ describe('equipment prices and purchases', () => {
     expect(getPurchaseQuote(state, 'worker', 10)).toEqual({ quantity: 6, totalCost: 91 });
     expect(getAffordableQuantity(state, 'worker')).toBe(6);
     expect(purchaseEquipment(state, 'worker', 10)).toEqual({
+      ...createInitialState(),
       imo: 9,
       runEarnedScore: 100,
       equipmentCounts: { worker: 6, cart: 0, harvester: 0 },

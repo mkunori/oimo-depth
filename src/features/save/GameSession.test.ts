@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { advanceGame } from '../../core/game';
 import { createSave, parseSave, serializeSave } from '../../core/save';
 import { createInitialState } from '../../core/state';
+import { prestigeGame } from '../../core/prestige';
 import { GameSession } from './GameSession';
 import { SAVE_STORAGE_KEY } from './SaveRepository';
 import type { SaveStorage } from './SaveRepository';
@@ -36,6 +37,101 @@ function setup(storage = new MemoryStorage()) {
     nextSession() { return new GameSession(storage, { wallNow: () => wall, monotonicNow: () => mono }); },
   };
 }
+
+describe('prestige persistence and migration', () => {
+  it('migrates v1 after offline settlement and commits v2 without losing equipment', () => {
+    const game = setup();
+    game.storage.value = JSON.stringify({ saveVersion: 1, savedAt: START - 1_000, gameState: { imo: 90, runEarnedScore: 100, equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } });
+    game.session.start();
+    expect(JSON.parse(game.storage.value!).saveVersion).toBe(2);
+    expect(game.session.getSnapshot().gameState.imo).toBe(92);
+    expect(game.session.getSnapshot().gameState.runEarnedScore).toBe(102);
+    expect(game.session.getSnapshot().gameState.equipmentCounts.worker).toBe(1);
+    expect(game.session.getSnapshot().gameState.permanent).toEqual(createInitialState().permanent);
+  });
+
+  it('preserves original legacy text if the migration cannot be saved', () => {
+    const game = setup();
+    const legacy = JSON.stringify({ saveVersion: 1, savedAt: START, gameState: { imo: 90, runEarnedScore: 100, equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } });
+    game.storage.value = legacy;
+    game.storage.failWrites = true;
+    game.session.start();
+    expect(game.session.getSnapshot().status).toBe('unavailable');
+    expect(game.storage.value).toBe(legacy);
+    expect(parseSave(game.session.exportText()).gameState.imo).toBe(90);
+  });
+
+  it.each([
+    JSON.stringify({ saveVersion: 2, savedAt: START, gameState: { imo: 0, runEarnedScore: 0, equipmentCounts: { worker: 0, cart: 0, harvester: 0 } } }),
+    JSON.stringify({ saveVersion: 3, savedAt: START, gameState: createInitialState() }),
+  ])('preserves malformed v2 or future text without fallback %#', (text) => {
+    const game = setup();
+    game.storage.value = text;
+    game.session.start();
+    expect(game.session.getSnapshot().status).toBe('invalid');
+    expect(game.storage.value).toBe(text);
+    expect(game.storage.writes).toBe(0);
+  });
+
+  it('saves a single reward and each skill, preserving growth through reload and resume', () => {
+    const game = setup();
+    game.storage.value = serializeSave(createSave(advanceGame(createInitialState(), 1_000_000), START));
+    game.session.start();
+    expect(game.session.prestige(2)).toBe(true);
+    expect(game.session.prestige(2)).toBe(false);
+    const second = game.nextSession();
+    second.start();
+    expect(second.getSnapshot().gameState.permanent.prestigeCount).toBe(1);
+    expect(second.getSnapshot().gameState.permanent.unspentPoints).toBe(2);
+    expect(second.buySkill('harvest')).toBe(true);
+    expect(parseSave(game.storage.value!).gameState.permanent.skillRanks.harvest).toBe(1);
+    const reloaded = game.nextSession();
+    reloaded.start();
+    expect(reloaded.getSnapshot().gameState.permanent.unspentPoints).toBe(1);
+    reloaded.hide();
+    game.elapse(3_600);
+    reloaded.show();
+    expect(reloaded.getSnapshot().gameState.runEarnedScore).toBe(5_400);
+    expect(reloaded.getSnapshot().gameState.permanent.skillRanks.harvest).toBe(1);
+    expect(reloaded.getSnapshot().gameState.permanent.prestigeCount).toBe(1);
+  });
+
+  it('requires an updated confirmation at the cap reward boundary', () => {
+    const game = setup();
+    game.storage.value = serializeSave(createSave(advanceGame(createInitialState(), 999_999), START));
+    game.session.start();
+    game.elapse(2);
+    expect(game.session.prestige(1)).toBe(false);
+    expect(game.session.getSnapshot().gameState.permanent.prestigeCount).toBe(0);
+    expect(game.session.prestige(2)).toBe(true);
+    expect(game.session.getSnapshot().gameState.permanent.unspentPoints).toBe(2);
+  });
+
+  it('retains the run and points if the prestige write fails', () => {
+    const game = setup();
+    game.storage.value = serializeSave(createSave(advanceGame(createInitialState(), 1_000_000), START));
+    game.session.start();
+    const before = game.session.getSnapshot().gameState;
+    const raw = game.storage.value;
+    game.storage.failWrites = true;
+    expect(game.session.prestige(2)).toBe(false);
+    expect(game.session.getSnapshot().gameState).toBe(before);
+    expect(game.storage.value).toBe(raw);
+    expect(game.session.getSnapshot().status).toBe('unavailable');
+  });
+
+  it('does not spend points or grant a skill if its write fails', () => {
+    const game = setup();
+    game.storage.value = serializeSave(createSave(prestigeGame(advanceGame(createInitialState(), 1_000_000)), START));
+    game.session.start();
+    const raw = game.storage.value;
+    game.storage.failWrites = true;
+    expect(game.session.buySkill('harvest')).toBe(false);
+    expect(game.session.getSnapshot().gameState.permanent.unspentPoints).toBe(2);
+    expect(game.session.getSnapshot().gameState.permanent.skillRanks.harvest).toBe(0);
+    expect(game.storage.value).toBe(raw);
+  });
+});
 
 describe('game save lifecycle', () => {
   it('does not read or write during construction, and starts exactly once', () => {

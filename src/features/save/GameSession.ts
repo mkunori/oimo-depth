@@ -8,6 +8,9 @@ import { INITIAL_BALANCE } from '../../data/balance';
 import type { EquipmentId } from '../../data/equipment';
 import { SaveConflictError, SaveRepository } from './SaveRepository';
 import type { SaveStorage } from './SaveRepository';
+import { getPrestigeReward, prestigeGame, purchaseSkill } from '../../core/prestige';
+import { SKILLS } from '../../data/skills';
+import type { SkillId } from '../../data/skills';
 
 export interface SessionClock {
   wallNow(): number;
@@ -20,6 +23,7 @@ export interface SessionSnapshot {
   readonly message: string | null;
   readonly report: OfflineReport | null;
   readonly savedAt: number | null;
+  readonly progressNotice: string | null;
 }
 
 const AUTOSAVE_INTERVAL_MS = 10_000;
@@ -34,7 +38,7 @@ export class GameSession {
   private lastAutosave = 0;
   private stateAt = 0;
   private snapshot: SessionSnapshot = {
-    gameState: createInitialState(), status: 'loading', message: null, report: null, savedAt: null,
+    gameState: createInitialState(), status: 'loading', message: null, report: null, savedAt: null, progressNotice: null,
   };
 
   constructor(storage: SaveStorage, private readonly clock: SessionClock) {
@@ -114,6 +118,34 @@ export class GameSession {
     this.persist();
   };
 
+  private commitProgress(gameState: GameState, progressNotice: string): boolean {
+    try {
+      const save = createSave(gameState, this.stateAt);
+      this.repository.write(save);
+      this.lastAutosave = this.clock.monotonicNow();
+      this.update({ gameState: save.gameState, savedAt: save.savedAt, progressNotice, report: null });
+      return true;
+    } catch (error) { this.fail(error); return false; }
+  }
+
+  prestige = (expectedReward: number): boolean => {
+    this.tick();
+    if (this.hidden || this.snapshot.status !== 'ready') return false;
+    const reward = getPrestigeReward(this.snapshot.gameState);
+    // 確認直前に1pt→2ptへ変化した場合は最新の予告で再確認してもらう。
+    if (reward === 0 || reward !== expectedReward) return false;
+    const gameState = prestigeGame(this.snapshot.gameState);
+    return this.commitProgress(gameState, `転生しました。${reward}pt を獲得しました（累計 ${gameState.permanent.prestigeCount}回）。`);
+  };
+
+  buySkill = (id: SkillId): boolean => {
+    this.tick();
+    if (this.hidden || this.snapshot.status !== 'ready') return false;
+    const gameState = purchaseSkill(this.snapshot.gameState, id);
+    return gameState !== this.snapshot.gameState
+      && this.commitProgress(gameState, `${SKILLS[id].name}をランク${gameState.permanent.skillRanks[id]}に強化しました。`);
+  };
+
   hide(): void {
     if (this.hidden) return;
     this.tick();
@@ -153,7 +185,7 @@ export class GameSession {
       this.repository.write(save);
       this.stateAt = save.savedAt;
       this.lastTick = this.lastAutosave = this.clock.monotonicNow();
-      this.update({ gameState: save.gameState, status: 'ready', savedAt: save.savedAt, message: null, report: null });
+      this.update({ gameState: save.gameState, status: 'ready', savedAt: save.savedAt, message: null, report: null, progressNotice: null });
       return true;
     } catch (error) { this.fail(error); return false; }
   }

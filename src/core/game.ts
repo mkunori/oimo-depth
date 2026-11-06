@@ -2,6 +2,9 @@ import { INITIAL_BALANCE } from '../data/balance';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../data/equipment';
 import type { EquipmentDefinition, EquipmentId } from '../data/equipment';
 import type { GameState } from './state';
+import { createInitialPermanent } from './state';
+import type { PermanentProgress } from './state';
+import { getSkillBonuses } from './skills';
 
 export type PurchaseMode = 1 | 10 | 'MAX';
 
@@ -32,8 +35,12 @@ function getDefinition(id: EquipmentId): EquipmentDefinition {
 function assertState(state: GameState): void {
   assertNonNegativeFinite(state.imo, 'imo');
   assertNonNegativeFinite(state.runEarnedScore, 'runEarnedScore');
-  if (state.imo > state.runEarnedScore || state.runEarnedScore > INITIAL_BALANCE.scoreCap) {
-    throw new RangeError('State must satisfy 0 <= imo <= runEarnedScore <= scoreCap.');
+  const bonuses = getSkillBonuses(state.permanent);
+  assertNonNegativeFinite(state.runStartingImo, 'runStartingImo');
+  if (!Number.isSafeInteger(state.runStartingImo) || state.runStartingImo > bonuses.startingImo
+    || state.imo > state.runEarnedScore + state.runStartingImo
+    || state.runEarnedScore > INITIAL_BALANCE.scoreCap) {
+    throw new RangeError('Invalid run balance, starting grant, or SCORE.');
   }
   for (const id of EQUIPMENT_IDS) {
     assertCount(state.equipmentCounts[id]);
@@ -46,16 +53,21 @@ export function getProductionPerSecond(state: GameState): number {
   const production = EQUIPMENT_IDS.reduce<number>(
     (total, id) => total + state.equipmentCounts[id] * EQUIPMENT[id].productionPerUnit,
     INITIAL_BALANCE.baseProduction,
-  );
+  ) * getSkillBonuses(state.permanent).productionMultiplier;
   assertNonNegativeFinite(production, 'production');
   return production;
 }
 
-/** 次の1台の価格。各台を切り上げてから合計し、一括購入でも同じ価格列を使う。 */
-export function getEquipmentPrice(id: EquipmentId, ownedCount: number): number {
+/** 1台あたりの加算生産量。倍率を含めてUIへ返す。 */
+export function getEquipmentProductionPerUnit(id: EquipmentId, permanent: PermanentProgress = createInitialPermanent()): number {
+  return getDefinition(id).productionPerUnit * getSkillBonuses(permanent).productionMultiplier;
+}
+
+/** 割引適用後に1台ずつ切り上げる。恒久データ省略時はボーナスなしの価格。 */
+export function getEquipmentPrice(id: EquipmentId, ownedCount: number, permanent: PermanentProgress = createInitialPermanent()): number {
   assertCount(ownedCount);
   const definition = getDefinition(id);
-  const price = Math.ceil(definition.basePrice * definition.priceMultiplier ** ownedCount);
+  const price = Math.ceil(definition.basePrice * definition.priceMultiplier ** ownedCount * getSkillBonuses(permanent).equipmentPriceMultiplier);
   if (!Number.isSafeInteger(price) || price <= 0) {
     throw new RangeError('Equipment price exceeds the supported number range.');
   }
@@ -80,7 +92,7 @@ export function advanceGame(state: GameState, elapsedSeconds: number): GameState
 
   return {
     ...state,
-    imo: Math.min(runEarnedScore, state.imo + actualEarned),
+    imo: Math.min(runEarnedScore + state.runStartingImo, state.imo + actualEarned),
     runEarnedScore,
   };
 }
@@ -102,7 +114,7 @@ export function getPurchaseQuote(
   let totalCost = 0;
   while (quantity < limit) {
     const ownedCount = state.equipmentCounts[id] + quantity;
-    const price = getEquipmentPrice(id, ownedCount);
+    const price = getEquipmentPrice(id, ownedCount, state.permanent);
     if (price > state.imo - totalCost) {
       break;
     }
