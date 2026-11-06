@@ -7,6 +7,8 @@ import type { GameState } from '../../core/state';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../../data/equipment';
 import type { EquipmentId } from '../../data/equipment';
 import type { SessionSnapshot } from '../save/GameSession';
+import { AutomationPanel } from './AutomationPanel';
+import type { AutomationSettings } from '../../data/automation';
 
 interface ShopProps {
   readonly state: GameState;
@@ -14,9 +16,11 @@ interface ShopProps {
   readonly isPaused: boolean;
   readonly onPurchase: (id: EquipmentId, mode: PurchaseMode) => void;
   readonly milestoneNotice: SessionSnapshot['milestoneNotice'];
+  readonly automaticPurchases: number;
+  readonly onAutomationChange: (settings: AutomationSettings) => boolean;
 }
 
-export function Shop({ state, isCapped, isPaused, onPurchase, milestoneNotice }: ShopProps) {
+export function Shop({ state, isCapped, isPaused, onPurchase, milestoneNotice, automaticPurchases, onAutomationChange }: ShopProps) {
   const [mode, setMode] = useState<PurchaseMode>(1);
 
   return (
@@ -26,6 +30,7 @@ export function Shop({ state, isCapped, isPaused, onPurchase, milestoneNotice }:
         <h2 id="shop-title">設備</h2>
         <span className="section-caption">収穫を、もっと速く。</span>
       </div>
+      <AutomationPanel state={state} isPaused={isPaused} automaticPurchases={automaticPurchases} onChange={onAutomationChange} />
       <fieldset className="purchase-modes">
         <legend>購入倍率</legend>
         <div className="mode-options">

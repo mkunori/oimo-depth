@@ -11,6 +11,7 @@ import { projectFixedProduction } from './projections';
 import { SKILL_PLANS } from './policies';
 import { EQUIPMENT_BASELINE } from './baseline';
 import { BREAKTHROUGH_SCENARIOS, simulateBreakthroughJourney, simulateExpansion } from './expansion';
+import { simulateAutomation } from './automation';
 
 export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 6, maxSeconds = 90 * 86_400) {
   if (scenarios.length === 0 || new Set(scenarios.map((scenario) => scenario.id)).size !== scenarios.length) {
@@ -32,6 +33,7 @@ export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 
     runCount, maxSeconds, skillPlans: SKILL_PLANS, coverage: COVERAGE, campaigns, benchmarks,
     equipmentBaseline: EQUIPMENT_BASELINE,
     breakthroughJourneys,
+    automation: simulateAutomation(maxSeconds),
     expansion: breakthroughSeed ? simulateExpansion(breakthroughSeed) : [],
     projectionReference: referenceProduction === null ? null : {
       scenarioId: reference!.scenario.id, run: lastCompleted!.run, production: referenceProduction,

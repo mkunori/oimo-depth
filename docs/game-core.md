@@ -14,6 +14,8 @@
 | `runStartingImo` | この周回の開始時に支給した芋。SCORE に含めない |
 | `scoreCapStage` | 現周回の上限段階。0: 1e6、1: 1e9。段階1には突破権と前段階の到達が必要 |
 | `permanent` | 転生回数・未使用ポイント・取得スキル。転生で維持する |
+| `automation` | 全体ON/OFF・方針・設備別設定・指定優先順。周回と分け、転生で維持する |
+| `automationRemainder` | 自動精算の補償加算端数（任意）。許容範囲を検証し保存、転生で消去する |
 
 初期状態は残高・累計・全設備数が 0 です。状態型は readonly とし、各更新関数は入力やネストした所有数を変更しません。変化のない購入・時間更新は元の状態を返します。
 
@@ -38,6 +40,8 @@
 収穫量は `min(生産能力 * 経過秒数, 上限 - runEarnedScore)` で制限し、実際に増えた SCORE と同量だけ残高を増やします。上限時は購入で残高が減っても収穫は再開しません。`getProductionPerSecond` は上限到達後も設備の生産能力を返します。
 
 ## API
+
+#23以降の `advanceGame` は自動購入が有効ならイベント駆動で処理します。`advanceWithAutomation` は状態と自動購入台数・上限到達秒・任意のイベント列を返します。価格・生産・購入は同じコアAPIを共有し、SCORE上限で両方停止します。設定更新は `configureAutomation`、時間精算後の即時購入は `advanceWithAutomation(candidate, 0)` です。詳細な方針・精度・負荷上限は [自動購入仕様](automation.md) を参照してください。従来のOFF状態では下記例は同じ結果です。
 
 ```ts
 import { createInitialState } from '../src/core/state';

@@ -1,4 +1,4 @@
-export const SKILL_IDS = ['harvest', 'discount', 'startingImo', 'breakthrough'] as const;
+export const SKILL_IDS = ['harvest', 'discount', 'startingImo', 'breakthrough', 'automation'] as const;
 export type SkillId = typeof SKILL_IDS[number];
 
 interface SkillDefinition {
@@ -8,7 +8,7 @@ interface SkillDefinition {
   readonly costs: readonly number[];
   readonly prerequisites: readonly { readonly id: SkillId; readonly rank: number }[];
   readonly minimumPrestigeCount: number;
-  readonly effect: { readonly type: 'harvest' | 'discount' | 'startingImo' | 'breakthrough'; readonly perRank: number };
+  readonly effect: { readonly type: 'harvest' | 'discount' | 'startingImo' | 'breakthrough' | 'automation'; readonly perRank: number };
 }
 
 /** v0 の仮バランス。前提と効果をデータとして分離し、後続の枝を追加できる。 */
@@ -31,6 +31,10 @@ export const SKILLS = {
     id: 'breakthrough', name: '限界突破の心得', maxRank: 1, costs: [3], minimumPrestigeCount: 5,
     prerequisites: [{ id: 'harvest', rank: 3 }, { id: 'discount', rank: 1 }],
     effect: { type: 'breakthrough', perRank: 1 },
+  },
+  automation: {
+    id: 'automation', name: '自動設備管理', maxRank: 1, costs: [1], minimumPrestigeCount: 1,
+    prerequisites: [{ id: 'harvest', rank: 1 }], effect: { type: 'automation', perRank: 1 },
   },
 } as const satisfies Record<SkillId, SkillDefinition>;
 

@@ -60,6 +60,7 @@ export function SavePanel({ snapshot, onExport, onImport, onReset, onDismissRepo
             <div><dt>到達SCORE</dt><dd>{formatNumber(snapshot.report.reachedScore)}</dd></div>
           </dl>
           <p>放置報酬は最大24時間分です。SCORE 上限を超える収穫は加算されません。</p>
+          {snapshot.report.automaticPurchases > 0 && <p>放置中の自動購入: {snapshot.report.automaticPurchases} 台。獲得芋は設備支出前の収穫量です。</p>}
           {snapshot.report.clockReversed && <p role="alert">端末の時計が保存時刻より前のため、放置報酬は加算していません。端末の日時を確認してください。</p>}
         </section>
       )}

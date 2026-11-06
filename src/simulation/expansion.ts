@@ -42,7 +42,7 @@ export function simulateBreakthroughJourney(scenario: Scenario, maxSeconds = 90 
     }
     if (!result.completed) { runs.push({ run, startsAtSeconds, result, reward: 0, afterPrestige: null }); break; }
     const reward = getPrestigeReward(state);
-    state = investSkills(prestigeGame(state), scenario.skillPlan);
+    state = investSkills(prestigeGame(state), scenario.skillPlan, scenario.automation);
     if (state.permanent.skillRanks.breakthrough > 0) permissionAtSeconds ??= elapsedSeconds;
     runs.push({ run, startsAtSeconds, result, reward, afterPrestige: state });
   }

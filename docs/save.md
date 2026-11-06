@@ -1,4 +1,4 @@
-# 保存・オフライン進行（v4）
+# 保存・オフライン進行（v5）
 
 ## 保存形式と検証
 
@@ -6,7 +6,7 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 ```json
 {
-  "saveVersion": 4,
+  "saveVersion": 5,
   "savedAt": 1700000000000,
   "gameState": {
     "imo": 0,
@@ -17,7 +17,13 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
     "permanent": {
       "prestigeCount": 0,
       "unspentPoints": 0,
-      "skillRanks": { "harvest": 0, "discount": 0, "startingImo": 0, "breakthrough": 0 }
+      "skillRanks": { "harvest": 0, "discount": 0, "startingImo": 0, "breakthrough": 0, "automation": 0 }
+    },
+    "automation": {
+      "enabled": false,
+      "policy": "efficient",
+      "equipment": { "worker": true, "cart": true, "harvester": true, "deepDrill": true, "refinery": true },
+      "priority": ["worker", "cart", "harvester", "deepDrill", "refinery"]
     }
   }
 }
@@ -31,12 +37,14 @@ v4は上限段階と全4スキルが必須です。段階0は上限1e6・上位2
 
 ## 時間の精算
 
+現在はv5です。上記v1〜v3の補完に加え、v4の段階・突破権・残高・設備・スキルを保持して、自動スキル0と全体OFFの既定設定を補います。v5は全5スキル・自動設定が必須です。自動精算で生じた任意の `automationRemainder: { score, imo }` は厳格な精度範囲内でのみ保存・復元し、転生で消去します。設定は周回と分けて維持します。方針・設備フラグ・優先順・権利なしON・不正端数の拒否と計算精度は [自動購入仕様](automation.md) を参照してください。
+
 `settleOffline(save, now)` は時計や保存領域にアクセスしない純粋関数です。同じ保存データと現在時刻から同じ状態・報告を返します。
 
 - 経過秒数: `max(0, (now - savedAt) / 1000)`
 - 反映する秒数: `min(経過秒数, OFFLINE_LIMIT_SECONDS)`。初期上限は24時間（86,400秒）です。
-- 収穫は `advanceGame` に委譲し、保存された現周回の上限でクリップします。自動採掘のみで、購入・転生・限界突破は行いません。心得を取得済みでも段階0なら1e6で停止します。
-- SCORE 上限までの実際の増分を残高に加算します。報告の「反映した時間」は24時間で制限した計算対象時間です。SCORE 上限到達後は、その時間の途中でも獲得量が増えなくなります。
+- `advanceWithAutomation` に委譲し、現周回の上限でクリップします。設定ONなら購入可能時刻で区切って設備を自動購入し、転生・限界突破は行いません。OFFは従来の定率収穫です。心得を取得済みでも段階0なら1e6で停止します。
+- 収穫増分を残高へ加え、自動購入の費用を差し引きます。報告の獲得芋は支出前の収穫で、自動購入台数を別途表示します。「反映した時間」は24時間で制限した対象時間です。上限到達後は収穫・購入とも止まります。
 - 精算結果を現在時刻で直ちに保存し、同じ時間帯を次の読込で再加算しません。
 - 時計が戻った場合は報酬0とし、保存時刻を巻き戻しません。画面で日時の確認を案内します。クライアントの時計変更に対する不正防止機能ではありません。
 

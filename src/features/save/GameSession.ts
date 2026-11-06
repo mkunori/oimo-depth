@@ -1,4 +1,4 @@
-import { advanceGame, getEquipmentMilestones, purchaseEquipment } from '../../core/game';
+import { advanceWithAutomation, AutomationLimitError, configureAutomation, getEquipmentMilestones, purchaseEquipment } from '../../core/game';
 import type { PurchaseMode } from '../../core/game';
 import { createSave, parseSave, SaveDataError, serializeSave, settleOffline } from '../../core/save';
 import type { OfflineReport, SaveData } from '../../core/save';
@@ -12,6 +12,7 @@ import { SKILLS } from '../../data/skills';
 import type { SkillId } from '../../data/skills';
 import { getScoreCap } from '../../data/scoreCaps';
 import { performBreakthrough } from '../../core/breakthrough';
+import type { AutomationSettings } from '../../data/automation';
 
 export interface SessionClock {
   wallNow(): number;
@@ -26,6 +27,7 @@ export interface SessionSnapshot {
   readonly savedAt: number | null;
   readonly progressNotice: string | null;
   readonly milestoneNotice: { readonly id: EquipmentId; readonly counts: readonly number[]; readonly multiplier: number } | null;
+  readonly automaticPurchases: number;
 }
 
 const AUTOSAVE_INTERVAL_MS = 10_000;
@@ -40,7 +42,7 @@ export class GameSession {
   private lastAutosave = 0;
   private stateAt = 0;
   private snapshot: SessionSnapshot = {
-    gameState: createInitialState(), status: 'loading', message: null, report: null, savedAt: null, progressNotice: null, milestoneNotice: null,
+    gameState: createInitialState(), status: 'loading', message: null, report: null, savedAt: null, progressNotice: null, milestoneNotice: null, automaticPurchases: 0,
   };
 
   constructor(storage: SaveStorage, private readonly clock: SessionClock) {
@@ -59,7 +61,9 @@ export class GameSession {
   }
 
   private fail(error: unknown): void {
-    if (error instanceof SaveConflictError) {
+    if (error instanceof AutomationLimitError) {
+      this.update({ status: 'unavailable', message: '自動購入の処理上限に達したため進行を停止しました。現在のセーブをエクスポートして保管してください。' });
+    } else if (error instanceof SaveConflictError) {
       this.update({ status: 'conflict', message: '別のタブでセーブが変更されたため、進行と保存を停止しました。他のタブを閉じて再読み込みしてください。' });
     } else if (error instanceof SaveDataError) {
       this.update({ status: 'invalid', message: `${error.message} 元データを保持し、進行と自動保存を停止しています。セーブ管理から元データの退避・インポート・初期化ができます。` });
@@ -79,7 +83,7 @@ export class GameSession {
       const result = raw === null ? null : settleOffline(parseSave(raw), this.stateAt);
       const save = result?.save ?? createSave(createInitialState(), this.stateAt);
       this.stateAt = save.savedAt;
-      this.update({ gameState: save.gameState, report: result?.report ?? null });
+      this.update({ gameState: save.gameState, report: result?.report ?? null, automaticPurchases: result?.report.automaticPurchases ?? 0 });
       this.repository.write(save);
       this.update({ status: 'ready', savedAt: save.savedAt });
     } catch (error) { this.fail(error); }
@@ -98,8 +102,11 @@ export class GameSession {
     const elapsed = Math.max(0, (now - this.lastTick) / 1_000);
     this.lastTick = now;
     this.stateAt = Math.max(this.stateAt, this.clock.wallNow());
-    const gameState = advanceGame(this.snapshot.gameState, elapsed);
-    if (gameState !== this.snapshot.gameState) this.update({ gameState });
+    try {
+      const progress = advanceWithAutomation(this.snapshot.gameState, elapsed);
+      if (progress.state !== this.snapshot.gameState) this.update({ gameState: progress.state,
+        ...(progress.purchaseCount > 0 ? { automaticPurchases: progress.purchaseCount } : {}) });
+    } catch (error) { this.fail(error); return; }
     if (now - this.lastAutosave >= AUTOSAVE_INTERVAL_MS) this.persist();
   }
 
@@ -160,6 +167,19 @@ export class GameSession {
       && this.commitProgress(gameState, '限界突破しました。SCORE上限が1E9になり、同じ周回で採掘を再開します。');
   };
 
+  setAutomation = (settings: AutomationSettings): boolean => {
+    this.tick();
+    if (this.hidden || this.snapshot.status !== 'ready') return false;
+    try {
+      const configured = configureAutomation(this.snapshot.gameState, settings);
+      if (configured === this.snapshot.gameState) return false;
+      const progress = advanceWithAutomation(configured, 0);
+      const succeeded = this.commitProgress(progress.state, `自動購入設定を保存しました（${settings.enabled ? 'ON' : 'OFF'}）。`);
+      if (succeeded && progress.purchaseCount > 0) this.update({ automaticPurchases: progress.purchaseCount });
+      return succeeded;
+    } catch (error) { this.fail(error); return false; }
+  };
+
   hide(): void {
     if (this.hidden) return;
     this.tick();
@@ -175,7 +195,7 @@ export class GameSession {
       const { save, report } = settleOffline(createSave(this.snapshot.gameState, this.stateAt), this.clock.wallNow());
       this.stateAt = save.savedAt;
       this.lastTick = this.clock.monotonicNow();
-      this.update({ gameState: save.gameState, report });
+      this.update({ gameState: save.gameState, report, ...(report.automaticPurchases > 0 ? { automaticPurchases: report.automaticPurchases } : {}) });
       this.persist();
     } catch (error) { this.fail(error); }
   }
@@ -199,7 +219,7 @@ export class GameSession {
       this.repository.write(save);
       this.stateAt = save.savedAt;
       this.lastTick = this.lastAutosave = this.clock.monotonicNow();
-      this.update({ gameState: save.gameState, status: 'ready', savedAt: save.savedAt, message: null, report: null, progressNotice: null, milestoneNotice: null });
+      this.update({ gameState: save.gameState, status: 'ready', savedAt: save.savedAt, message: null, report: null, progressNotice: null, milestoneNotice: null, automaticPurchases: 0 });
       return true;
     } catch (error) { this.fail(error); return false; }
   }

@@ -2,6 +2,8 @@ import type { EquipmentId } from '../data/equipment';
 import { createEmptyEquipmentCounts } from '../data/equipment';
 import type { SkillId } from '../data/skills';
 import type { ScoreCapStage } from '../data/scoreCaps';
+import { createDefaultAutomation } from '../data/automation';
+import type { AutomationSettings } from '../data/automation';
 
 /** 転生で引き継ぐデータ。将来の恒久データはこの境界に追加する。 */
 export interface PermanentProgress {
@@ -11,7 +13,7 @@ export interface PermanentProgress {
 }
 
 export function createInitialPermanent(): PermanentProgress {
-  return { prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0 } };
+  return { prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
 }
 
 /** 転生時に初期化するデータ。初期所持芋は収穫累計とは別に管理する。 */
@@ -27,6 +29,9 @@ export interface RunState {
 
 export interface GameState extends RunState {
   readonly permanent: PermanentProgress;
+  readonly automation: AutomationSettings;
+  /** 自動精算の補償加算端数。設定ではなく周回の計算状態で、転生時に消える。 */
+  readonly automationRemainder?: { readonly score: number; readonly imo: number };
 }
 
 export function createInitialState(): GameState {
@@ -37,5 +42,6 @@ export function createInitialState(): GameState {
     scoreCapStage: 0,
     equipmentCounts: createEmptyEquipmentCounts(),
     permanent: createInitialPermanent(),
+    automation: createDefaultAutomation(),
   };
 }

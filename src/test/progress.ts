@@ -9,3 +9,8 @@ export function createBreakthroughReadyState() {
   for (const id of ['harvest', 'harvest', 'harvest', 'discount', 'breakthrough'] as const) state = purchaseSkill(state, id);
   return advanceGame(state, 1e6);
 }
+
+export function createAutomationReadyState() {
+  const state = purchaseSkill(prestigeGame(advanceGame(createInitialState(), 1e6)), 'harvest');
+  return purchaseSkill(state, 'automation');
+}
