@@ -6,6 +6,7 @@ import { prestigeGame } from '../../core/prestige';
 import { GameSession } from './GameSession';
 import { SAVE_STORAGE_KEY } from './SaveRepository';
 import type { SaveStorage } from './SaveRepository';
+import { createBreakthroughReadyState } from '../../test/progress';
 
 const START = 1_700_000_000_000;
 
@@ -38,6 +39,55 @@ function setup(storage = new MemoryStorage()) {
   };
 }
 
+describe('breakthrough session transactions', () => {
+  it('commits before publishing the cap change, persists it, and rejects a second execution', () => {
+    const game = setup();
+    game.storage.value = serializeSave(createSave(createBreakthroughReadyState(), START));
+    game.session.start();
+    const before = game.session.getSnapshot().gameState;
+    expect(game.session.breakthrough()).toBe(true);
+    expect(game.session.getSnapshot().gameState).toEqual({ ...before, scoreCapStage: 1 });
+    expect(parseSave(game.storage.value!).gameState.scoreCapStage).toBe(1);
+    expect(game.session.breakthrough()).toBe(false);
+    const restored = game.nextSession(); restored.start();
+    expect(restored.getSnapshot().gameState.scoreCapStage).toBe(1);
+    game.elapse(60); restored.tick();
+    expect(restored.getSnapshot().gameState.runEarnedScore).toBeGreaterThan(1e6);
+    const exported = parseSave(restored.exportText());
+    expect(restored.importSave(exported)).toBe(true);
+    expect(restored.getSnapshot().gameState).toEqual(exported.gameState);
+  });
+
+  it('keeps the capped state and raw save when a breakthrough write fails', () => {
+    const game = setup();
+    game.storage.value = serializeSave(createSave(createBreakthroughReadyState(), START));
+    game.session.start();
+    const state = game.session.getSnapshot().gameState;
+    const raw = game.storage.value;
+    game.storage.failWrites = true;
+    expect(game.session.breakthrough()).toBe(false);
+    expect(game.session.getSnapshot().gameState).toBe(state);
+    expect(game.storage.value).toBe(raw);
+    expect(game.session.getSnapshot().status).toBe('unavailable');
+    expect(parseSave(game.session.exportText()).gameState.scoreCapStage).toBe(0);
+  });
+
+  it('blocks stale-tab, hidden and unqualified breakthrough attempts', () => {
+    const initial = setup(); initial.session.start();
+    expect(initial.session.breakthrough()).toBe(false);
+    const game = setup(); game.storage.value = serializeSave(createSave(createBreakthroughReadyState(), START));
+    game.session.start(); game.session.hide();
+    expect(game.session.breakthrough()).toBe(false);
+    game.session.show();
+    const external = serializeSave(createSave(advanceGame(createInitialState(), 5), START));
+    game.storage.value = external;
+    expect(game.session.breakthrough()).toBe(false);
+    expect(game.session.getSnapshot().status).toBe('conflict');
+    expect(game.session.getSnapshot().gameState.scoreCapStage).toBe(0);
+    expect(game.storage.value).toBe(external);
+  });
+});
+
 describe('prestige persistence and migration', () => {
   it('retains actual v2 progress and raw text if a v3 migration write fails', () => {
     const game = setup();
@@ -58,7 +108,7 @@ describe('prestige persistence and migration', () => {
     const game = setup();
     game.storage.value = JSON.stringify({ saveVersion: 1, savedAt: START - 1_000, gameState: { imo: 90, runEarnedScore: 100, equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } });
     game.session.start();
-    expect(JSON.parse(game.storage.value!).saveVersion).toBe(3);
+    expect(JSON.parse(game.storage.value!).saveVersion).toBe(4);
     expect(game.session.getSnapshot().gameState.imo).toBe(92);
     expect(game.session.getSnapshot().gameState.runEarnedScore).toBe(102);
     expect(game.session.getSnapshot().gameState.equipmentCounts.worker).toBe(1);
@@ -78,7 +128,7 @@ describe('prestige persistence and migration', () => {
 
   it.each([
     JSON.stringify({ saveVersion: 2, savedAt: START, gameState: { imo: 0, runEarnedScore: 0, equipmentCounts: { worker: 0, cart: 0, harvester: 0 } } }),
-    JSON.stringify({ saveVersion: 4, savedAt: START, gameState: createInitialState() }),
+    JSON.stringify({ saveVersion: 5, savedAt: START, gameState: createInitialState() }),
   ])('preserves malformed v2 or future text without fallback %#', (text) => {
     const game = setup();
     game.storage.value = text;

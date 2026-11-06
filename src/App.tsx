@@ -1,5 +1,5 @@
 import { getProductionPerSecond } from './core/game';
-import { INITIAL_BALANCE } from './data/balance';
+import { getScoreCap } from './data/scoreCaps';
 import { MiningPanel } from './features/mining/MiningPanel';
 import { useMiningGame } from './features/mining/useMiningGame';
 import { Shop } from './features/shop/Shop';
@@ -7,8 +7,8 @@ import { SavePanel } from './features/save/SavePanel';
 import { PrestigePanel } from './features/prestige/PrestigePanel';
 
 export default function App() {
-  const { state, snapshot, purchase, exportText, importSave, reset, dismissReport, prestige, buySkill } = useMiningGame();
-  const isCapped = state.runEarnedScore >= INITIAL_BALANCE.scoreCap;
+  const { state, snapshot, purchase, exportText, importSave, reset, dismissReport, prestige, buySkill, breakthrough } = useMiningGame();
+  const isCapped = state.runEarnedScore >= getScoreCap(state);
   const isPaused = snapshot.status !== 'ready';
 
   return (
@@ -21,7 +21,7 @@ export default function App() {
         <p className="edition">小さな芋から、大きな収穫へ。<span>採掘の旅、はじまりの一周。</span></p>
       </header>
       <div className="game-layout">
-        <MiningPanel state={state} production={getProductionPerSecond(state)} isCapped={isCapped} isPaused={isPaused} />
+        <MiningPanel state={state} production={getProductionPerSecond(state)} isCapped={isCapped} isPaused={isPaused} onBreakthrough={breakthrough} />
         <Shop state={state} isCapped={isCapped} isPaused={isPaused} onPurchase={purchase} milestoneNotice={snapshot.milestoneNotice} />
       </div>
       <PrestigePanel state={state} isPaused={isPaused} notice={snapshot.progressNotice} onPrestige={prestige} onBuySkill={buySkill} />

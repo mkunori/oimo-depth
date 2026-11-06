@@ -44,7 +44,7 @@ export function Shop({ state, isCapped, isPaused, onPurchase, milestoneNotice }:
           const definition = EQUIPMENT[id];
           const quote = getPurchaseQuote(state, id, mode);
           const nextPrice = getEquipmentPrice(id, state.equipmentCounts[id], state.permanent);
-          const availability = getEquipmentAvailability(id);
+          const availability = getEquipmentAvailability(id, state);
           const milestone = getEquipmentMilestones(id, state.equipmentCounts[id]);
           const disabled = !availability.unlocked || isPaused || isCapped || quote.quantity === 0;
           return (

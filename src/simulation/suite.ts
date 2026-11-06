@@ -10,7 +10,7 @@ import { simulateCampaign, simulateRun } from './simulator';
 import { projectFixedProduction } from './projections';
 import { SKILL_PLANS } from './policies';
 import { EQUIPMENT_BASELINE } from './baseline';
-import { simulateExpansion } from './expansion';
+import { BREAKTHROUGH_SCENARIOS, simulateBreakthroughJourney, simulateExpansion } from './expansion';
 
 export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 6, maxSeconds = 90 * 86_400) {
   if (scenarios.length === 0 || new Set(scenarios.map((scenario) => scenario.id)).size !== scenarios.length) {
@@ -23,14 +23,16 @@ export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 
   const reference = campaigns.find((campaign) => campaign.scenario.id === 'active-60-cap') ?? campaigns[0];
   const lastCompleted = reference?.runs.filter((run) => run.result.completed).at(-1);
   const referenceProduction = lastCompleted ? getProductionPerSecond(lastCompleted.result.state) : null;
+  const breakthroughJourneys = BREAKTHROUGH_SCENARIOS.map((scenario) => simulateBreakthroughJourney(scenario, maxSeconds));
+  const breakthroughSeed = breakthroughJourneys[0]?.beforeBreakthrough;
   return {
     formatVersion: 1,
     parameters: { balance: INITIAL_BALANCE, equipment: EQUIPMENT, prestige: PRESTIGE_BALANCE,
       skills: SKILLS, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
     runCount, maxSeconds, skillPlans: SKILL_PLANS, coverage: COVERAGE, campaigns, benchmarks,
     equipmentBaseline: EQUIPMENT_BASELINE,
-    expansion: lastCompleted?.result.state.runEarnedScore === INITIAL_BALANCE.scoreCap
-      ? simulateExpansion(lastCompleted.result.state) : [],
+    breakthroughJourneys,
+    expansion: breakthroughSeed ? simulateExpansion(breakthroughSeed) : [],
     projectionReference: referenceProduction === null ? null : {
       scenarioId: reference!.scenario.id, run: lastCompleted!.run, production: referenceProduction,
     },

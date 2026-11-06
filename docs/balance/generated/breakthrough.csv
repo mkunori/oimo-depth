@@ -1,0 +1,6 @@
+"scenario","completed","first_1m_seconds","permission_seconds","breakthrough_seconds","prestige_count_at_breakthrough","points_earned_before_breakthrough","expansion_seconds","total_seconds","idle_at_1e9_seconds","worker","cart","harvester","deepDrill","refinery"
+"breakthrough-active-60","true","720","2580","3000","5","10","13200","16200","57.30856868957027","109","71","48","17","6"
+"breakthrough-offline-6h","true","43200","216000","259200","5","10","43200","302400","17921.299831311455","61","42","33","7","5"
+"breakthrough-offline-12h","true","86400","432000","518400","5","10","86400","604800","41140.80043672911","66","51","37","12","7"
+"breakthrough-early-60","true","3060","2640","3060","10","10","13200","16260","57.30856868957027","109","71","48","17","6"
+"breakthrough-late-60","true","720","3600","3900","8","16","11820","15720","59.9179486711209","110","72","49","18","5"

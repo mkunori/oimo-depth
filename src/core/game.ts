@@ -5,20 +5,13 @@ import type { GameState } from './state';
 import { createInitialPermanent } from './state';
 import type { PermanentProgress } from './state';
 import { getSkillBonuses } from './skills';
+import { getScoreCap, SCORE_CAP_STAGES } from '../data/scoreCaps';
 
 export type PurchaseMode = 1 | 10 | 'MAX';
 
 export interface PurchaseQuote {
   readonly quantity: number;
   readonly totalCost: number;
-}
-
-/** 既定のゲームは初期上限。別上限はシミュレーターの明示的な仮定にだけ使用する。 */
-export interface EconomyContext { readonly scoreCap: number }
-export const INITIAL_ECONOMY: EconomyContext = Object.freeze({ scoreCap: INITIAL_BALANCE.scoreCap });
-
-function assertContext(context: EconomyContext): void {
-  if (context.scoreCap !== INITIAL_BALANCE.scoreCap && context.scoreCap !== 1_000_000_000) throw new RangeError('Unsupported economy cap.');
 }
 
 function assertNonNegativeFinite(value: number, name: string): void {
@@ -40,28 +33,30 @@ function getDefinition(id: EquipmentId): EquipmentDefinition {
   return EQUIPMENT[id];
 }
 
-function assertState(state: GameState, context: EconomyContext): void {
-  assertContext(context);
+function assertState(state: GameState): void {
+  const scoreCap = getScoreCap(state);
   assertNonNegativeFinite(state.imo, 'imo');
   assertNonNegativeFinite(state.runEarnedScore, 'runEarnedScore');
   const bonuses = getSkillBonuses(state.permanent);
   assertNonNegativeFinite(state.runStartingImo, 'runStartingImo');
   if (!Number.isSafeInteger(state.runStartingImo) || state.runStartingImo > bonuses.startingImo
     || state.imo > state.runEarnedScore + state.runStartingImo
-    || state.runEarnedScore > context.scoreCap) {
+    || state.runEarnedScore > scoreCap
+    || state.permanent.skillRanks.breakthrough < SCORE_CAP_STAGES[state.scoreCapStage].requiredSkillRank
+    || (state.scoreCapStage > 0 && state.runEarnedScore < SCORE_CAP_STAGES[state.scoreCapStage - 1]!.cap)) {
     throw new RangeError('Invalid run balance, starting grant, or SCORE.');
   }
   for (const id of EQUIPMENT_IDS) {
     assertCount(state.equipmentCounts[id]);
-    if (!getEquipmentAvailability(id, context).unlocked && state.equipmentCounts[id] !== 0) {
+    if (!getEquipmentAvailability(id, state).unlocked && state.equipmentCounts[id] !== 0) {
       throw new RangeError('Locked equipment cannot be owned in this cap stage.');
     }
   }
 }
 
 /** 単位時間の生産能力。上限到達後も能力自体は変わらず、収穫だけが止まる。 */
-export function getProductionPerSecond(state: GameState, context: EconomyContext = INITIAL_ECONOMY): number {
-  assertState(state, context);
+export function getProductionPerSecond(state: GameState): number {
+  assertState(state);
   const production = EQUIPMENT_IDS.reduce<number>(
     (total, id) => total + state.equipmentCounts[id] * EQUIPMENT[id].productionPerUnit * getEquipmentMilestones(id, state.equipmentCounts[id]).multiplier,
     INITIAL_BALANCE.baseProduction,
@@ -92,10 +87,9 @@ export function getEquipmentPurchaseGain(id: EquipmentId, ownedCount: number, pe
     - ownedCount * getEquipmentProductionPerUnit(id, permanent, ownedCount);
 }
 
-export function getEquipmentAvailability(id: EquipmentId, context: EconomyContext = INITIAL_ECONOMY) {
-  assertContext(context);
+export function getEquipmentAvailability(id: EquipmentId, state: Pick<GameState, 'scoreCapStage'> = { scoreCapStage: 0 }) {
   const requiredScoreCap = getDefinition(id).unlockAtScoreCap;
-  return { unlocked: context.scoreCap >= requiredScoreCap, requiredScoreCap };
+  return { unlocked: getScoreCap(state) >= requiredScoreCap, requiredScoreCap };
 }
 
 /** 割引適用後に1台ずつ切り上げる。恒久データ省略時はボーナスなしの価格。 */
@@ -110,10 +104,10 @@ export function getEquipmentPrice(id: EquipmentId, ownedCount: number, permanent
 }
 
 /** 実時間には触れず、経過秒数から収穫を計算する。入力は変更しない。 */
-export function advanceGame(state: GameState, elapsedSeconds: number, context: EconomyContext = INITIAL_ECONOMY): GameState {
+export function advanceGame(state: GameState, elapsedSeconds: number): GameState {
   assertNonNegativeFinite(elapsedSeconds, 'elapsedSeconds');
-  const production = getProductionPerSecond(state, context);
-  const remaining = context.scoreCap - state.runEarnedScore;
+  const production = getProductionPerSecond(state);
+  const remaining = getScoreCap(state) - state.runEarnedScore;
   if (elapsedSeconds === 0 || remaining === 0) {
     return state;
   }
@@ -122,7 +116,7 @@ export function advanceGame(state: GameState, elapsedSeconds: number, context: E
   const earned = elapsedSeconds >= remaining / production
     ? remaining
     : production * elapsedSeconds;
-  const runEarnedScore = Math.min(context.scoreCap, state.runEarnedScore + earned);
+  const runEarnedScore = Math.min(getScoreCap(state), state.runEarnedScore + earned);
   const actualEarned = runEarnedScore - state.runEarnedScore;
 
   return {
@@ -137,14 +131,13 @@ export function getPurchaseQuote(
   state: GameState,
   id: EquipmentId,
   mode: PurchaseMode,
-  context: EconomyContext = INITIAL_ECONOMY,
 ): PurchaseQuote {
-  assertState(state, context);
+  assertState(state);
   getDefinition(id);
   if (mode !== 1 && mode !== 10 && mode !== 'MAX') {
     throw new RangeError('Purchase mode must be 1, 10, or MAX.');
   }
-  if (!getEquipmentAvailability(id, context).unlocked) return { quantity: 0, totalCost: 0 };
+  if (state.runEarnedScore >= getScoreCap(state) || !getEquipmentAvailability(id, state).unlocked) return { quantity: 0, totalCost: 0 };
 
   const limit = mode === 'MAX' ? Number.MAX_SAFE_INTEGER : mode;
   let quantity = 0;
@@ -163,17 +156,16 @@ export function getPurchaseQuote(
   return { quantity, totalCost };
 }
 
-export function getAffordableQuantity(state: GameState, id: EquipmentId, context: EconomyContext = INITIAL_ECONOMY): number {
-  return getPurchaseQuote(state, id, 'MAX', context).quantity;
+export function getAffordableQuantity(state: GameState, id: EquipmentId): number {
+  return getPurchaseQuote(state, id, 'MAX').quantity;
 }
 
 export function purchaseEquipment(
   state: GameState,
   id: EquipmentId,
   mode: PurchaseMode,
-  context: EconomyContext = INITIAL_ECONOMY,
 ): GameState {
-  const { quantity, totalCost } = getPurchaseQuote(state, id, mode, context);
+  const { quantity, totalCost } = getPurchaseQuote(state, id, mode);
   if (quantity === 0) {
     return state;
   }

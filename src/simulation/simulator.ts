@@ -1,7 +1,7 @@
-import { advanceGame, getEquipmentAvailability, getEquipmentPrice, getProductionPerSecond, INITIAL_ECONOMY } from '../core/game';
-import type { EconomyContext } from '../core/game';
+import { advanceGame, getEquipmentAvailability, getEquipmentPrice, getProductionPerSecond } from '../core/game';
+import { getScoreCap } from '../data/scoreCaps';
 import { getPrestigeReward, prestigeGame } from '../core/prestige';
-import { createSave, OFFLINE_LIMIT_SECONDS, parseSave, serializeSave, settleOffline } from '../core/save';
+import { createSave, parseSave, serializeSave, settleOffline } from '../core/save';
 import { createInitialState } from '../core/state';
 import type { GameState } from '../core/state';
 import { INITIAL_BALANCE } from '../data/balance';
@@ -20,8 +20,6 @@ export interface Scenario {
   readonly equipment: EquipmentPolicy;
   readonly skillPlan: SkillPlan;
   readonly prestigeAt: 'early' | 'cap';
-  /** #20未実装部分の仮定試算専用。通常のcampaignでは初期上限のみ。 */
-  readonly economy?: EconomyContext;
   readonly equipmentIds?: readonly EquipmentId[];
 }
 
@@ -68,7 +66,6 @@ function positive(value: number, label: string): void {
 }
 
 export function validateScenario(scenario: Scenario): void {
-  getEquipmentAvailability('worker', scenario.economy);
   if (scenario.equipmentIds && (new Set(scenario.equipmentIds).size !== scenario.equipmentIds.length
     || scenario.equipmentIds.some((id) => !EQUIPMENT_IDS.includes(id)))) throw new RangeError('Invalid equipment selection.');
   if (!['online', 'offline'].includes(scenario.presence)
@@ -86,10 +83,10 @@ export function validateScenario(scenario: Scenario): void {
 export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: number): RunResult {
   validateScenario(scenario);
   positive(maxSeconds, 'maxSeconds');
-  const economy = scenario.economy ?? INITIAL_ECONOMY;
-  const equipmentIds = (scenario.equipmentIds ?? EQUIPMENT_IDS).filter((id) => getEquipmentAvailability(id, economy).unlocked);
-  getProductionPerSecond(initial, economy);
-  const target = scenario.prestigeAt === 'early' ? PRESTIGE_BALANCE.unlockScore : economy.scoreCap;
+  const scoreCap = getScoreCap(initial);
+  const equipmentIds = (scenario.equipmentIds ?? EQUIPMENT_IDS).filter((id) => getEquipmentAvailability(id, initial).unlocked);
+  getProductionPerSecond(initial);
+  const target = scenario.prestigeAt === 'early' ? PRESTIGE_BALANCE.unlockScore : scoreCap;
   let state = initial;
   let elapsed = 0;
   let observed = 0;
@@ -103,43 +100,39 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
   const trace: TracePoint[] = [];
 
   const record = (kind: TracePoint['kind']) => {
-    const production = getProductionPerSecond(state, economy);
+    const production = getProductionPerSecond(state);
     trace.push({ elapsedSeconds: elapsed, run: 1, kind, score: state.runEarnedScore, imo: state.imo, production,
-      actualProduction: state.runEarnedScore >= economy.scoreCap ? 0 : production,
-      prestigeCount: state.permanent.prestigeCount, scoreCap: economy.scoreCap, equipmentCounts: state.equipmentCounts });
+      actualProduction: state.runEarnedScore >= scoreCap ? 0 : production,
+      prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: state.equipmentCounts });
   };
   const invest = () => {
-    const result = investEquipment(state, scenario.equipment, economy, equipmentIds);
+    const result = investEquipment(state, scenario.equipment, equipmentIds);
     state = result.state;
     purchases += result.purchased;
     if (result.purchased > 0) purchaseDecisions += 1;
   };
   const advance = (seconds: number, isObservation: boolean) => {
     const before = state;
-    const rate = getProductionPerSecond(before, economy);
+    const rate = getProductionPerSecond(before);
     let applied = seconds;
-    if (scenario.presence === 'offline' && economy.scoreCap === INITIAL_BALANCE.scoreCap) {
+    if (scenario.presence === 'offline') {
       // 実際のエクスポート/読込と同じ検証を経由し、復帰時のコア関数を呼ぶ。
       const saved = parseSave(serializeSave(createSave(before, 0)));
       const result = settleOffline(saved, Math.round(seconds * 1_000));
       state = result.save.gameState;
       applied = result.report.appliedSeconds;
-    } else {
-      // 仮定の1e9段階は現行セーブでは受理しないため、純粋な生産と24h制限だけを評価する。
-      if (scenario.presence === 'offline') applied = Math.min(seconds, OFFLINE_LIMIT_SECONDS);
-      state = advanceGame(before, applied, economy);
-    }
+    } else state = advanceGame(before, seconds);
     const crossing = (threshold: number): Milestone | null => before.runEarnedScore < threshold && state.runEarnedScore >= threshold
       ? { productionSeconds: credited + (threshold - before.runEarnedScore) / rate, observedSeconds: elapsed + seconds } : null;
     if (isObservation) {
       score100k ??= crossing(PRESTIGE_BALANCE.unlockScore);
       score1m ??= crossing(INITIAL_BALANCE.scoreCap);
     }
-    const toCap = (economy.scoreCap - before.runEarnedScore) / rate;
-    if (before.runEarnedScore < economy.scoreCap && state.runEarnedScore >= economy.scoreCap) {
+    const toCap = (scoreCap - before.runEarnedScore) / rate;
+    if (before.runEarnedScore < scoreCap && state.runEarnedScore >= scoreCap) {
       trace.push({ elapsedSeconds: elapsed + Math.min(seconds, toCap), run: 1, kind: 'cap-reached',
         score: state.runEarnedScore, imo: state.imo, production: rate, actualProduction: 0,
-        prestigeCount: state.permanent.prestigeCount, scoreCap: economy.scoreCap, equipmentCounts: before.equipmentCounts });
+        prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: before.equipmentCounts });
     }
     idle += Math.max(0, applied - toCap);
     credited += applied;
@@ -153,7 +146,7 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
   record('decision');
   for (let decision = 0; state.runEarnedScore < target && elapsed < maxSeconds; decision += 1) {
     if (decision >= MAX_DECISIONS) throw new RangeError('Decision limit reached; increase visit interval or shorten horizon.');
-    const rate = getProductionPerSecond(state, economy);
+    const rate = getProductionPerSecond(state);
     let delta: number;
     if (scenario.visitSeconds !== null) delta = scenario.visitSeconds;
     else {
@@ -190,7 +183,6 @@ export interface CampaignRun {
 
 export function simulateCampaign(scenario: Scenario, runCount = 6, maxSeconds = 90 * 86_400) {
   validateScenario(scenario);
-  if (scenario.economy && scenario.economy.scoreCap !== INITIAL_BALANCE.scoreCap) throw new RangeError('Hypothetical expansion uses simulateRun, not real prestige campaigns.');
   if (!Number.isSafeInteger(runCount) || runCount < 1 || runCount > 100) throw new RangeError('runCount must be 1..100.');
   positive(maxSeconds, 'maxSeconds');
   let state = createInitialState();

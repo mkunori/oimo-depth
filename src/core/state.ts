@@ -1,6 +1,7 @@
 import type { EquipmentId } from '../data/equipment';
 import { createEmptyEquipmentCounts } from '../data/equipment';
 import type { SkillId } from '../data/skills';
+import type { ScoreCapStage } from '../data/scoreCaps';
 
 /** 転生で引き継ぐデータ。将来の恒久データはこの境界に追加する。 */
 export interface PermanentProgress {
@@ -10,7 +11,7 @@ export interface PermanentProgress {
 }
 
 export function createInitialPermanent(): PermanentProgress {
-  return { prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0 } };
+  return { prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0 } };
 }
 
 /** 転生時に初期化するデータ。初期所持芋は収穫累計とは別に管理する。 */
@@ -20,6 +21,7 @@ export interface RunState {
   /** 現周回の累計獲得量。購入では減らさず、収穫上限の判定に使う。 */
   readonly runEarnedScore: number;
   readonly runStartingImo: number;
+  readonly scoreCapStage: ScoreCapStage;
   readonly equipmentCounts: Readonly<Record<EquipmentId, number>>;
 }
 
@@ -32,6 +34,7 @@ export function createInitialState(): GameState {
     imo: 0,
     runEarnedScore: 0,
     runStartingImo: 0,
+    scoreCapStage: 0,
     equipmentCounts: createEmptyEquipmentCounts(),
     permanent: createInitialPermanent(),
   };
