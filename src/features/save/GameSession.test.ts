@@ -6,7 +6,59 @@ import { prestigeGame } from '../../core/prestige';
 import { GameSession } from './GameSession';
 import { SAVE_STORAGE_KEY } from './SaveRepository';
 import type { SaveStorage } from './SaveRepository';
-import { createAutomationReadyState, createBreakthroughReadyState } from '../../test/progress';
+import { createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState } from '../../test/progress';
+import { performDeepResearch, purchaseResearch } from '../../core/research';
+
+describe('research session transactions', () => {
+  it('persists breakthrough/upgrades/refund and restores through export/import without an extra purchase', () => {
+    const game = setup();
+    game.storage.value = serializeSave(createSave(createResearchReadyState(), START)); game.session.start();
+    const before = game.session.getSnapshot().gameState;
+    expect(game.session.deepResearch()).toBe(true);
+    expect(game.session.deepResearch()).toBe(false);
+    expect(game.session.getSnapshot().gameState.imo).toBe(before.imo);
+    expect(game.session.buyResearch('geology')).toBe(true);
+    expect(parseSave(game.storage.value!).gameState.researchRanks.geology).toBe(1);
+    const exported = parseSave(game.session.exportText());
+    const next = game.nextSession(); next.start();
+    expect(next.getSnapshot().gameState).toEqual(exported.gameState);
+    expect(next.importSave(exported)).toBe(true);
+    expect(next.resetResearch()).toBe(true);
+    expect(next.getSnapshot().gameState.imo).toBe(before.imo);
+    expect(next.getSnapshot().gameState.runEarnedScore).toBe(before.runEarnedScore);
+    expect(next.resetResearch()).toBe(false);
+  });
+
+  it.each(['breakthrough', 'upgrade', 'refund'] as const)('retains the prior state/raw save when %s cannot be written', (action) => {
+    const game = setup();
+    const ready = createResearchReadyState();
+    const initial = action === 'breakthrough' ? ready : action === 'upgrade' ? performDeepResearch(ready) : purchaseResearch(performDeepResearch(ready), 'geology');
+    game.storage.value = serializeSave(createSave(initial, START)); game.session.start();
+    const state = game.session.getSnapshot().gameState; const raw = game.storage.value;
+    game.storage.failWrites = true;
+    const succeeded = action === 'breakthrough' ? game.session.deepResearch() : action === 'upgrade' ? game.session.buyResearch('geology') : game.session.resetResearch();
+    expect(succeeded).toBe(false);
+    expect(game.session.getSnapshot().gameState).toBe(state);
+    expect(game.storage.value).toBe(raw);
+    expect(game.session.getSnapshot().status).toBe('unavailable');
+  });
+
+  it('settles old production before research, rejects hidden actions, and blocks stale-tab purchases', () => {
+    const game = setup(); const ready = performDeepResearch(createResearchReadyState());
+    game.storage.value = serializeSave(createSave(ready, START)); game.session.start();
+    game.elapse(60);
+    expect(game.session.buyResearch('geology')).toBe(true);
+    expect(game.session.getSnapshot().gameState.runEarnedScore).toBe(1e9 + 150);
+    game.session.hide();
+    expect(game.session.buyResearch('geology')).toBe(false);
+    expect(game.session.resetResearch()).toBe(false);
+    game.session.show();
+    const external = serializeSave(createSave(ready, START + 60_000)); game.storage.value = external;
+    expect(game.session.buyResearch('geology')).toBe(false);
+    expect(game.session.getSnapshot().status).toBe('conflict');
+    expect(game.storage.value).toBe(external);
+  });
+});
 
 const START = 1_700_000_000_000;
 
@@ -171,7 +223,7 @@ describe('prestige persistence and migration', () => {
     const game = setup();
     game.storage.value = JSON.stringify({ saveVersion: 1, savedAt: START - 1_000, gameState: { imo: 90, runEarnedScore: 100, equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } });
     game.session.start();
-    expect(JSON.parse(game.storage.value!).saveVersion).toBe(5);
+    expect(JSON.parse(game.storage.value!).saveVersion).toBe(6);
     expect(game.session.getSnapshot().gameState.imo).toBe(92);
     expect(game.session.getSnapshot().gameState.runEarnedScore).toBe(102);
     expect(game.session.getSnapshot().gameState.equipmentCounts.worker).toBe(1);
@@ -191,7 +243,7 @@ describe('prestige persistence and migration', () => {
 
   it.each([
     JSON.stringify({ saveVersion: 2, savedAt: START, gameState: { imo: 0, runEarnedScore: 0, equipmentCounts: { worker: 0, cart: 0, harvester: 0 } } }),
-    JSON.stringify({ saveVersion: 6, savedAt: START, gameState: createInitialState() }),
+    JSON.stringify({ saveVersion: 7, savedAt: START, gameState: createInitialState() }),
   ])('preserves malformed v2 or future text without fallback %#', (text) => {
     const game = setup();
     game.storage.value = text;

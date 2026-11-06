@@ -23,6 +23,12 @@ export function EquipmentIcon({ id }: { readonly id: EquipmentId }) {
       {id === 'refinery' && <>
         <path d="M6 40V20h15v20M27 40V13h15v27M3 40h42M11 20V7h5v13M27 24h-6M34 13V4h5v9M10 27h7M10 33h7M31 21h7M31 28h7M31 35h7" />
       </>}
+      {id === 'veinExtractor' && <>
+        <path d="M5 40h38M12 40V17l12-9 12 9v23M18 17h12v12H18zM24 29v11M5 28l7 5M36 33l7-5M20 4h8" />
+      </>}
+      {id === 'concentrator' && <>
+        <path d="M10 40h28M14 40V22L9 10h30l-5 12v18M14 22h20M20 27l-3 6 7 4 7-4-3-6M24 10V4M19 4h10" />
+      </>}
     </svg>
   );
 }

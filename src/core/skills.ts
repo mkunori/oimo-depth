@@ -3,6 +3,8 @@ import type { SkillId } from '../data/skills';
 import type { PermanentProgress } from './state';
 
 export function assertPermanentProgress(permanent: PermanentProgress): void {
+  if (typeof permanent.deepResearchUnlocked !== 'boolean'
+    || (permanent.deepResearchUnlocked && permanent.skillRanks.breakthrough < 1)) throw new RangeError('Invalid deep research permission.');
   if (!Number.isSafeInteger(permanent.prestigeCount) || permanent.prestigeCount < 0
     || !Number.isSafeInteger(permanent.unspentPoints) || permanent.unspentPoints < 0) {
     throw new RangeError('Invalid prestige count or points.');

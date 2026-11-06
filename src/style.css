@@ -182,3 +182,9 @@ textarea { display: block; width: 100%; min-width: 0; resize: vertical; padding:
   .purchase-button { grid-column: 2; min-height: 48px; flex-direction: row; gap: 12px; margin-top: 4px; }
   .purchase-reason { grid-column: 2; }
 }
+.research-panel { margin-top: 24px; }
+.research-panel p { line-height: 1.7; overflow-wrap: anywhere; }
+.research-nodes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; margin: 20px 0; }
+.research-node { padding: 16px; border: 1px solid var(--border, #d7d1c5); border-radius: 12px; }
+.research-node h3 span { display: block; font-size: .85em; font-weight: normal; }
+.research-panel button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

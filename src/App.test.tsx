@@ -10,7 +10,8 @@ import { SAVE_STORAGE_KEY } from './features/save/SaveRepository';
 import { advanceGame } from './core/game';
 import { prestigeGame, purchaseSkill } from './core/prestige';
 import type { GameState } from './core/state';
-import { createAutomationReadyState, createBreakthroughReadyState } from './test/progress';
+import { createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState } from './test/progress';
+import { performDeepResearch } from './core/research';
 import { performBreakthrough } from './core/breakthrough';
 
 let now = 0;
@@ -45,6 +46,48 @@ function renderGame() {
   return render(<StrictMode><App /></StrictMode>);
 }
 
+describe('research UI', () => {
+  it('keeps research locked before 1e9 and confirms a free no-reset breakthrough separately from prestige', () => {
+    seedGame(performBreakthrough(createBreakthroughReadyState()));
+    const view = renderGame();
+    expect((screen.getByRole('button', { name: '研究による突破' }) as HTMLButtonElement).disabled).toBe(true);
+    view.unmount();
+    const ready = createResearchReadyState(); seedGame(ready); renderGame();
+    fireEvent.click(screen.getByRole('button', { name: '研究による突破' }));
+    let dialog = screen.getByRole('dialog', { name: /研究による突破：リセットなし/ });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'キャンセル' }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.scoreCapStage).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: '研究による突破' }));
+    dialog = screen.getByRole('dialog', { name: /SCORE 1E9→1E12/ });
+    fireEvent.click(within(dialog).getByRole('button', { name: '無料で研究突破を実行' }));
+    const state = parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState;
+    expect(state).toEqual(performDeepResearch(ready));
+    expect(screen.getByLabelText('SCORE上限').textContent).toBe('1E12');
+    expect((screen.getByRole('button', { name: '研究による突破' }) as HTMLButtonElement).disabled).toBe(true);
+    tickAfter(1);
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.imo).toBe(ready.imo);
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('2.5');
+  });
+
+  it('purchases and refunds research, unlocks new devices, and explains the 1e12 stop', () => {
+    const ready = performDeepResearch(createResearchReadyState()); seedGame(ready);
+    const view = renderGame();
+    fireEvent.click(screen.getByRole('button', { name: /地層収穫学を強化/ }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.researchRanks.geology).toBe(1);
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('5');
+    fireEvent.click(screen.getByRole('button', { name: /研究強化を振り直す/ }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.imo).toBe(ready.imo);
+    fireEvent.click(screen.getByRole('button', { name: '地脈抽出機を1台購入' }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.equipmentCounts.veinExtractor).toBe(1);
+    view.unmount();
+    seedGame(advanceGame(ready, Number.MAX_VALUE)); renderGame();
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('1E12');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
+    expect(within(screen.getByRole('region', { name: '採掘' })).getByText(/さらに先の突破・上位転生は未実装/)).toBeTruthy();
+    expect((screen.getByRole('button', { name: /地層収穫学を強化/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
 describe('minimal mining game', () => {
   it('shows the initial balance, rate, score, labelled gauge, and equipment', () => {
     renderGame();
@@ -56,7 +99,7 @@ describe('minimal mining game', () => {
     const progress = screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement;
     expect(progress.value).toBe(0);
     expect(progress.max).toBe(1_000_000);
-    expect(within(screen.getByRole('region', { name: '設備' })).getAllByRole('article')).toHaveLength(5);
+    expect(within(screen.getByRole('region', { name: '設備' })).getAllByRole('article')).toHaveLength(7);
     for (const button of within(screen.getByRole('region', { name: '設備' })).getAllByRole('button')) {
       expect((button as HTMLButtonElement).disabled).toBe(true);
     }
@@ -484,7 +527,7 @@ describe('breakthrough UI', () => {
     view.unmount(); renderGame();
     expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1e9);
     expect((screen.getByRole('button', { name: '限界突破する' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText(/1E9より先の限界突破は未実装/)).toBeTruthy();
+    expect(screen.getByText(/次は地層研究の深層解析/)).toBeTruthy();
   });
 
   it('keeps the dialog and capped state if saving the transition fails', () => {
@@ -510,7 +553,7 @@ describe('breakthrough UI', () => {
     tickAfter(1e9);
     expect(screen.getByLabelText('現在SCORE').textContent).toBe('1E9');
     expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
-    expect(screen.getByText(/SCORE 1E9到達/)).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: '採掘' })).getByText(/SCORE 1E9到達/)).toBeTruthy();
     confirmPrestige(2);
     expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1e6);
     expect(screen.getByLabelText('限界突破の心得のランク').textContent).toBe('1');

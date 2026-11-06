@@ -9,6 +9,7 @@ import { prestigeGame, purchaseSkill } from './prestige';
 import { EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS } from '../data/equipment';
 import { createBreakthroughReadyState } from '../test/progress';
 import { performBreakthrough } from './breakthrough';
+import { performDeepResearch } from './research';
 
 describe('equipment milestones', () => {
   it.each(INITIAL_EQUIPMENT_IDS)('applies cumulative bonuses at exactly 10/25/50 for %s', (id) => {
@@ -41,7 +42,7 @@ describe('equipment milestones', () => {
 
   it.each(EQUIPMENT_IDS)('keeps individual and bulk cost/count/effects identical for %s', (id) => {
     for (const count of [0, 9, 24, 49]) {
-      const state = { ...performBreakthrough(createBreakthroughReadyState()), imo: 1e9 - 1, runEarnedScore: 1e9 - 1,
+      const state = { ...performDeepResearch(advanceGame(performBreakthrough(createBreakthroughReadyState()), 1e9)), imo: 1e12 - 1, runEarnedScore: 1e12 - 1,
         equipmentCounts: { ...createInitialState().equipmentCounts, [id]: count } };
       for (const mode of [1, 10, 'MAX'] as const) {
         const quote = getPurchaseQuote(state, id, mode);

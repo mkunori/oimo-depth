@@ -10,9 +10,10 @@
 | --- | --- |
 | `imo` | 設備購入に使う残高。有限かつ `0 <= imo <= runEarnedScore + runStartingImo` |
 | `runEarnedScore` | 現周回で収穫した芋の累計。購入で減らない。有限かつ現周回の上限以下 |
-| `equipmentCounts` | `worker` / `cart` / `harvester` / `deepDrill` / `refinery` の所有数。非負の安全な整数。後半2種は初期上限で0のみ許可 |
+| `equipmentCounts` | 初期3種、段階1の2種、段階2の`veinExtractor` / `concentrator`の所有数。非負の安全な整数。未解禁設備の所有は拒否 |
 | `runStartingImo` | この周回の開始時に支給した芋。SCORE に含めない |
-| `scoreCapStage` | 現周回の上限段階。0: 1e6、1: 1e9。段階1には突破権と前段階の到達が必要 |
+| `scoreCapStage` | 現周回の上限段階。0: 1e6、1: 1e9、2: 1e12。各段階には権限と前段階の到達が必要 |
+| `researchRanks` | 周回の研究強化2種のランク。段階2だけ0〜3、それ以外は0 |
 | `permanent` | 転生回数・未使用ポイント・取得スキル。転生で維持する |
 | `automation` | 全体ON/OFF・方針・設備別設定・指定優先順。周回と分け、転生で維持する |
 | `automationRemainder` | 自動精算の補償加算端数（任意）。許容範囲を検証し保存、転生で消去する |
@@ -82,7 +83,7 @@ const purchased = purchaseEquipment(harvested, 'worker', 10);
 
 - 巨大数対応: `GameState` の金額・累計、`EquipmentDefinition` の価格・生産量、`src/core/game.ts` の演算・比較・丸め・有限値検証をまとめて任意精度の数値表現へ変更してください。価格指数計算も含むため、型だけの変更では対応できません。
 - 倍率ボーナス: `getProductionPerSecond` / `getEquipmentMilestones` / `getSkillBonuses` に集約しています。ボーナス値自体は保存せず所有数・スキルから算出します。
-- 転生・限界突破: 初期転生は `src/core/prestige.ts`、権利は `src/data/skills.ts`、1e6→1e9の非リセット遷移は `src/core/breakthrough.ts` に実装しています。段階表は `src/data/scoreCaps.ts`。1e12以降は未実装です。
+- 転生・限界突破: 初期転生は `src/core/prestige.ts`、権利は `src/data/skills.ts`、1e6→1e9は `src/core/breakthrough.ts`、1e9→1e12と強化・返金は `src/core/research.ts`。研究権限は恒久、強化は周回。段階表は `src/data/scoreCaps.ts`。詳しくは [地層研究](research.md)。1e12より先は未実装です。
 - オフライン計算・保存: `src/core/save.ts` が保存形式の検証と経過時間の上限制御を行い、`advanceGame` に渡します。保存領域・時計・React との接続は `src/features/save/` に分離しています。詳細は [保存とオフライン進行](save.md) を参照してください。
 - 深度・地層・上位のスキル枝・装備・上位転生のモデルは仕様確定を待ちます。
 

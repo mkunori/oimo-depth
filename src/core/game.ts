@@ -8,6 +8,8 @@ import { getSkillBonuses } from './skills';
 import { getScoreCap, SCORE_CAP_STAGES } from '../data/scoreCaps';
 import { readAutomation } from '../data/automation';
 import type { AutomationSettings } from '../data/automation';
+import { createEmptyResearch, getResearchSpent, RESEARCH, RESEARCH_IDS, researchMultiplier } from '../data/research';
+import type { ResearchRanks } from '../data/research';
 
 export type PurchaseMode = 1 | 10 | 'MAX';
 
@@ -40,6 +42,11 @@ function assertState(state: GameState): void {
   assertNonNegativeFinite(state.imo, 'imo');
   assertNonNegativeFinite(state.runEarnedScore, 'runEarnedScore');
   const bonuses = getSkillBonuses(state.permanent);
+  if (!state.researchRanks || RESEARCH_IDS.some((id) => !Number.isSafeInteger(state.researchRanks[id])
+    || state.researchRanks[id] < 0 || state.researchRanks[id] > RESEARCH[id].costs.length)
+    || (state.scoreCapStage < 2 && RESEARCH_IDS.some((id) => state.researchRanks[id] !== 0))
+    || (state.scoreCapStage === 2 && !state.permanent.deepResearchUnlocked)
+    || state.imo + getResearchSpent(state.researchRanks) > state.runEarnedScore + state.runStartingImo + 0.001) throw new RangeError('Invalid research progress.');
   readAutomation(state.automation);
   if (state.automation.enabled && state.permanent.skillRanks.automation === 0) throw new RangeError('Automation skill is required.');
   assertNonNegativeFinite(state.runStartingImo, 'runStartingImo');
@@ -68,16 +75,18 @@ function assertState(state: GameState): void {
 export function getProductionPerSecond(state: GameState): number {
   assertState(state);
   const production = EQUIPMENT_IDS.reduce<number>(
-    (total, id) => total + state.equipmentCounts[id] * EQUIPMENT[id].productionPerUnit * getEquipmentMilestones(id, state.equipmentCounts[id]).multiplier,
-    INITIAL_BALANCE.baseProduction,
+    (total, id) => total + state.equipmentCounts[id] * EQUIPMENT[id].productionPerUnit * getEquipmentMilestones(id, state.equipmentCounts[id]).multiplier
+      * researchMultiplier(state.researchRanks, id === 'veinExtractor' || id === 'concentrator'),
+    INITIAL_BALANCE.baseProduction * researchMultiplier(state.researchRanks),
   ) * getSkillBonuses(state.permanent).productionMultiplier;
   assertNonNegativeFinite(production, 'production');
   return production;
 }
 
 /** 1台あたりの加算生産量。倍率を含めてUIへ返す。 */
-export function getEquipmentProductionPerUnit(id: EquipmentId, permanent: PermanentProgress = createInitialPermanent(), ownedCount = 0): number {
-  return getDefinition(id).productionPerUnit * getSkillBonuses(permanent).productionMultiplier * getEquipmentMilestones(id, ownedCount).multiplier;
+export function getEquipmentProductionPerUnit(id: EquipmentId, permanent: PermanentProgress = createInitialPermanent(), ownedCount = 0, research: ResearchRanks = createEmptyResearch()): number {
+  return getDefinition(id).productionPerUnit * getSkillBonuses(permanent).productionMultiplier * getEquipmentMilestones(id, ownedCount).multiplier
+    * researchMultiplier(research, id === 'veinExtractor' || id === 'concentrator');
 }
 
 /** その設備の全所有台数へ、達成済みの倍率を乗算して適用する。基礎生産は対象外。 */
@@ -91,10 +100,10 @@ export function getEquipmentMilestones(id: EquipmentId, ownedCount: number) {
 }
 
 /** 次の1台により既存台数へ乗るボーナスも含めた、生産量の増分。 */
-export function getEquipmentPurchaseGain(id: EquipmentId, ownedCount: number, permanent: PermanentProgress): number {
+export function getEquipmentPurchaseGain(id: EquipmentId, ownedCount: number, permanent: PermanentProgress, research: ResearchRanks = createEmptyResearch()): number {
   assertCount(ownedCount + 1);
-  return (ownedCount + 1) * getEquipmentProductionPerUnit(id, permanent, ownedCount + 1)
-    - ownedCount * getEquipmentProductionPerUnit(id, permanent, ownedCount);
+  return (ownedCount + 1) * getEquipmentProductionPerUnit(id, permanent, ownedCount + 1, research)
+    - ownedCount * getEquipmentProductionPerUnit(id, permanent, ownedCount, research);
 }
 
 export function getEquipmentAvailability(id: EquipmentId, state: Pick<GameState, 'scoreCapStage'> = { scoreCapStage: 0 }) {
@@ -225,8 +234,8 @@ function nextAutomaticEquipment(state: GameState): EquipmentId | undefined {
   const ids = EQUIPMENT_IDS.filter((id) => settings.equipment[id] && getEquipmentAvailability(id, state).unlocked);
   if (settings.policy === 'balanced') return ids.sort((a, b) => state.equipmentCounts[a] - state.equipmentCounts[b])[0];
   const price = (id: EquipmentId) => getEquipmentPrice(id, state.equipmentCounts[id], state.permanent);
-  if (settings.policy === 'efficient') return ids.sort((a, b) => price(a) / getEquipmentPurchaseGain(a, state.equipmentCounts[a], state.permanent)
-    - price(b) / getEquipmentPurchaseGain(b, state.equipmentCounts[b], state.permanent))[0];
+  if (settings.policy === 'efficient') return ids.sort((a, b) => price(a) / getEquipmentPurchaseGain(a, state.equipmentCounts[a], state.permanent, state.researchRanks)
+    - price(b) / getEquipmentPurchaseGain(b, state.equipmentCounts[b], state.permanent, state.researchRanks))[0];
   const ordered = settings.priority.filter((id) => ids.includes(id));
   return ordered.find((id) => price(id) <= state.imo) ?? ordered.sort((a, b) => price(a) - price(b))[0];
 }
