@@ -11,6 +11,7 @@ import { createEmptyResearch, getResearchSpent, RESEARCH, RESEARCH_IDS, research
 import type { ResearchRanks } from '../data/research';
 import { GameNumber, gn, nonNegativeGameNumber, toElapsedSeconds } from './numbers';
 import { SKILLS } from '../data/skills';
+import { advanceExcavation, DepthProgressError } from './excavation';
 
 export type PurchaseMode = 1 | 10 | 'MAX';
 export interface PurchaseQuote { readonly quantity: number; readonly totalCost: GameNumber }
@@ -166,8 +167,15 @@ function advanceProduction(state: GameState, seconds: number, rate: GameNumber):
   const runEarnedScore = capped ? cap : score.value.min(cap);
   const imo = balance.value.max(0).min(runEarnedScore.add(state.runStartingImo));
   const productionRemainder = { score: capped ? gn(0) : score.debt, imo: balance.debt.add(imo.subtract(balance.value)) };
+  const activeSeconds = capped ? (getAmountSeconds(remaining, rate, seconds) ?? seconds) : seconds;
+  let permanent;
+  try { permanent = advanceExcavation(state, activeSeconds); }
+  catch (error) {
+    if (error instanceof DepthProgressError) throw new NumericProgressError(error.message);
+    throw error;
+  }
   // Tiny additions remain bounded debt until they become representable; they never grant affordability credit.
-  return { ...state, runEarnedScore, imo, productionRemainder };
+  return { ...state, runEarnedScore, imo, productionRemainder, permanent };
 }
 
 /** Pure budget quote also supports future prices beyond the current SCORE cap. */

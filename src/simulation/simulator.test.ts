@@ -1,3 +1,4 @@
+import { withoutDepth } from '../test/depth';
 import { testAmount as gn, stringifyTestSave } from '../test/amounts';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -17,6 +18,7 @@ import { assertV6BalanceBaseline } from '../test/migrationBaseline';
 
 const idle: Scenario = { id: 'test', label: 'analytic baseline', visitSeconds: null,
   presence: 'online', equipment: 'none', skillPlan: 'save', prestigeAt: 'cap' };
+let defaultSuite: ReturnType<typeof runSuite> | undefined;
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -66,7 +68,7 @@ describe('event-driven simulation', () => {
     expect(run.state).toEqual(actual.save.gameState);
     expect(run.creditedSeconds).toBe(Math.min(seconds, 86_400));
     expect(run.discardedOfflineSeconds).toBe(Math.max(0, seconds - 86_400));
-    expect(run.state.permanent).toEqual(state.permanent);
+    expect(withoutDepth(run.state.permanent)).toEqual(withoutDepth(state.permanent));
   });
 
   it('records cap idle time while still waiting for the scheduled return', () => {
@@ -102,12 +104,29 @@ describe('event-driven simulation', () => {
     vi.spyOn(Date, 'now').mockImplementation(() => { throw new Error('ambient clock'); });
     vi.spyOn(Math, 'random').mockImplementation(() => { throw new Error('randomness'); });
     const first = runSuite();
+    defaultSuite = first;
     assertV6BalanceBaseline(first);
     const second = runSuite();
     expect(first).toEqual(second);
     expect(first.campaigns).toHaveLength(15);
     expect(first.research).toHaveLength(18);
     expect(first.rootConnections).toHaveLength(13);
+    expect(first.depth.campaigns).toHaveLength(6);
+    expect(first.depth.late).toHaveLength(6);
+    for (const trial of first.depth.campaigns) {
+      expect(trial.result.completedRuns).toBe(6);
+      expect(trial.result.state.permanent.depthMeters).toBeGreaterThan(100);
+      if (trial.digResearch) {
+        const control = first.depth.campaigns.find((other) => !other.digResearch && other.scenario.visitSeconds === trial.scenario.visitSeconds)!;
+        expect(trial.result.state.permanent.depthMeters).toBeGreaterThan(control.result.state.permanent.depthMeters);
+      }
+    }
+    for (const trial of first.depth.late) {
+      expect(trial.result.completed).toBe(true);
+      expect(trial.afterPrestige.permanent.depthMeters).toBe(trial.result.state.permanent.depthMeters);
+      expect(trial.resumed.state.permanent.depthMeters).toBeGreaterThan(trial.afterPrestige.permanent.depthMeters);
+      if (trial.digResearch) expect(trial.result.state.permanent.depthMeters).toBeGreaterThan(100000);
+    }
     for (const trial of first.rootConnections) {
       expect(trial.result.completed).toBe(true);
       expect(trial.initialState.permanent.deepResearchCount).toBe(1);
@@ -214,12 +233,13 @@ describe('simulation policy boundaries', () => {
 
 describe('equipment growth comparison', () => {
   it('compares actual automation policies from equal seeds, with a low-cost unlock path', () => {
-    const suite = runSuite();
+    // Reuse the deterministic immutable fixture; filtered runs can still build it.
+    const suite = defaultSuite ?? runSuite();
     expect(suite.automation.trials).toHaveLength(24);
     expect(suite.automation.journeys).toHaveLength(12);
     for (const trial of suite.automation.trials) {
       expect(trial.result.completed).toBe(true);
-      expect(trial.result.state.permanent).toEqual(trial.initialState.permanent);
+      expect(withoutDepth(trial.result.state.permanent)).toEqual(withoutDepth(trial.initialState.permanent));
       expect(trial.result.state.scoreCapStage).toBe(trial.stage);
       expect(trial.result.trace.every((point) => point.score.lte(point.scoreCap))).toBe(true);
       expect(trial.result.automaticPurchases > 0).toBe(trial.policy !== 'off');
@@ -230,7 +250,7 @@ describe('equipment growth comparison', () => {
       for (const trial of inputs) {
         expect(trial.initialState.equipmentCounts).toEqual(inputs[0]!.initialState.equipmentCounts);
         expect(trial.initialState.imo).toBeAmount(inputs[0]!.initialState.imo);
-        expect(trial.initialState.permanent).toEqual(inputs[0]!.initialState.permanent);
+        expect(withoutDepth(trial.initialState.permanent)).toEqual(withoutDepth(inputs[0]!.initialState.permanent));
       }
     }
     for (const journey of suite.automation.journeys) {
@@ -268,7 +288,7 @@ describe('equipment growth comparison', () => {
       expect(journey.beforeBreakthrough?.scoreCapStage).toBe(0);
       expect(journey.beforeBreakthrough?.runEarnedScore).toBeAmount(1e6);
       expect(journey.afterBreakthrough).toEqual({ ...journey.beforeBreakthrough, scoreCapStage: 1, permanent: { ...journey.beforeBreakthrough!.permanent, maxDiscoveredStage: 1 } });
-      expect(journey.state.permanent).toEqual({ ...journey.beforeBreakthrough!.permanent, maxDiscoveredStage: 1 });
+      expect(withoutDepth(journey.state.permanent)).toEqual(withoutDepth({ ...journey.beforeBreakthrough!.permanent, maxDiscoveredStage: 1 }));
       expect(journey.state.runEarnedScore).toBeAmount(1e9);
       expect(journey.expansion!.state.equipmentCounts.deepDrill).toBeGreaterThan(0);
       expect(journey.expansion!.trace.at(-1)?.actualProduction).toBeAmount(0);
@@ -285,7 +305,7 @@ describe('equipment growth comparison', () => {
       expect(trial.actualSaveSupported).toBe(true);
       expect(trial.result.completed).toBe(true);
       expect(trial.result.state.runEarnedScore).toBeAmount(1e9);
-      expect(trial.result.state.permanent).toEqual({ ...seed.permanent, maxDiscoveredStage: 1 });
+      expect(withoutDepth(trial.result.state.permanent)).toEqual(withoutDepth({ ...seed.permanent, maxDiscoveredStage: 1 }));
       expect(trial.result.trace.every((point) => point.score.lte(1e9))).toBe(true);
       if (trial.policy === 'expanded') {
         expect(trial.result.state.equipmentCounts.deepDrill).toBeGreaterThan(0);

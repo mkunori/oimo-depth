@@ -2,8 +2,10 @@ import { SKILLS, SKILL_IDS, isEnhancementSkill } from '../data/skills';
 import type { SkillId } from '../data/skills';
 import type { PermanentProgress } from './state';
 import { gn } from './numbers';
+import { assertExcavation } from './excavation';
 
 export function assertPermanentProgress(permanent: PermanentProgress, allowHistoricalUnlocks = true): void {
+  assertExcavation(permanent);
   if (![0, 1, 2, 3].includes(permanent.maxDiscoveredStage)
     || typeof permanent.rootConnectionUnlocked !== 'boolean'
     || permanent.rootConnectionUnlocked !== (permanent.maxDiscoveredStage === 3)

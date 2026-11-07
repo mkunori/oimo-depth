@@ -71,6 +71,18 @@ progress::-moz-progress-bar { background: var(--green); }
 .shop-note { font-size: 11px; color: var(--muted); margin: 9px 0 4px; }
 .equipment-list { list-style: none; margin: 0; padding: 0; }
 .root-link-summary { border: 1px solid var(--line); padding: 16px; margin: 16px 0; font-size: 13px; }
+.depth-panel { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 20px; font-size: 13px; }
+.depth-panel h3 { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.depth-panel h3 svg { width: 28px; height: 28px; }
+.depth-stats { display: flex; flex-wrap: wrap; gap: 16px 28px; margin: 16px 0; }
+.depth-stats dd { margin: 4px 0; font-size: 17px; font-weight: 650; }
+.depth-panel > p, .depth-panel details p { margin-top: 10px; }
+.depth-panel summary { cursor: pointer; min-height: 44px; padding: 12px 0; }
+.depth-panel summary:focus-visible { outline: 3px solid #a94e19; outline-offset: 3px; }
+.depth-panel ul { padding-left: 20px; }
+.depth-panel li { margin-top: 10px; }
+.dig-research-node { border-top: 1px solid var(--line); padding: 12px 0; }
+.dig-research-node h4 { margin: 0 0 10px; }
 .root-link-summary h3 { font-size: 15px; }
 .root-link-summary p { margin-top: 8px; }
 .equipment-list li + li { border-top: 1px solid var(--line); }

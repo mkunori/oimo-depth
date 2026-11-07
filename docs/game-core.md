@@ -17,6 +17,7 @@
 | `scoreCapStage` | 現周回の上限段階。0: 1e6、1: 1e9、2: 1e12、3: 1e15。各段階には権限と前段階の到達が必要 |
 | `researchRanks` | 周回の研究強化2種のランク。段階2だけ0〜3、それ以外は0 |
 | `postDeepResearchSkillLock` | 解析後の強化型購入制限。通常転生でfalse、累計4回目以降の解析では制限なし |
+| `permanent.depthMeters`, `permanent.depthRemainder`, `permanent.digResearchRanks` | 恒久深度・補償端数・任意の掘削研究。SCORE稼働時間だけ進み、転生/突破で保持 |
 | `permanent.rootConnectionUnlocked`, `permanent.maxDiscoveredStage` | 第3突破権と実到達の最大発見段階。現在段階と分離して保持 |
 | `permanent.deepResearchCount` | 非負安全整数の解析累計。権限・転生履歴と整合し、転生で維持 |
 | `permanent` | 転生回数・未使用ポイント・取得スキル。転生で維持する |
@@ -90,7 +91,7 @@ const purchased = purchaseEquipment(harvested, 'worker', 10);
 - 倍率ボーナス: `getProductionPerSecond` / `getEquipmentMilestones` / `getSkillBonuses` に集約しています。ボーナス値自体は保存せず所有数・スキルから算出します。
 - 転生・限界突破: 初期転生は `src/core/prestige.ts`、権利は `src/data/skills.ts`、1e6→1e9は `src/core/breakthrough.ts`、1e9→1e12と強化・返金は `src/core/research.ts`。研究権限は恒久、強化は周回。段階表は `src/data/scoreCaps.ts`。1e12→1e15は `src/core/rootConnection.ts` です。詳しくは [地層研究](research.md)・[設備連携](root-connection.md)。1e15より先は未実装です。
 - オフライン計算・保存: `src/core/save.ts` が保存形式の検証と経過時間の上限制御を行い、`advanceGame` に渡します。保存領域・時計・React との接続は `src/features/save/` に分離しています。詳細は [保存とオフライン進行](save.md) を参照してください。
-- 深度・地層・上位のスキル枝・装備・上位転生のモデルは仕様確定を待ちます。
+- 深度・地層・掘削研究は [DEPTH](depth.md) の独立した恒久進行です。上位のスキル枝・装備・上位転生は未実装です。
 
 テストは `npm test`、型チェックは `npm run typecheck`、本番ビルドは `npm run build` で実行します。
 

@@ -8,6 +8,8 @@ import { RootConnectionControl } from '../prestige/RootConnectionControl';
 import type { GameState } from '../../core/state';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../../data/equipment';
 import { getPrestigeReward } from '../../core/prestige';
+import { DepthPanel } from './DepthPanel';
+import type { DigResearchId } from '../../data/depth';
 
 interface MiningPanelProps {
   readonly state: GameState;
@@ -16,9 +18,11 @@ interface MiningPanelProps {
   readonly isPaused: boolean;
   readonly onBreakthrough: () => boolean;
   readonly onRootConnection: () => boolean;
+  readonly onDigResearch: (id: DigResearchId) => boolean;
+  readonly depthNotice: string | null;
 }
 
-export function MiningPanel({ state, production, isCapped, isPaused, onBreakthrough, onRootConnection }: MiningPanelProps) {
+export function MiningPanel({ state, production, isCapped, isPaused, onBreakthrough, onRootConnection, onDigResearch, depthNotice }: MiningPanelProps) {
   const scoreCap = getScoreCap(state);
   const affordable = EQUIPMENT_IDS.find(
     (id) => getEquipmentAvailability(id, state).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent).lte(state.imo),
@@ -64,6 +68,7 @@ export function MiningPanel({ state, production, isCapped, isPaused, onBreakthro
         {isPaused ? 'セーブの確認が必要です — 採掘を一時停止しています' : isCapped ? '上限到達 — 収穫が停止しました' : '自動採掘中 — 芋を収穫しています'}
       </p>
       {isCapped && <p className="capacity-note">設備の生産能力は {formatNumber(production)} 芋 / 秒です。SCORE 上限のため、これ以上は収穫できません。</p>}
+      <DepthPanel state={state} isStopped={isCapped || isPaused} notice={depthNotice} onPurchase={onDigResearch} />
       <aside className="next-goal" aria-labelledby="goal-title">
         <h3 id="goal-title">次の目標</h3>
         <p>{goal}</p>

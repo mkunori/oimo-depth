@@ -11,8 +11,10 @@ import type { AutomationSettings } from '../data/automation';
 import { createEmptyResearch, RESEARCH_IDS } from '../data/research';
 import type { ResearchRanks } from '../data/research';
 import { assertPermanentProgress } from './skills';
+import { createEmptyDigResearch, DIG_RESEARCH_IDS } from '../data/depth';
+import type { DigResearchRanks } from '../data/depth';
 
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -28,6 +30,7 @@ export interface OfflineReport {
   readonly reachedScore: GameNumber;
   readonly clockReversed: boolean;
   readonly automaticPurchases: number;
+  readonly earnedDepth: number;
 }
 
 export class SaveDataError extends Error {}
@@ -47,7 +50,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = SAVE_VERSION, internal = false): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 = SAVE_VERSION, internal = false): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (state.imo === undefined || state.runEarnedScore === undefined) {
@@ -82,6 +85,13 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     if (version >= 9 && (typeof savedPermanent.rootConnectionUnlocked !== 'boolean'
       || ![0, 1, 2, 3].includes(savedPermanent.maxDiscoveredStage as number))) throw new SaveDataError('発見履歴・根脈接続権が正しくありません。');
     permanent = { prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks,
+      depthMeters: version >= 10 ? savedPermanent.depthMeters as number : 0,
+      depthRemainder: version >= 10 ? savedPermanent.depthRemainder as number : 0,
+      digResearchRanks: version >= 10 ? (() => {
+        const dig = record(savedPermanent.digResearchRanks);
+        if (DIG_RESEARCH_IDS.some((id) => typeof dig[id] !== 'number')) throw new SaveDataError('掘削研究が正しくありません。');
+        return Object.fromEntries(DIG_RESEARCH_IDS.map((id) => [id, dig[id]])) as DigResearchRanks;
+      })() : createEmptyDigResearch(),
       rootConnectionUnlocked: version >= 9 ? savedPermanent.rootConnectionUnlocked as boolean : false,
       maxDiscoveredStage: version >= 9 ? savedPermanent.maxDiscoveredStage as ScoreCapStage
         : version >= 6 && savedPermanent.deepResearchUnlocked ? 2 : version >= 4 && state.scoreCapStage === 1 ? 1 : 0,
@@ -164,7 +174,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   try { return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt)); }
@@ -195,6 +205,7 @@ export function settleOffline(save: SaveData, now: number, traceAutomation = fal
     reachedScore: gameState.runEarnedScore,
     clockReversed: currentTime < valid.savedAt,
     automaticPurchases: progress?.purchaseCount ?? 0,
+    earnedDepth: gameState.permanent.depthMeters - valid.gameState.permanent.depthMeters,
   };
   // 時計が戻った場合も保存時刻を巻き戻さず、同じ時間帯の再精算を避ける。
   return { save: createSave(gameState, Math.max(currentTime, valid.savedAt)), report, progress };

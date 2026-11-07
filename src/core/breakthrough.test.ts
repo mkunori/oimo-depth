@@ -1,3 +1,4 @@
+import { withoutDepth } from '../test/depth';
 import { testAmount as gn, stringifyTestSave } from '../test/amounts';
 
 import { describe, expect, it } from 'vitest';
@@ -132,7 +133,7 @@ describe('breakthrough persistence and migration', () => {
     if (version >= 2) {
       expect(save.gameState.permanent.prestigeCount).toBe(5);
       expect(save.gameState.permanent.unspentPoints).toBe(3);
-      expect(purchaseSkill(save.gameState, 'breakthrough').permanent).toEqual(current.permanent);
+      expect(withoutDepth(purchaseSkill(save.gameState, 'breakthrough').permanent)).toEqual(withoutDepth(current.permanent));
     }
   });
 

@@ -50,6 +50,31 @@ function renderGame() {
 }
 
 describe('research UI', () => {
+  it('hides undiscovered strata/rewards/research, reveals only reached content, and preserves paid digging upgrades on prestige', () => {
+    let view = renderGame();
+    expect(screen.getByLabelText('DEPTH').textContent).toBe('0');
+    expect(view.container.innerHTML).not.toMatch(/粘土層|岩盤層|地脈層|根脈層|根源領域|基本掘削研究|地脈掘削研究|連携掘削補助/);
+    expect(screen.getByText(/次の発見 ？？？ まで 10 m/)).toBeTruthy();
+    tickAfter(401);
+    expect(screen.getByText(/粘土層を発見しました/)).toBeTruthy();
+    view.unmount(); view = renderGame();
+    expect(screen.queryByText(/粘土層を発見しました/)).toBeNull();
+    view.unmount();
+    const initial = createInitialState();
+    seedGame({ ...initial, imo: gn(1e5), runEarnedScore: gn(1e5), permanent: { ...initial.permanent, depthMeters: 100 } });
+    view = renderGame();
+    expect(screen.getByText('岩盤層', { selector: 'strong' })).toBeTruthy();
+    expect(view.container.innerHTML).not.toMatch(/地脈層|根脈層|根源領域|地脈掘削研究|連携掘削補助/);
+    fireEvent.click(screen.getByText('掘削研究（任意・恒久）'));
+    fireEvent.click(screen.getByRole('button', { name: /基本掘削研究を強化/ }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.permanent.digResearchRanks.basic).toBe(1);
+    expect(screen.getByLabelText('所持芋').textContent).toBe('90,000');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: '転生する' })); fireEvent.click(screen.getByRole('button', { name: '転生を実行（1pt）' }));
+    expect(screen.getByLabelText('DEPTH').textContent).toBe('100');
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.permanent.digResearchRanks.basic).toBe(1);
+  });
+
   it('keeps undiscovered root devices out of HTML/settings, reveals them only on confirmed discovery and retains names after prestige', () => {
     const initial = createInitialState(); seedGame({ ...initial, automation: { ...initial.automation, policy: 'priority' } });
     let view = renderGame();

@@ -91,7 +91,7 @@ describe('root connection and equipment links', () => {
     old.gameState.automation.priority = old.gameState.automation.priority.filter((id: string) => !['rootRelay', 'coreChamber'].includes(id)).reverse();
     const migrated = parseSave(JSON.stringify(old));
     expect(migrated.saveVersion).toBe(SAVE_VERSION); expect(migrated.savedAt).toBe(1234);
-    expect(migrated.gameState).toEqual({ ...current, automation: { ...current.automation, equipment: { ...current.automation.equipment, cart: false }, priority: [...old.gameState.automation.priority, 'rootRelay', 'coreChamber'] } });
+    expect(migrated.gameState).toEqual({ ...current, permanent: { ...current.permanent, depthMeters: 0, depthRemainder: 0 }, automation: { ...current.automation, equipment: { ...current.automation.equipment, cart: false }, priority: [...old.gameState.automation.priority, 'rootRelay', 'coreChamber'] } });
     const stage3 = performRootConnection(migrated.gameState);
     expect(parseSave(serializeSave(createSave(stage3, 0))).gameState).toEqual(stage3);
     const legacy = JSON.parse(readFileSync(new URL('../test/fixtures/save-v6.json', import.meta.url), 'utf8'));
