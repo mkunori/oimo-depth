@@ -1,3 +1,4 @@
+import { getRootBonuses } from './rootProgress';
 import { createEmptyOriginResearch, getOriginResearchSpent, ORIGIN_RESEARCH, ORIGIN_RESEARCH_IDS, originMultiplier } from '../data/originResearch';
 import type { OriginResearchRanks } from '../data/originResearch';
 import { INITIAL_BALANCE } from '../data/balance';
@@ -60,6 +61,7 @@ export function assertGameState(state: GameState) {
     }
     if (state.runEarnedScore.subtract(carry.score).lt(0) || state.runEarnedScore.subtract(carry.score).gt(cap)) throw new RangeError('Compensated SCORE exceeds the run range.');
   }
+  if (state.scoreCapStage >= 2 && state.permanent.deepResearchCount <= state.permanent.rootRebirthCount) throw new RangeError('Current ROOT cycle requires a new deep analysis.');
   const locked = state.postDeepResearchSkillLock;
   const ranks = state.permanent.skillRanks;
   const count = state.permanent.deepResearchCount;
@@ -69,9 +71,10 @@ export function assertGameState(state: GameState) {
     || (count === 2 && (ranks.discount > 0 || ranks.startingImo > 0))
     || (count === 3 && ranks.discount > 0 && ranks.startingImo > 0)))) throw new RangeError('Invalid post-research skill lock.');
   // The starting grant records an actual payment. A reset cannot undo it; only this
-  // locked run may retain a grant above the current skill bonus (max rank 2 × 50).
+  // locked run may retain a grant above the current normal-skill bonus
+  // (max rank 2 × 50), in addition to the persistent ROOT starting grant.
   const grantStep = SKILLS.startingImo.effect.perRank;
-  const grantLimit = locked ? gn(SKILLS.startingImo.maxRank * grantStep) : bonuses.startingImo;
+  const grantLimit = locked ? gn(SKILLS.startingImo.maxRank * grantStep).add(getRootBonuses(state.permanent).startingImo) : bonuses.startingImo;
   if (!state.runStartingImo.floor().equals(state.runStartingImo) || state.runStartingImo.gt(grantLimit)
     || (locked && !state.runStartingImo.divide(grantStep).floor().equals(state.runStartingImo.divide(grantStep)))
     || state.imo.gt(state.runEarnedScore.add(state.runStartingImo)) || state.runEarnedScore.gt(cap)
@@ -86,12 +89,14 @@ export function assertGameState(state: GameState) {
 }
 export function getProductionPerSecond(state: GameState): GameNumber {
   const bonuses = assertGameState(state);
-  const key = `${EQUIPMENT_IDS.map((id) => state.equipmentCounts[id]).join(',')}:${bonuses.productionMultiplier}:${state.researchRanks.geology}:${state.researchRanks.resonance}:${state.originResearchRanks.harvest}:${state.originResearchRanks.link}`;
+  const root = getRootBonuses(state.permanent);
+  const key = `${EQUIPMENT_IDS.map((id) => state.equipmentCounts[id]).join(',')}:${bonuses.productionMultiplier}:${root.lateAndDig}:${state.researchRanks.geology}:${state.researchRanks.resonance}:${state.originResearchRanks.harvest}:${state.originResearchRanks.link}`;
   const cached = productionCache.get(key);
   if (cached) return cached;
   const value = EQUIPMENT_IDS.reduce((sum, id) => sum.add(getDefinition(id).productionPerUnit.multiply(state.equipmentCounts[id])
     .multiply(getEquipmentMilestones(id, state.equipmentCounts[id]).multiplier)
-    .multiply(researchMultiplier(state.researchRanks, id === 'veinExtractor' || id === 'concentrator'))),
+    .multiply(researchMultiplier(state.researchRanks, id === 'veinExtractor' || id === 'concentrator'))
+    .multiply(getDefinition(id).unlockAtScoreCap.gte(1e12) ? root.lateAndDig : 1)),
   INITIAL_BALANCE.baseProduction.multiply(researchMultiplier(state.researchRanks)))
     .add(getRootLink(state.equipmentCounts).baseProduction.multiply(researchMultiplier(state.researchRanks))
       .multiply(ORIGIN_RESEARCH.link.multiplier ** state.originResearchRanks.link))
@@ -103,7 +108,7 @@ export function getProductionPerSecond(state: GameState): GameNumber {
 export function getEquipmentProductionPerUnit(id: EquipmentId, permanent: PermanentProgress = createInitialPermanent(), ownedCount = 0, research: ResearchRanks = createEmptyResearch(), origin: OriginResearchRanks = createEmptyOriginResearch()): GameNumber {
   return getDefinition(id).productionPerUnit.multiply(getSkillBonuses(permanent).productionMultiplier)
     .multiply(getEquipmentMilestones(id, ownedCount).multiplier)
-    .multiply(researchMultiplier(research, id === 'veinExtractor' || id === 'concentrator')).multiply(originMultiplier(origin));
+    .multiply(researchMultiplier(research, id === 'veinExtractor' || id === 'concentrator')).multiply(originMultiplier(origin)).multiply(getDefinition(id).unlockAtScoreCap.gte(1e12) ? getRootBonuses(permanent).lateAndDig : 1);
 }
 export function getEquipmentMilestones(id: EquipmentId, ownedCount: number) {
   assertCount(ownedCount);
@@ -224,7 +229,7 @@ export interface AutomaticProgress {
 }
 function nextAutomaticEquipment(state: GameState): EquipmentId | undefined {
   const settings = state.automation;
-  const key = settings.policy === 'priority' ? '' : `${state.scoreCapStage}:${settings.policy}:${EQUIPMENT_IDS.map((id) => `${state.equipmentCounts[id]}:${Number(settings.equipment[id])}`).join(',')}:${state.permanent.skillRanks.harvest}:${state.permanent.skillRanks.discount}:${state.researchRanks.geology}:${state.researchRanks.resonance}:${state.originResearchRanks.harvest}:${state.originResearchRanks.link}`;
+  const key = settings.policy === 'priority' ? '' : `${state.scoreCapStage}:${settings.policy}:${EQUIPMENT_IDS.map((id) => `${state.equipmentCounts[id]}:${Number(settings.equipment[id])}`).join(',')}:${state.permanent.skillRanks.harvest}:${state.permanent.skillRanks.discount}:${state.permanent.rootRebirthCount}:${state.permanent.rootUpgradeRanks.blessing}:${state.permanent.rootUpgradeRanks.memory}:${state.permanent.rootUpgradeRanks.adaptation}:${state.researchRanks.geology}:${state.researchRanks.resonance}:${state.originResearchRanks.harvest}:${state.originResearchRanks.link}`;
   if (settings.policy !== 'priority' && targetCache.has(key)) return targetCache.get(key);
   const ids = EQUIPMENT_IDS.filter((id) => settings.equipment[id] && getEquipmentAvailability(id, state).unlocked);
   const price = (id: EquipmentId) => getEquipmentPrice(id, state.equipmentCounts[id], state.permanent);

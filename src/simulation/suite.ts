@@ -15,6 +15,8 @@ import { simulateAutomation } from './automation';
 import { simulateResearch } from './research';
 import { RESEARCH } from '../data/research';
 import { simulateRootConnections } from './rootConnection';
+import { ROOT_REWARDS, ROOT_UPGRADES, ROOT_FIRST_PRODUCTION_MULTIPLIER } from '../data/root';
+import { simulateRootCycles } from './root';
 import { simulateOrigins } from './origin';
 import { ORIGIN_RESEARCH } from '../data/originResearch';
 import { simulateDepth } from './depth';
@@ -35,17 +37,19 @@ export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 
   const breakthroughSeed = breakthroughJourneys[0]?.beforeBreakthrough;
   const research = simulateResearch(maxSeconds);
   const rootConnections = simulateRootConnections(research, maxSeconds);
+  const origins = simulateOrigins(rootConnections, maxSeconds);
   return {
     formatVersion: 2,
     parameters: { balance: INITIAL_BALANCE, equipment: EQUIPMENT, prestige: PRESTIGE_BALANCE,
-      skills: SKILLS, research: RESEARCH, originResearch: ORIGIN_RESEARCH, depth: { balance: DEPTH_BALANCE, strata: STRATA, digResearch: DIG_RESEARCH }, rootLink: { relaysPerLink: 2, baseProduction: ROOT_LINK_PRODUCTION }, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
+      skills: SKILLS, root: { rewards: ROOT_REWARDS, upgrades: ROOT_UPGRADES, firstProductionMultiplier: ROOT_FIRST_PRODUCTION_MULTIPLIER }, research: RESEARCH, originResearch: ORIGIN_RESEARCH, depth: { balance: DEPTH_BALANCE, strata: STRATA, digResearch: DIG_RESEARCH }, rootLink: { relaysPerLink: 2, baseProduction: ROOT_LINK_PRODUCTION }, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
     runCount, maxSeconds, skillPlans: SKILL_PLANS, coverage: COVERAGE, campaigns, benchmarks,
     equipmentBaseline: EQUIPMENT_BASELINE,
     breakthroughJourneys,
     automation: simulateAutomation(maxSeconds),
     research,
     rootConnections,
-    origins: simulateOrigins(rootConnections, maxSeconds),
+    origins,
+    rootCycles: simulateRootCycles(origins, maxSeconds),
     depth: simulateDepth(rootConnections, maxSeconds),
     expansion: breakthroughSeed ? simulateExpansion(breakthroughSeed) : [],
     projectionReference: referenceProduction === null ? null : {

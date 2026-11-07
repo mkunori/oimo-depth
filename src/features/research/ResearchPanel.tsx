@@ -76,7 +76,7 @@ export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onO
       <p>保持する種類: {reset.kept.length ? reset.kept.map((id) => `${SKILLS[id].name}（ランク${state.permanent.skillRanks[id]}）`).join('、') : 'なし'}</p>
       <p>失う強化スキル: {reset.lost.some(({ rank }) => rank > 0) ? reset.lost.filter(({ rank }) => rank > 0).map(({ id, rank }) => `${SKILLS[id].name} ランク${rank}→0`).join('、') : 'なし'}</p>
       <p>返還ポイント: <strong>{reset.refund}pt</strong>（新しいポイントは発生しません）</p>
-      <p>{reset.locked ? 'この周回では強化型スキルを再購入できません。次の通常転生で解除します。収穫倍率・設備割引は解析直後から変わります。' : '保持枠3/3のため、スキルのリセット・再購入制限はありません。'}</p>
+      <p>{reset.locked ? 'この周回では強化型スキルを再購入できません。次の周回で解除します。収穫倍率・設備割引は解析直後から変わります。' : '保持枠3/3のため、スキルのリセット・再購入制限はありません。'}</p>
       {error && <p role="alert">研究できませんでした。最新の条件とセーブ状態を確認してください。</p>}
       <div className="confirmation-actions">
         <button type="button" className="secondary-button" autoFocus onClick={() => setConfirming(false)}>キャンセル</button>

@@ -12,7 +12,7 @@ import { SAVE_STORAGE_KEY } from './features/save/SaveRepository';
 import { advanceGame } from './core/game';
 import { prestigeGame, purchaseSkill } from './core/prestige';
 import type { GameState } from './core/state';
-import { createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from './test/progress';
+import { createRootRebirthReadyState, createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from './test/progress';
 import { performRootConnection } from './core/rootConnection';
 import { performDeepResearch } from './core/research';
 import { performBreakthrough } from './core/breakthrough';
@@ -50,7 +50,42 @@ function renderGame() {
 }
 
 describe('research UI', () => {
-  it('reveals origin devices/research only after confirmation, keeps discovery after prestige, and previews ROOT only at 1e18', () => {
+  it('keeps ROOT upgrades hidden until confirmed rebirth, saves one reward and remembers upgrades after normal prestige', () => {
+    let view = renderGame();
+    expect(view.container.innerHTML).not.toMatch(/原初の恵み|根源の記憶|地底への適応|装備システム/);
+    view.unmount();
+    const ready = createRootRebirthReadyState(); seedGame(ready); view = renderGame();
+    expect(view.container.innerHTML).not.toMatch(/原初の恵み|根源の記憶|地底への適応|装備システム/);
+    fireEvent.click(screen.getByRole('button', { name: 'ROOT REBIRTHする' }));
+    expect(screen.getByRole('dialog').textContent).toMatch(/通常転生回数・通常ポイントは増えません/);
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState).toEqual(ready);
+    fireEvent.click(screen.getByRole('button', { name: 'ROOT REBIRTHする' }));
+    fireEvent.click(screen.getByRole('button', { name: 'ROOTを実行（結晶1個）' }));
+    const reborn = parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState;
+    expect(reborn.permanent.prestigeCount).toBe(ready.permanent.prestigeCount);
+    expect(reborn.permanent.unspentPoints).toBe(ready.permanent.unspentPoints);
+    expect(screen.getByLabelText('ROOT結晶').textContent).toBe('1');
+    expect(screen.getByLabelText('ROOT回数').textContent).toBe('1');
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('0');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('3');
+    expect(screen.getByRole('complementary', { name: '装備システム解禁' })).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'ROOT REBIRTHする' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /根源の記憶を強化/ }));
+    expect(screen.getByLabelText('ROOT結晶').textContent).toBe('0');
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.permanent.rootUpgradeRanks.memory).toBe(1);
+    view.unmount();
+    const saved = parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState;
+    seedGame(advanceGame(saved, Number.MAX_VALUE)); view = renderGame();
+    fireEvent.click(screen.getByRole('button', { name: '転生する' }));
+    fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
+    expect(screen.getByLabelText('ROOT回数').textContent).toBe('1');
+    expect(screen.getByLabelText('ROOT結晶').textContent).toBe('0');
+    expect(screen.getByLabelText('所持芋').textContent).toBe('100');
+    expect(screen.getByRole('button', { name: /根源の記憶を強化/ })).toBeTruthy();
+  });
+
+  it('reveals origin devices/research after confirmation, keeps discovery after prestige, and enables ROOT only at 1e18', () => {
     let view = renderGame();
     expect(view.container.innerHTML).not.toMatch(/根源採掘機|芋核炉|根源収穫学|芋核共鳴|originMiner|imoReactor|ROOT REBIRTH/);
     view.unmount();
@@ -66,7 +101,7 @@ describe('research UI', () => {
     expect(screen.getByLabelText('SCORE上限').textContent).toBe('1E18');
     expect(screen.getByRole('article', { name: '根源採掘機' })).toBeTruthy();
     expect(screen.getByRole('button', { name: /芋核共鳴を強化/ })).toBeTruthy();
-    expect(view.container.innerHTML).not.toMatch(/ROOT REBIRTH/);
+    expect((screen.getByRole('button', { name: 'ROOT REBIRTHする' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: '転生する' }));
     fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
     expect(screen.getByRole('article', { name: '芋核炉' })).toBeTruthy();
@@ -74,7 +109,7 @@ describe('research UI', () => {
     expect((screen.getByRole('button', { name: /根源収穫学を強化/ }) as HTMLButtonElement).disabled).toBe(true);
     view.unmount();
     seedGame({ ...discovered, runEarnedScore: gn(1e18), imo: gn(1e18) }); renderGame();
-    expect(screen.getByText(/ROOT REBIRTH準備完了（次Issueで実装）/)).toBeTruthy();
+    expect(screen.getByText(/ROOT REBIRTH可能/)).toBeTruthy();
     expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
     expect(screen.getByRole('button', { name: '転生する' })).toBeTruthy();
   });

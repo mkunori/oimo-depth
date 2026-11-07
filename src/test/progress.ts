@@ -1,4 +1,6 @@
-import { advanceGame } from '../core/game';
+import { advanceGame, purchaseEquipment } from '../core/game';
+import { performRootConnection } from '../core/rootConnection';
+import { performOriginAnalysis } from '../core/origin';
 import { prestigeGame, purchaseSkill } from '../core/prestige';
 import { createInitialState } from '../core/state';
 import { performBreakthrough } from '../core/breakthrough';
@@ -25,4 +27,9 @@ export function createResearchReadyState(automation = false) {
 
 export function createRootConnectionReadyState(automation = false) {
   return advanceGame(performDeepResearch(createResearchReadyState(automation)), Number.MAX_VALUE);
+}
+
+export function createRootRebirthReadyState() {
+  const origin = performOriginAnalysis(advanceGame(performRootConnection(createRootConnectionReadyState(true)), Number.MAX_VALUE));
+  return advanceGame(purchaseEquipment(advanceGame(origin, 1e15), 'originMiner', 1), Number.MAX_VALUE);
 }

@@ -1,3 +1,5 @@
+import { createInitialRootProgress, ROOT_UPGRADE_IDS } from '../data/root';
+import type { RootUpgradeRanks } from '../data/root';
 import { createEmptyOriginResearch, ORIGIN_RESEARCH_IDS } from '../data/originResearch';
 import type { OriginResearchRanks } from '../data/originResearch';
 import { GameNumber, gn, encodeGameNumbers } from './numbers';
@@ -16,7 +18,7 @@ import { assertPermanentProgress } from './skills';
 import { createEmptyDigResearch, DIG_RESEARCH_IDS } from '../data/depth';
 import type { DigResearchRanks } from '../data/depth';
 
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -52,7 +54,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 = SAVE_VERSION, internal = false): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 = SAVE_VERSION, internal = false): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (state.imo === undefined || state.runEarnedScore === undefined) {
@@ -86,7 +88,15 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     if (version >= 8 && typeof savedPermanent.deepResearchCount !== 'number') throw new SaveDataError('解析累計が正しくありません。');
     if (version >= 9 && (typeof savedPermanent.rootConnectionUnlocked !== 'boolean'
       || !(version >= 11 ? [0, 1, 2, 3, 4] : [0, 1, 2, 3]).includes(savedPermanent.maxDiscoveredStage as number))) throw new SaveDataError('発見履歴・根脈接続権が正しくありません。');
-    permanent = { prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks,
+    permanent = { ...(version < 12 ? createInitialRootProgress() : {
+      rootRebirthCount: savedPermanent.rootRebirthCount as number,
+      unspentRootCrystals: savedPermanent.unspentRootCrystals as number,
+      totalRootCrystalsEarned: savedPermanent.totalRootCrystalsEarned as number,
+      totalRootCrystalsSpent: savedPermanent.totalRootCrystalsSpent as number,
+      equipmentSystemUnlocked: savedPermanent.equipmentSystemUnlocked as boolean,
+      rootUpgradeRanks: (() => { const root = record(savedPermanent.rootUpgradeRanks);
+        return Object.fromEntries(ROOT_UPGRADE_IDS.map((id) => [id, root[id]])) as RootUpgradeRanks; })(),
+    }), prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks,
       depthMeters: version >= 10 ? savedPermanent.depthMeters as number : 0,
       depthRemainder: version >= 10 ? savedPermanent.depthRemainder as number : 0,
       digResearchRanks: version >= 10 ? (() => {
@@ -181,7 +191,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== 10 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== 10 && data.saveVersion !== 11 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   try { return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt)); }

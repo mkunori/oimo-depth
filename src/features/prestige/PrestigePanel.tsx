@@ -75,7 +75,7 @@ export function PrestigePanel({ state, isPaused, notice, onPrestige, onBuySkill 
           );
         })}
       </div>
-      <p className="shop-note">現在の収穫倍率 ×{formatNumber(bonuses.productionMultiplier)} / 設備割引 {formatNumber(bonuses.equipmentDiscountPercent)}% / 次周回の初期所持芋 {formatNumber(bonuses.startingImo)} 芋。スキル取得だけでは上限は変わりません。限界突破は採掘欄で実行します。</p>
+      <p className="shop-note">現在の収穫倍率 ×{formatNumber(bonuses.productionMultiplier)} / 通常スキルの設備割引 {formatNumber(bonuses.equipmentDiscountPercent)}% / 次周回の初期所持芋 {formatNumber(bonuses.startingImo)} 芋。スキル取得だけでは上限は変わりません。限界突破は採掘欄で実行します。</p>
       {confirming && (
         <dialog ref={dialog} className="prestige-dialog" aria-labelledby="prestige-dialog-title" aria-describedby="prestige-dialog-description" onCancel={() => setConfirming(false)}>
           <h2 id="prestige-dialog-title">転生して次の周回へ進みますか？</h2>

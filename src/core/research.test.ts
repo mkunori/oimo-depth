@@ -198,7 +198,7 @@ describe('run research upgrades', () => {
     expect(split.imo.subtract(whole.state.imo).abs()).toBeLessThanOrEqualAmount(0.01);
     expect(split.runEarnedScore.subtract(whole.state.runEarnedScore).abs()).toBeLessThanOrEqualAmount(0.01);
     expect(parseSave(serializeSave(createSave(split, 0))).gameState).toEqual(split);
-  }, 15000);
+  }, 20_000); // 0.37秒刻みの既存検証は共有Linux CIで約16.5秒。比較内容は維持する。
 });
 
 describe('v6 save and migrations', () => {

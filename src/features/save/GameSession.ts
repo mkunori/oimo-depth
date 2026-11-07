@@ -12,6 +12,9 @@ import { SKILLS } from '../../data/skills';
 import type { SkillId } from '../../data/skills';
 import { getScoreCap } from '../../data/scoreCaps';
 import { performBreakthrough } from '../../core/breakthrough';
+import { getRootRebirth, performRootRebirth, purchaseRootUpgrade } from '../../core/root';
+import { ROOT_UPGRADES } from '../../data/root';
+import type { RootUpgradeId } from '../../data/root';
 import { performOriginAnalysis } from '../../core/origin';
 import { ORIGIN_RESEARCH } from '../../data/originResearch';
 import type { OriginResearchId } from '../../data/originResearch';
@@ -218,6 +221,19 @@ export class GameSession {
     } catch (error) { this.fail(error); return false; }
   };
 
+  rootRebirth = (): boolean => {
+    this.tick();
+    if (this.hidden || this.snapshot.status !== 'ready') return false;
+    try {
+      const state = this.snapshot.gameState;
+      if (!getRootRebirth(state).canRebirth) return false;
+      const next = performRootRebirth(state);
+      return this.commitProgress(next, state.permanent.rootRebirthCount === 0
+        ? '初回ROOTを実行しました。ROOT結晶1個・恒久収穫×3を獲得し、装備システムを解禁しました（Issue #33で実装予定）。通常ポイントは変わりません。'
+        : 'ROOTを実行しました。ROOT結晶1個を獲得し、段階0から再開しました。通常ポイントは変わりません。');
+    } catch (error) { this.fail(error); return false; }
+  };
+  buyRootUpgrade = (id: RootUpgradeId): boolean => this.researchAction((state) => purchaseRootUpgrade(state, id), `${ROOT_UPGRADES[id].name}を恒久強化しました。ROOT結晶を使用しました。`);
   deepResearch = (choice: DeepMemoryChoice = 'discount'): boolean => this.researchAction((state) => performDeepResearch(state, choice), '深層解析を実行し、深層記憶の保持・ポイント返還を適用しました。SCORE上限は1E12です。');
   rootConnection = (): boolean => this.researchAction(performRootConnection, this.snapshot.gameState.permanent.rootConnectionUnlocked
     ? '根脈接続を再実行しました。上限1E15で同じ周回を継続します。'
