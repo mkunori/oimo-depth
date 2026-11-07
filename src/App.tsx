@@ -5,11 +5,12 @@ import { useMiningGame } from './features/mining/useMiningGame';
 import { Shop } from './features/shop/Shop';
 import { SavePanel } from './features/save/SavePanel';
 import { PrestigePanel } from './features/prestige/PrestigePanel';
+import { GearPanel } from './features/gear/GearPanel';
 import { RootPanel } from './features/prestige/RootPanel';
 import { ResearchPanel } from './features/research/ResearchPanel';
 
 export default function App() {
-  const { state, snapshot, purchase, exportText, importSave, reset, dismissReport, prestige, rootRebirth, buyRootUpgrade, buySkill, breakthrough, setAutomation, deepResearch, rootConnection, originAnalysis, buyOriginResearch, buyResearch, buyDigResearch, resetResearch } = useMiningGame();
+  const { state, snapshot, purchase, exportText, importSave, reset, dismissReport, prestige, rootRebirth, buyRootUpgrade, unlockGear, buySkill, breakthrough, setAutomation, deepResearch, rootConnection, originAnalysis, buyOriginResearch, buyResearch, buyDigResearch, resetResearch } = useMiningGame();
   const isCapped = state.runEarnedScore.gte(getScoreCap(state));
   const isPaused = snapshot.status !== 'ready';
 
@@ -28,6 +29,7 @@ export default function App() {
       </div>
       <PrestigePanel state={state} isPaused={isPaused} notice={snapshot.progressNotice} onPrestige={prestige} onBuySkill={buySkill} />
       <RootPanel state={state} isPaused={isPaused} notice={snapshot.progressNotice} onRebirth={rootRebirth} onPurchase={buyRootUpgrade} />
+      <GearPanel state={state} isPaused={isPaused} onUnlock={unlockGear} />
       <ResearchPanel state={state} isPaused={isPaused} onBreakthrough={deepResearch} onPurchase={buyResearch} onOriginPurchase={buyOriginResearch} onReset={resetResearch} />
       <SavePanel snapshot={snapshot} onExport={exportText} onImport={importSave} onReset={reset} onDismissReport={dismissReport} />
       <footer className="app-footer">

@@ -87,7 +87,7 @@ export function SavePanel({ snapshot, onExport, onImport, onReset, onDismissRepo
             <div className="save-confirmation" role="group" aria-label={pending.type === 'import' ? 'インポートの確認' : '初期化の確認'}>
               <h3>{pending.type === 'import' ? 'このセーブに置き換えますか？' : '最初からやり直しますか？'}</h3>
               {pending.type === 'import' && <><p>所持芋 {formatNumber(pending.save.gameState.imo)} / SCORE {formatNumber(pending.save.gameState.runEarnedScore)}</p><p>DEPTH {formatNumber(pending.save.gameState.permanent.depthMeters)} m</p><p>累計転生 {formatNumber(pending.save.gameState.permanent.prestigeCount)}回 / 未使用 {formatNumber(pending.save.gameState.permanent.unspentPoints)}pt</p></>}
-              {pending.type === 'import' && pending.save.gameState.permanent.equipmentSystemUnlocked && <p>ROOT {formatNumber(pending.save.gameState.permanent.rootRebirthCount)}回 / ROOT結晶 {formatNumber(pending.save.gameState.permanent.unspentRootCrystals)}個 / 装備システム解禁済み</p>}
+              {pending.type === 'import' && pending.save.gameState.permanent.equipmentSystemUnlocked && <><p>ROOT {formatNumber(pending.save.gameState.permanent.rootRebirthCount)}回 / ROOT結晶 {formatNumber(pending.save.gameState.permanent.unspentRootCrystals)}個 / 装備システム解禁済み</p><p>装備の支出SCORE {formatNumber(pending.save.gameState.scoreSpentThisRun)} / 恒久装備 {Object.values(pending.save.gameState.permanent.gearUnlocked).filter(Boolean).length}点</p></>}
               {pending.type === 'reset' && <p>DEPTH・掘削研究・通常/ROOT転生回数・通常ポイント/ROOT結晶・恒久強化・解禁権を含むすべての進行を削除します。</p>}
               <p>現在の進行は上書きされ、元に戻せません。必要な場合は先にエクスポートしてください。</p>
               <div className="confirmation-actions">

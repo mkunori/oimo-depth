@@ -31,7 +31,7 @@ describe('ROOT rebirth', () => {
     expect(normal.permanent.prestigeCount).toBe(before.permanent.prestigeCount + 1);
     expect(normal.permanent.unspentPoints).toBe(before.permanent.unspentPoints + 2);
     expect(root).toEqual({ ...createInitialState(), automation: before.automation, permanent: { ...before.permanent,
-      rootRebirthCount: 1, totalRootCrystalsEarned: 1, unspentRootCrystals: 1, equipmentSystemUnlocked: true } });
+      rootRebirthCount: 1, totalRootCrystalsEarned: 1, unspentRootCrystals: 1, equipmentSystemUnlocked: true, gearDiscovered: { ...before.permanent.gearDiscovered, shovel: true } } });
     expect(getProductionPerSecond(root)).toBeAmount(3);
     expect(performRootRebirth(root)).toBe(root);
     let next = root;

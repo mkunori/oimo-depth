@@ -82,6 +82,7 @@ export function PrestigePanel({ state, isPaused, notice, onPrestige, onBuySkill 
           <p id="prestige-dialog-description">現在の所持芋・SCORE・設備がリセットされ、SCORE上限は1,000,000に戻ります。取り消せません。転生回数・ポイント・スキル・突破権は引き継ぎます。上限に再到達すれば追加ポイントなしで再突破できます。</p>
           <p>獲得する転生ポイント: <strong>{reward} pt</strong></p>
           <p>再開時の所持芋 {formatNumber(bonuses.startingImo)} / SCORE 0</p>
+          {state.permanent.equipmentSystemUnlocked && <p>利用可能SCOREと支出内訳を0へ戻し、恒久装備・装備の発見履歴を保持します。</p>}
           <p>深層記憶の解析累計 {formatNumber(state.permanent.deepResearchCount)}回を保持し、強化スキルの再購入制限を解除します。</p>
           {confirmationError && <p role="alert">{confirmationError}</p>}
           <div className="confirmation-actions">

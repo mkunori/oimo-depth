@@ -204,6 +204,12 @@ textarea { display: block; width: 100%; min-width: 0; resize: vertical; padding:
 .research-node h3 span { display: block; font-size: .85em; font-weight: normal; }
 .research-panel button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .root-panel { margin-top: 24px; }
+.gear-panel { margin-top: 24px; }
+.gear-panel p { line-height: 1.7; overflow-wrap: anywhere; }
+.gear-panel button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.gear-heading { display: flex; align-items: center; gap: 12px; }
+.gear-heading svg { width: 40px; height: 40px; flex-shrink: 0; }
+.gear-heading h3 { margin: 0; }
 .root-panel p { line-height: 1.7; overflow-wrap: anywhere; }
 .root-panel button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .root-stats { display: flex; flex-wrap: wrap; gap: 16px 32px; margin: 24px 0; }

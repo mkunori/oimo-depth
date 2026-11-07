@@ -32,6 +32,7 @@ export const COVERAGE = [
   { feature: '第3限界突破・設備連携', status: 'modeled', detail: '深層記憶後の正規1e12→1e15。1分/6h/12h・自動ON/OFF・新設備あり/なし12比較＋手動貯蓄1比較' },
   { feature: '第4限界突破・根源領域', status: 'modeled', detail: '初期から正規の1e15→1e18へ継続。1分/6h/12h×自動ON/OFFと6hの追加購入なし・新研究なし、計10比較。DEPTHと各段階の停止待ちも記録' },
   { feature: 'ROOT REBIRTH・結晶・恒久強化', status: 'modeled', detail: '正規初回ROOTから1分/6h/12h×自動ON/OFFの再周回6経路と結晶選択2比較。通常転生なしで第2回ROOTまで検証' },
-  { feature: '装備モード・消費可能SCORE', status: 'not-modeled', detail: '初回ROOTで解禁権のみ取得。購入・モード・プリセットは#33で実装' },
+  { feature: '利用可能SCORE・恒久装備', status: 'modeled', detail: '正規初回ROOTから1〜3周回。1分/6h自動・12h手動と1分の上限購入対照、累計SCORE不変と5装備の恒久保持を検証' },
+  { feature: '装備モード・プリセット', status: 'not-modeled', detail: '全装備の常時効果のみ。モード・プリセット・掘削構成は#34で実装' },
   { feature: 'クリック補助・任意ブースト', status: 'not-modeled', detail: '機能・数値とも未実装' },
 ] as const;

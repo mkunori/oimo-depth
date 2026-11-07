@@ -1,3 +1,5 @@
+import { unlockGear } from './core/gear';
+import { performRootRebirth } from './core/root';
 // @vitest-environment jsdom
 import { testAmount as gn } from './test/amounts';
 
@@ -50,6 +52,35 @@ function renderGame() {
 }
 
 describe('research UI', () => {
+  it('reveals gear in reached ROOT stages and retains unpaid names and paid passives after a run reset', () => {
+    let view = renderGame();
+    expect(view.container.innerHTML).not.toMatch(/強化スコップ|自動選別レンズ|古代ドリルビット|地脈コンパス|根源コア/);
+    view.unmount();
+    const root = performRootRebirth(createRootRebirthReadyState());
+    const funded = { ...root, imo: gn(123), runEarnedScore: gn(1e5) }; seedGame(funded); view = renderGame();
+    expect(screen.getByRole('button', { name: '強化スコップを恒久解禁' })).toBeTruthy();
+    expect(view.container.innerHTML).not.toMatch(/自動選別レンズ|古代ドリルビット|地脈コンパス|根源コア|gear-lens|gear-compass/);
+    expect(screen.getByLabelText('利用可能SCORE').textContent).toBe('100,000');
+    fireEvent.click(screen.getByRole('button', { name: '強化スコップを恒久解禁' }));
+    const bought = parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState;
+    expect(bought).toEqual(unlockGear(funded, 'shovel'));
+    expect(screen.getByLabelText('利用可能SCORE').textContent).toBe('0');
+    expect(screen.getByLabelText('装備支出SCORE').textContent).toBe('100,000');
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('100,000');
+    expect(screen.getByLabelText('所持芋').textContent).toBe('123');
+    expect(screen.getByLabelText('有効な装備数').textContent).toBe('1');
+    view.unmount();
+    seedGame(performBreakthrough(advanceGame(bought, Number.MAX_VALUE))); view = renderGame();
+    expect(screen.getByRole('button', { name: '自動選別レンズを恒久解禁' })).toBeTruthy();
+    expect(view.container.innerHTML).not.toMatch(/古代ドリルビット|地脈コンパス|根源コア/);
+    fireEvent.click(screen.getByRole('button', { name: '転生する' }));
+    fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
+    expect(screen.getByLabelText('装備支出SCORE').textContent).toBe('0');
+    expect(screen.getByLabelText('有効な装備数').textContent).toBe('1');
+    expect((screen.getByRole('button', { name: '自動選別レンズを恒久解禁' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: '強化スコップは恒久解禁済み' })).toBeTruthy();
+  });
+
   it('keeps ROOT upgrades hidden until confirmed rebirth, saves one reward and remembers upgrades after normal prestige', () => {
     let view = renderGame();
     expect(view.container.innerHTML).not.toMatch(/原初の恵み|根源の記憶|地底への適応|装備システム/);

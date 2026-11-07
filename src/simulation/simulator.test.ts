@@ -134,6 +134,14 @@ describe('event-driven simulation', () => {
     expect(first.rootConnections).toHaveLength(13);
     expect(first.origins).toHaveLength(10);
     expect(first.rootCycles).toHaveLength(8);
+    expect(first.gear).toHaveLength(4);
+    for (const trial of first.gear) {
+      expect(trial.completed).toBe(true);
+      expect(trial.cycles.map((cycle) => cycle.unlocked.length)).toEqual([3, 4, 5]);
+      expect(trial.cycles.map((cycle) => cycle.afterRoot?.scoreSpentThisRun.toString())).toEqual(['gn1:0:0:0', 'gn1:0:0:0', 'gn1:0:0:0']);
+      expect(trial.cycles[2]!.afterRoot!.permanent.gearUnlocked.rootCore).toBe(true);
+      expect(trial.trace.filter((point) => point.kind === 'gear-unlock')).toHaveLength(5);
+    }
     for (const trial of first.rootCycles) {
       expect(trial.completed).toBe(true);
       expect(trial.elapsedSeconds).toBeLessThan(trial.firstRootSeconds);
@@ -220,7 +228,7 @@ describe('event-driven simulation', () => {
       expect(campaign.trace.every((point) => point.equipmentCounts.deepDrill === 0 && point.equipmentCounts.refinery === 0)).toBe(true);
       expect(campaign.runs.every((run) => getProductionPerSecond(run.result.state).gt(0))).toBe(true);
     }
-  }, 45_000); // ROOT再周回を含む全方策を2回比較するため、共有CI向けに個別の実行時間を確保する。
+  }, 60_000); // 装備3周回を含む全方策を2回比較するため、共有CI向けに個別の実行時間を確保する。
 
   it.each([0, -1, NaN, Infinity])('rejects invalid horizon %s', (seconds) => {
     expect(() => simulateRun(createInitialState(), idle, seconds)).toThrow(RangeError);
