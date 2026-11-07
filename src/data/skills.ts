@@ -1,6 +1,11 @@
 import { gn } from '../core/numbers';
 export const SKILL_IDS = ['harvest', 'discount', 'startingImo', 'breakthrough', 'automation'] as const;
 export type SkillId = typeof SKILL_IDS[number];
+export const ENHANCEMENT_SKILL_IDS = ['harvest', 'discount', 'startingImo'] as const;
+export type EnhancementSkillId = typeof ENHANCEMENT_SKILL_IDS[number];
+export function isEnhancementSkill(id: SkillId): id is EnhancementSkillId {
+  return (ENHANCEMENT_SKILL_IDS as readonly SkillId[]).includes(id);
+}
 
 interface SkillDefinition {
   readonly id: SkillId;

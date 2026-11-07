@@ -1,9 +1,12 @@
-import { SKILLS, SKILL_IDS } from '../data/skills';
+import { SKILLS, SKILL_IDS, isEnhancementSkill } from '../data/skills';
 import type { SkillId } from '../data/skills';
 import type { PermanentProgress } from './state';
 import { gn } from './numbers';
 
-export function assertPermanentProgress(permanent: PermanentProgress): void {
+export function assertPermanentProgress(permanent: PermanentProgress, allowHistoricalUnlocks = true): void {
+  if (!Number.isSafeInteger(permanent.deepResearchCount) || permanent.deepResearchCount < 0
+    || permanent.deepResearchUnlocked !== (permanent.deepResearchCount > 0)
+    || permanent.deepResearchCount > Math.max(0, permanent.prestigeCount - 4)) throw new RangeError('Invalid deep research history.');
   if (typeof permanent.deepResearchUnlocked !== 'boolean'
     || (permanent.deepResearchUnlocked && permanent.skillRanks.breakthrough < 1)) throw new RangeError('Invalid deep research permission.');
   if (!Number.isSafeInteger(permanent.prestigeCount) || permanent.prestigeCount < 0
@@ -18,13 +21,17 @@ export function assertPermanentProgress(permanent: PermanentProgress): void {
       throw new RangeError('Invalid skill rank.');
     }
     if (rank > 0 && (permanent.prestigeCount < definition.minimumPrestigeCount
-      || definition.prerequisites.some((required) => permanent.skillRanks[required.id] < required.rank))) {
+      || ((!allowHistoricalUnlocks || isEnhancementSkill(id) || permanent.deepResearchCount === 0)
+        && definition.prerequisites.some((required) => permanent.skillRanks[required.id] < required.rank)))) {
       throw new RangeError('Skill prerequisites are not satisfied.');
     }
     spent += definition.costs.slice(0, rank).reduce<number>((sum, cost) => sum + cost, 0);
   }
   const total = spent + permanent.unspentPoints;
-  if (!Number.isSafeInteger(total) || total < permanent.prestigeCount || total > permanent.prestigeCount * 2) {
+  // At least harvest3 (6pt), discount1 (1pt), breakthrough (3pt) were acquired
+  // before the first analysis. Refunding ranks cannot reduce that lifetime total.
+  if (!Number.isSafeInteger(total) || total < permanent.prestigeCount || total > permanent.prestigeCount * 2
+    || (permanent.deepResearchCount > 0 && total < 10 + permanent.skillRanks.automation)) {
     throw new RangeError('Points do not match the prestige history.');
   }
 }
@@ -43,13 +50,14 @@ export function getSkillBonuses(permanent: PermanentProgress) {
   return bonuses;
 }
 
-export function getSkillPurchase(permanent: PermanentProgress, id: SkillId) {
+export function getSkillPurchase(permanent: PermanentProgress, id: SkillId, postDeepResearchSkillLock = false) {
   assertPermanentProgress(permanent);
   if (!Object.hasOwn(SKILLS, id)) throw new RangeError('Unknown skill.');
   const definition = SKILLS[id];
   const rank = permanent.skillRanks[id];
   const cost = definition.costs[rank] ?? null;
-  const reason = rank >= definition.maxRank ? '最大ランクに到達しています。'
+  const reason = postDeepResearchSkillLock && isEnhancementSkill(id) ? '深層解析後の強化スキルは、次の通常転生まで再購入できません。'
+    : rank >= definition.maxRank ? '最大ランクに到達しています。'
     : definition.prerequisites.some((required) => permanent.skillRanks[required.id] < required.rank)
       ? '前提スキルが未取得です。'
       : permanent.prestigeCount < definition.minimumPrestigeCount ? `累計転生${definition.minimumPrestigeCount}回が必要です。`

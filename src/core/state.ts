@@ -10,6 +10,7 @@ import { GameNumber, gn } from './numbers';
 
 /** 転生で引き継ぐデータ。将来の恒久データはこの境界に追加する。 */
 export interface PermanentProgress {
+  readonly deepResearchCount: number;
   readonly deepResearchUnlocked: boolean;
   readonly prestigeCount: number;
   readonly unspentPoints: number;
@@ -17,11 +18,12 @@ export interface PermanentProgress {
 }
 
 export function createInitialPermanent(): PermanentProgress {
-  return { deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
+  return { deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
 }
 
 /** 転生時に初期化するデータ。初期所持芋は収穫累計とは別に管理する。 */
 export interface RunState {
+  readonly postDeepResearchSkillLock: boolean;
   readonly researchRanks: ResearchRanks;
   /** 設備購入で消費する芋の残高。 */
   readonly imo: GameNumber;
@@ -41,6 +43,7 @@ export interface GameState extends RunState {
 
 export function createInitialState(): GameState {
   return {
+    postDeepResearchSkillLock: false,
     imo: gn(0),
     runEarnedScore: gn(0),
     runStartingImo: gn(0),

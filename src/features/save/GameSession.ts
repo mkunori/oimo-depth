@@ -14,6 +14,7 @@ import { getScoreCap } from '../../data/scoreCaps';
 import { performBreakthrough } from '../../core/breakthrough';
 import type { AutomationSettings } from '../../data/automation';
 import { performDeepResearch, purchaseResearch, resetResearch } from '../../core/research';
+import type { DeepMemoryChoice } from '../../core/research';
 import { RESEARCH } from '../../data/research';
 import type { ResearchId } from '../../data/research';
 
@@ -200,15 +201,17 @@ export class GameSession {
     } catch (error) { this.fail(error); return false; }
   };
 
-  deepResearch = (): boolean => this.researchAction(performDeepResearch, '研究による突破を実行しました。リセットせずSCORE上限1E12へ進みます。');
+  deepResearch = (choice: DeepMemoryChoice = 'discount'): boolean => this.researchAction((state) => performDeepResearch(state, choice), '深層解析を実行し、深層記憶の保持・ポイント返還を適用しました。SCORE上限は1E12です。');
   buyResearch = (id: ResearchId): boolean => this.researchAction((state) => purchaseResearch(state, id), `${RESEARCH[id].name}を強化しました。`);
   resetResearch = (): boolean => this.researchAction(resetResearch, '研究強化を振り直しました。使用した芋を全額返却しました。');
 
   private researchAction(action: (state: GameState) => GameState, notice: string): boolean {
     this.tick();
     if (this.hidden || this.snapshot.status !== 'ready') return false;
-    const gameState = action(this.snapshot.gameState);
-    return gameState !== this.snapshot.gameState && this.commitProgress(gameState, notice);
+    try {
+      const gameState = action(this.snapshot.gameState);
+      return gameState !== this.snapshot.gameState && this.commitProgress(gameState, notice);
+    } catch (error) { this.fail(error); return false; }
   }
 
   hide(): void {

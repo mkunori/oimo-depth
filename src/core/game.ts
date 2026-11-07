@@ -10,6 +10,7 @@ import type { AutomationSettings } from '../data/automation';
 import { createEmptyResearch, getResearchSpent, RESEARCH, RESEARCH_IDS, researchMultiplier } from '../data/research';
 import type { ResearchRanks } from '../data/research';
 import { GameNumber, gn, nonNegativeGameNumber, toElapsedSeconds } from './numbers';
+import { SKILLS } from '../data/skills';
 
 export type PurchaseMode = 1 | 10 | 'MAX';
 export interface PurchaseQuote { readonly quantity: number; readonly totalCost: GameNumber }
@@ -50,7 +51,20 @@ export function assertGameState(state: GameState) {
     }
     if (state.runEarnedScore.subtract(carry.score).lt(0) || state.runEarnedScore.subtract(carry.score).gt(cap)) throw new RangeError('Compensated SCORE exceeds the run range.');
   }
-  if (!state.runStartingImo.floor().equals(state.runStartingImo) || state.runStartingImo.gt(bonuses.startingImo)
+  const locked = state.postDeepResearchSkillLock;
+  const ranks = state.permanent.skillRanks;
+  const count = state.permanent.deepResearchCount;
+  if (typeof locked !== 'boolean' || (state.scoreCapStage === 2 && count >= 2 && count < 4 && !locked)
+    || (locked && (state.scoreCapStage !== 2 || count < 1 || count >= 4
+    || (count === 1 && (ranks.harvest > 0 || ranks.discount > 0 || ranks.startingImo > 0))
+    || (count === 2 && (ranks.discount > 0 || ranks.startingImo > 0))
+    || (count === 3 && ranks.discount > 0 && ranks.startingImo > 0)))) throw new RangeError('Invalid post-research skill lock.');
+  // The starting grant records an actual payment. A reset cannot undo it; only this
+  // locked run may retain a grant above the current skill bonus (max rank 2 × 50).
+  const grantStep = SKILLS.startingImo.effect.perRank;
+  const grantLimit = locked ? gn(SKILLS.startingImo.maxRank * grantStep) : bonuses.startingImo;
+  if (!state.runStartingImo.floor().equals(state.runStartingImo) || state.runStartingImo.gt(grantLimit)
+    || (locked && !state.runStartingImo.divide(grantStep).floor().equals(state.runStartingImo.divide(grantStep)))
     || state.imo.gt(state.runEarnedScore.add(state.runStartingImo)) || state.runEarnedScore.gt(cap)
     || state.imo.add(getResearchSpent(state.researchRanks)).gt(state.runEarnedScore.add(state.runStartingImo).add(0.001))
     || state.permanent.skillRanks.breakthrough < SCORE_CAP_STAGES[state.scoreCapStage].requiredSkillRank

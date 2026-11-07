@@ -93,8 +93,8 @@ progress::-moz-progress-bar { background: var(--green); }
 .automation-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .automation-toggle input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--green); }
 .automation-policy, .automation-priority label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 10px 0; }
-.automation-content select { min-width: 0; width: 100%; min-height: 44px; font: inherit; color: inherit; background: #fffdf8; padding: 8px; border: 1px solid var(--muted); border-radius: 2px; }
-.automation-content select:focus-visible, .automation-panel summary:focus-visible { outline: 3px solid #a94e19; outline-offset: 3px; }
+.automation-content select, .prestige-dialog select { min-width: 0; width: 100%; min-height: 44px; font: inherit; color: inherit; background: #fffdf8; padding: 8px; border: 1px solid var(--muted); border-radius: 2px; }
+.automation-content select:focus-visible, .prestige-dialog select:focus-visible, .automation-panel summary:focus-visible { outline: 3px solid #a94e19; outline-offset: 3px; }
 .automation-equipment { margin: 12px 0; }
 .equipment-price { font-size: 11px; margin-top: 8px; }
 .equipment-price strong { font-weight: 650; margin-left: 3px; }

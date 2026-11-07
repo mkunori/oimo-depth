@@ -27,7 +27,7 @@ export function prestigeGame(state: GameState): GameState {
 
 export function purchaseSkill(state: GameState, id: SkillId): GameState {
   getProductionPerSecond(state);
-  const quote = getSkillPurchase(state.permanent, id);
+  const quote = getSkillPurchase(state.permanent, id, state.postDeepResearchSkillLock);
   if (!quote.canPurchase || quote.cost === null) return state;
   return {
     ...state,
