@@ -20,16 +20,11 @@ const time = (seconds: number | null | undefined): string => {
   return `${number(seconds / 365 / 86_400)}年`;
 };
 
-/** Cross-platform libm can differ in the last bits once prices exceed 1e15.
- * Origin reports are comparison artifacts, not save exports: use 12 significant
- * component digits, as for their native depth/time measurements. Core/save
- * values and purchase comparisons retain their full precision. */
+/** Native origin samples use the same 12 significant digits as JSON samples.
+ * Amounts retain canonical, lossless components; cross-platform last-bit
+ * differences are checked against the documented report tolerances. */
 function originReportValue(value: unknown): unknown {
-  if (value instanceof GameNumber) {
-    const [, sign, layer, magnitude] = value.toString().split(':');
-    const rounded = Number(Number(magnitude).toPrecision(12));
-    return (layer === '0' ? gn(Number(sign) * rounded) : gn(`gn1:${sign}:${layer}:${rounded}`)).toString();
-  }
+  if (value instanceof GameNumber) return value.toString();
   if (typeof value === 'number') return Number.isInteger(value) ? value : Number(value.toPrecision(12));
   if (Array.isArray(value)) return value.map(originReportValue);
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, originReportValue(item)]));

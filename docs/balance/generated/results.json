@@ -63038,7 +63038,7 @@
       "policy": "research",
       "initialState": {
         "postDeepResearchSkillLock": true,
-        "imo": "gn1:1:0:8730954618050",
+        "imo": "gn1:1:0:8730954618051",
         "runEarnedScore": "gn1:1:0:1000000000000000",
         "equipmentCounts": {
           "worker": 204,
@@ -63121,8 +63121,8 @@
         }
       },
       "initialProduction": "gn1:1:0:35053157551.1",
-      "finalProduction": "gn1:1:0:3852358806990",
-      "productionMultiplier": "gn1:1:0:109.900479048",
+      "finalProduction": "gn1:1:0:3852358806993.4497",
+      "productionMultiplier": "gn1:1:0:109.90047904750195",
       "links": 15,
       "beforeAnalysisSeconds": 62580,
       "totalSeconds": 662460,
@@ -63146,7 +63146,7 @@
         },
         "state": {
           "postDeepResearchSkillLock": true,
-          "imo": "gn1:1:1:16.254487507",
+          "imo": "gn1:1:1:16.254487506990966",
           "runEarnedScore": "gn1:1:1:18",
           "equipmentCounts": {
             "worker": 252,
@@ -63260,7 +63260,7 @@
       "policy": "research",
       "initialState": {
         "postDeepResearchSkillLock": true,
-        "imo": "gn1:1:0:59973262316600",
+        "imo": "gn1:1:0:59973262316626",
         "runEarnedScore": "gn1:1:0:1000000000000000",
         "equipmentCounts": {
           "worker": 69,
@@ -63342,9 +63342,9 @@
           "imo": "gn1:0:0:0"
         }
       },
-      "initialProduction": "gn1:1:0:237873526089",
-      "finalProduction": "gn1:1:0:18991532132400",
-      "productionMultiplier": "gn1:1:0:79.8387800637",
+      "initialProduction": "gn1:1:0:237873526089.35",
+      "finalProduction": "gn1:1:0:18991532132433.902",
+      "productionMultiplier": "gn1:1:0:79.83878006373986",
       "links": 11,
       "beforeAnalysisSeconds": 26160,
       "totalSeconds": 177780,
@@ -63368,7 +63368,7 @@
         },
         "state": {
           "postDeepResearchSkillLock": true,
-          "imo": "gn1:1:0:6404913202170000",
+          "imo": "gn1:1:0:6404913202173030",
           "runEarnedScore": "gn1:1:1:18",
           "equipmentCounts": {
             "worker": 96,
@@ -63478,7 +63478,7 @@
       "policy": "hold",
       "initialState": {
         "postDeepResearchSkillLock": true,
-        "imo": "gn1:1:0:706404898914000",
+        "imo": "gn1:1:0:706404898913690",
         "runEarnedScore": "gn1:1:0:1000000000000000",
         "equipmentCounts": {
           "worker": 124,
@@ -63560,8 +63560,8 @@
           "imo": "gn1:0:0:0"
         }
       },
-      "initialProduction": "gn1:1:0:111730924168",
-      "finalProduction": "gn1:1:0:111730924168",
+      "initialProduction": "gn1:1:0:111730924168.1",
+      "finalProduction": "gn1:1:0:111730924168.1",
       "productionMultiplier": "gn1:1:0:1",
       "links": 1,
       "beforeAnalysisSeconds": 388800,
@@ -63586,8 +63586,8 @@
         },
         "state": {
           "postDeepResearchSkillLock": true,
-          "imo": "gn1:1:1:17.9170247826",
-          "runEarnedScore": "gn1:1:1:17.9171791057",
+          "imo": "gn1:1:1:17.917024782560247",
+          "runEarnedScore": "gn1:1:1:17.917179105742274",
           "equipmentCounts": {
             "worker": 124,
             "cart": 91,
@@ -63699,7 +63699,7 @@
       "policy": "equipment",
       "initialState": {
         "postDeepResearchSkillLock": true,
-        "imo": "gn1:1:0:706404898914000",
+        "imo": "gn1:1:0:706404898913690",
         "runEarnedScore": "gn1:1:0:1000000000000000",
         "equipmentCounts": {
           "worker": 124,
@@ -63781,9 +63781,9 @@
           "imo": "gn1:0:0:0"
         }
       },
-      "initialProduction": "gn1:1:0:111730924168",
-      "finalProduction": "gn1:1:0:5120456244500",
-      "productionMultiplier": "gn1:1:0:45.8284604967",
+      "initialProduction": "gn1:1:0:111730924168.1",
+      "finalProduction": "gn1:1:0:5120456244498.55",
+      "productionMultiplier": "gn1:1:0:45.82846049670891",
       "links": 15,
       "beforeAnalysisSeconds": 388800,
       "totalSeconds": 734400,
@@ -63807,7 +63807,7 @@
         },
         "state": {
           "postDeepResearchSkillLock": true,
-          "imo": "gn1:1:1:16.885113831",
+          "imo": "gn1:1:1:16.885113831018394",
           "runEarnedScore": "gn1:1:1:18",
           "equipmentCounts": {
             "worker": 187,
@@ -63920,7 +63920,7 @@
       "policy": "research",
       "initialState": {
         "postDeepResearchSkillLock": true,
-        "imo": "gn1:1:0:706404898914000",
+        "imo": "gn1:1:0:706404898913690",
         "runEarnedScore": "gn1:1:0:1000000000000000",
         "equipmentCounts": {
           "worker": 124,
@@ -64002,9 +64002,9 @@
           "imo": "gn1:0:0:0"
         }
       },
-      "initialProduction": "gn1:1:0:111730924168",
-      "finalProduction": "gn1:1:0:22285589856400",
-      "productionMultiplier": "gn1:1:0:199.457670491",
+      "initialProduction": "gn1:1:0:111730924168.1",
+      "finalProduction": "gn1:1:0:22285589856371.72",
+      "productionMultiplier": "gn1:1:0:199.45767049096347",
       "links": 11,
       "beforeAnalysisSeconds": 388800,
       "totalSeconds": 561600,
@@ -64028,7 +64028,7 @@
         },
         "state": {
           "postDeepResearchSkillLock": true,
-          "imo": "gn1:1:1:17.542253551",
+          "imo": "gn1:1:1:17.542253551001643",
           "runEarnedScore": "gn1:1:1:18",
           "equipmentCounts": {
             "worker": 165,
@@ -64139,7 +64139,7 @@
       "policy": "hold",
       "initialState": {
         "postDeepResearchSkillLock": true,
-        "imo": "gn1:1:0:59973262316600",
+        "imo": "gn1:1:0:59973262316626",
         "runEarnedScore": "gn1:1:0:1000000000000000",
         "equipmentCounts": {
           "worker": 69,
@@ -64221,8 +64221,8 @@
           "imo": "gn1:0:0:0"
         }
       },
-      "initialProduction": "gn1:1:0:237873526089",
-      "finalProduction": "gn1:1:0:237873526089",
+      "initialProduction": "gn1:1:0:237873526089.35",
+      "finalProduction": "gn1:1:0:237873526089.35",
       "productionMultiplier": "gn1:1:0:1",
       "links": 2,
       "beforeAnalysisSeconds": 237600,
@@ -64247,7 +64247,7 @@
         },
         "state": {
           "postDeepResearchSkillLock": true,
-          "imo": "gn1:1:1:17.9995915596",
+          "imo": "gn1:1:1:17.99959155957243",
           "runEarnedScore": "gn1:1:1:18",
           "equipmentCounts": {
             "worker": 69,
@@ -64361,7 +64361,7 @@
       "policy": "equipment",
       "initialState": {
         "postDeepResearchSkillLock": true,
-        "imo": "gn1:1:0:59973262316600",
+        "imo": "gn1:1:0:59973262316626",
         "runEarnedScore": "gn1:1:0:1000000000000000",
         "equipmentCounts": {
           "worker": 69,
@@ -64443,9 +64443,9 @@
           "imo": "gn1:0:0:0"
         }
       },
-      "initialProduction": "gn1:1:0:237873526089",
-      "finalProduction": "gn1:1:0:5360680947750",
-      "productionMultiplier": "gn1:1:0:22.5358451438",
+      "initialProduction": "gn1:1:0:237873526089.35",
+      "finalProduction": "gn1:1:0:5360680947748.4",
+      "productionMultiplier": "gn1:1:0:22.535845143754344",
       "links": 11,
       "beforeAnalysisSeconds": 237600,
       "totalSeconds": 561600,
@@ -64469,7 +64469,7 @@
         },
         "state": {
           "postDeepResearchSkillLock": true,
-          "imo": "gn1:1:1:17.2634109657",
+          "imo": "gn1:1:1:17.26341096572883",
           "runEarnedScore": "gn1:1:1:18",
           "equipmentCounts": {
             "worker": 96,
@@ -64548,7 +64548,7 @@
           },
           "productionRemainder": {
             "score": "gn1:0:0:0",
-            "imo": "gn1:1:0:801.380528386"
+            "imo": "gn1:1:0:801.3805283861612"
           }
         }
       }
@@ -64583,7 +64583,7 @@
       "policy": "research",
       "initialState": {
         "postDeepResearchSkillLock": true,
-        "imo": "gn1:1:0:59973262316600",
+        "imo": "gn1:1:0:59973262316626",
         "runEarnedScore": "gn1:1:0:1000000000000000",
         "equipmentCounts": {
           "worker": 69,
@@ -64665,9 +64665,9 @@
           "imo": "gn1:0:0:0"
         }
       },
-      "initialProduction": "gn1:1:0:237873526089",
-      "finalProduction": "gn1:1:0:15031532132400",
-      "productionMultiplier": "gn1:1:0:63.1912780693",
+      "initialProduction": "gn1:1:0:237873526089.35",
+      "finalProduction": "gn1:1:0:15031532132433.9",
+      "productionMultiplier": "gn1:1:0:63.191278069286945",
       "links": 11,
       "beforeAnalysisSeconds": 237600,
       "totalSeconds": 453600,
@@ -64691,7 +64691,7 @@
         },
         "state": {
           "postDeepResearchSkillLock": true,
-          "imo": "gn1:1:1:17.0269616818",
+          "imo": "gn1:1:1:17.026961681787302",
           "runEarnedScore": "gn1:1:1:18",
           "equipmentCounts": {
             "worker": 96,
@@ -64804,7 +64804,7 @@
       "policy": "research",
       "initialState": {
         "postDeepResearchSkillLock": true,
-        "imo": "gn1:1:0:415524866730000",
+        "imo": "gn1:1:0:415524866729552",
         "runEarnedScore": "gn1:1:0:1000000000000000",
         "equipmentCounts": {
           "worker": 120,
@@ -64886,9 +64886,9 @@
           "imo": "gn1:0:0:0"
         }
       },
-      "initialProduction": "gn1:1:0:155730751817",
-      "finalProduction": "gn1:1:0:17109221621100",
-      "productionMultiplier": "gn1:1:0:109.864117533",
+      "initialProduction": "gn1:1:0:155730751816.5",
+      "finalProduction": "gn1:1:0:17109221621074.54",
+      "productionMultiplier": "gn1:1:0:109.86411753302653",
       "links": 9,
       "beforeAnalysisSeconds": 777600,
       "totalSeconds": 993600,
@@ -64912,7 +64912,7 @@
         },
         "state": {
           "postDeepResearchSkillLock": true,
-          "imo": "gn1:1:1:17.6764565086",
+          "imo": "gn1:1:1:17.67645650861649",
           "runEarnedScore": "gn1:1:1:18",
           "equipmentCounts": {
             "worker": 146,
@@ -65026,7 +65026,7 @@
       "policy": "research",
       "initialState": {
         "postDeepResearchSkillLock": true,
-        "imo": "gn1:1:0:59973262316600",
+        "imo": "gn1:1:0:59973262316626",
         "runEarnedScore": "gn1:1:0:1000000000000000",
         "equipmentCounts": {
           "worker": 69,
@@ -65108,9 +65108,9 @@
           "imo": "gn1:0:0:0"
         }
       },
-      "initialProduction": "gn1:1:0:237873526089",
-      "finalProduction": "gn1:1:0:15031532132400",
-      "productionMultiplier": "gn1:1:0:63.1912780693",
+      "initialProduction": "gn1:1:0:237873526089.35",
+      "finalProduction": "gn1:1:0:15031532132433.9",
+      "productionMultiplier": "gn1:1:0:63.191278069286945",
       "links": 11,
       "beforeAnalysisSeconds": 475200,
       "totalSeconds": 691200,
@@ -65134,7 +65134,7 @@
         },
         "state": {
           "postDeepResearchSkillLock": true,
-          "imo": "gn1:1:1:17.0269616818",
+          "imo": "gn1:1:1:17.026961681787302",
           "runEarnedScore": "gn1:1:1:18",
           "equipmentCounts": {
             "worker": 96,

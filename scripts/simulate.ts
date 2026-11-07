@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { SCENARIOS } from '../src/simulation/scenarios';
 import { runSuite } from '../src/simulation/suite';
 import { buildArtifacts } from './balance-report';
+import { equivalentOriginArtifact } from '../src/simulation/reportComparison';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
@@ -43,7 +44,8 @@ for (const [name, content] of Object.entries(artifacts)) {
   const destination = path.join(out, name);
   if (check) {
     const existing = await readFile(destination, 'utf8').catch(() => null);
-    if (existing?.replaceAll('\r\n', '\n') !== content) {
+    const normalized = existing?.replaceAll('\r\n', '\n') ?? null;
+    if (normalized !== content && (normalized === null || !equivalentOriginArtifact(name, normalized, content))) {
       process.stderr.write(`Stale simulation artifact: ${name}. Run npm run simulate.\n`);
       if (existing !== null) {
         const expected = existing.replaceAll('\r\n', '\n').split('\n'), actual = content.split('\n');
