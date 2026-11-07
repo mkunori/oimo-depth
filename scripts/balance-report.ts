@@ -20,8 +20,23 @@ const time = (seconds: number | null | undefined): string => {
   return `${number(seconds / 365 / 86_400)}年`;
 };
 
-function csv(rows: readonly (readonly (string | number | GameNumber | null)[])[]): string {
-  return rows.map((row) => row.map((cell) => cell === null ? '' : `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n') + '\n';
+/** Cross-platform libm can differ in the last bits once prices exceed 1e15.
+ * Origin reports are comparison artifacts, not save exports: use 12 significant
+ * component digits, as for their native depth/time measurements. Core/save
+ * values and purchase comparisons retain their full precision. */
+function originReportValue(value: unknown): unknown {
+  if (value instanceof GameNumber) {
+    const [, sign, layer, magnitude] = value.toString().split(':');
+    const rounded = Number(Number(magnitude).toPrecision(12));
+    return (layer === '0' ? gn(Number(sign) * rounded) : gn(`gn1:${sign}:${layer}:${rounded}`)).toString();
+  }
+  if (typeof value === 'number') return Number.isInteger(value) ? value : Number(value.toPrecision(12));
+  if (Array.isArray(value)) return value.map(originReportValue);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, originReportValue(item)]));
+  return value;
+}
+function csv(rows: readonly (readonly (string | number | GameNumber | null)[])[], origin = false): string {
+  return rows.map((row) => row.map((cell) => cell === null ? '' : `"${String(origin ? originReportValue(cell) : cell).replaceAll('"', '""')}"`).join(',')).join('\n') + '\n';
 }
 
 function json(value: unknown): string {
@@ -98,20 +113,20 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
   };
   const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, origins: _origins, depth: _depth, ...metadata } = suite;
   const files: Record<string, string> = {
-    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, origins: compactOrigins, depth: compactDepth }),
+    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, origins: originReportValue(compactOrigins), depth: compactDepth }),
     'origin.csv': csv([
       ['scenario', 'automated', 'policy', 'visit_seconds', 'completed', 'before_analysis_seconds', 'after_analysis_seconds', 'total_seconds', 'idle_at_cap_seconds', 'purchases', 'initial_production', 'final_production', 'links', 'harvest_rank', 'link_rank', 'depth_meters', ...EQUIPMENT_IDS],
       ...suite.origins.map((trial) => [trial.scenario.id, String(trial.automated), trial.policy, trial.scenario.visitSeconds, String(trial.result.completed),
         trial.beforeAnalysisSeconds, trial.result.elapsedSeconds, trial.totalSeconds, trial.result.idleAtCapSeconds, trial.result.purchases,
         trial.initialProduction, trial.finalProduction, trial.links, trial.result.state.originResearchRanks.harvest, trial.result.state.originResearchRanks.link,
         trial.result.state.permanent.depthMeters, ...EQUIPMENT_IDS.map((id) => trial.result.state.equipmentCounts[id])]),
-    ]),
+    ], true),
     'origin-timeline.csv': csv([
       ['scenario', 'event', 'seconds', 'total_seconds', 'score', 'imo', 'production', 'actual_production', 'links', 'harvest_rank', 'link_rank', 'depth_meters', 'actual_dig_speed', ...EQUIPMENT_IDS],
       ...suite.origins.flatMap((trial) => trial.result.trace.map((point) => [trial.scenario.id, point.kind, point.elapsedSeconds, trial.beforeAnalysisSeconds + point.elapsedSeconds,
         point.score, point.imo, point.production, point.actualProduction, getRootLink(point.equipmentCounts).linked,
         point.originResearchRanks.harvest, point.originResearchRanks.link, point.depthMeters, point.digSpeed, ...EQUIPMENT_IDS.map((id) => point.equipmentCounts[id])])),
-    ]),
+    ], true),
     'depth.csv': csv([
       ['scenario', 'band', 'dig_research', 'visit_seconds', 'run', 'completed', 'seconds', 'score', 'depth_meters', 'stratum', 'dig_speed_capacity', 'idle_at_score_cap_seconds', 'basic_rank', 'vein_rank'],
       ...suite.depth.campaigns.flatMap((trial) => trial.result.runs.map((run) => [trial.scenario.id, '1e6', String(trial.digResearch), trial.scenario.visitSeconds, run.run,

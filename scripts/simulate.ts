@@ -45,6 +45,11 @@ for (const [name, content] of Object.entries(artifacts)) {
     const existing = await readFile(destination, 'utf8').catch(() => null);
     if (existing?.replaceAll('\r\n', '\n') !== content) {
       process.stderr.write(`Stale simulation artifact: ${name}. Run npm run simulate.\n`);
+      if (existing !== null) {
+        const expected = existing.replaceAll('\r\n', '\n').split('\n'), actual = content.split('\n');
+        const line = actual.findIndex((value, index) => value !== expected[index]);
+        process.stderr.write(`First difference at line ${line + 1}:\nexpected: ${expected[line]}\nactual:   ${actual[line]}\n`);
+      }
       process.exitCode = 1;
     }
   } else await writeFile(destination, content, 'utf8');
