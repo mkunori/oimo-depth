@@ -21,11 +21,11 @@ describe('v7 amount migration', () => {
     expect(migrated.savedAt).toBe(legacy.savedAt);
     for (const key of ['imo', 'runEarnedScore', 'runStartingImo'] as const) expect(migrated.gameState[key]).toBeAmount(legacy.gameState[key]);
     expect(migrated.gameState.equipmentCounts).toEqual(legacy.gameState.equipmentCounts);
-    expect(migrated.gameState.permanent).toEqual(legacy.gameState.permanent);
+    expect(migrated.gameState.permanent).toEqual({ ...legacy.gameState.permanent, deepResearchCount: 1 });
     expect(migrated.gameState.researchRanks).toEqual(legacy.gameState.researchRanks);
     expect(migrated.gameState.automation).toEqual(legacy.gameState.automation);
     const raw = JSON.parse(serializeSave(migrated));
-    expect(raw.saveVersion).toBe(7);
+    expect(raw.saveVersion).toBe(SAVE_VERSION);
     expect(raw.savedAt).toBeTypeOf('number');
     expect(raw.gameState.imo).toBe(migrated.gameState.imo.toString());
     expect(raw.gameState.equipmentCounts.worker).toBeTypeOf('number');
@@ -110,7 +110,7 @@ describe('v7 amount migration', () => {
     reloaded.start();
     expect(reloaded.getSnapshot().status).toBe('ready');
     expect(reloaded.getSnapshot().gameState).toEqual(session.getSnapshot().gameState);
-    expect(JSON.parse(raw).saveVersion).toBe(7);
+    expect(JSON.parse(raw).saveVersion).toBe(SAVE_VERSION);
   });
 
   it('protects invalid numeric text and does not re-settle the same offline interval', () => {

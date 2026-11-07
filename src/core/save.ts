@@ -10,8 +10,9 @@ import { createDefaultAutomation, readAutomation } from '../data/automation';
 import type { AutomationSettings } from '../data/automation';
 import { createEmptyResearch, RESEARCH_IDS } from '../data/research';
 import type { ResearchRanks } from '../data/research';
+import { assertPermanentProgress } from './skills';
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -46,7 +47,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 = SAVE_VERSION, internal = false): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 = SAVE_VERSION, internal = false): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (state.imo === undefined || state.runEarnedScore === undefined) {
@@ -77,8 +78,13 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 = SAVE
     if (typeof savedPermanent.prestigeCount !== 'number' || typeof savedPermanent.unspentPoints !== 'number'
       || state.runStartingImo === undefined) throw new SaveDataError('恒久データが正しくありません。');
     if (version >= 6 && typeof savedPermanent.deepResearchUnlocked !== 'boolean') throw new SaveDataError('研究権限が正しくありません。');
+    if (version >= 8 && typeof savedPermanent.deepResearchCount !== 'number') throw new SaveDataError('解析累計が正しくありません。');
     permanent = { prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks,
+      deepResearchCount: version >= 8 ? savedPermanent.deepResearchCount as number : version >= 6 && savedPermanent.deepResearchUnlocked ? 1 : 0,
       deepResearchUnlocked: version >= 6 ? savedPermanent.deepResearchUnlocked as boolean : false };
+    // Legacy formats could not reset skill prerequisites. Validate their original
+    // acquisition rules before granting the new history-based exception.
+    if (version < 8) assertPermanentProgress(permanent, false);
   }
   if ((version >= 4 && state.scoreCapStage !== 0 && state.scoreCapStage !== 1 && !(version >= 6 && state.scoreCapStage === 2))
     || (version < 4 && state.scoreCapStage !== undefined && state.scoreCapStage !== 0)) throw new SaveDataError('SCORE上限段階が正しくありません。');
@@ -108,7 +114,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 = SAVE
       if (typeof value !== 'number' || !Number.isFinite(value)) throw new SaveDataError('旧セーブの金額が範囲外です。');
       result = gn(value);
     } else {
-      if (typeof value !== 'string') throw new SaveDataError('v7の金額は正規化した文字列が必要です。');
+      if (typeof value !== 'string') throw new SaveDataError('v7以降の金額は正規化した文字列が必要です。');
       result = gn(value);
       if (result.toString() !== value) throw new SaveDataError('巨大数が正規形ではありません。');
     }
@@ -116,6 +122,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 = SAVE
     return result;
   };
   const result: GameState = {
+    postDeepResearchSkillLock: version >= 8 ? state.postDeepResearchSkillLock as boolean : false,
     imo: amount(state.imo), runEarnedScore: amount(state.runEarnedScore), equipmentCounts,
     runStartingImo: version === 1 ? gn(0) : amount(state.runStartingImo),
     scoreCapStage: version < 4 ? 0 : state.scoreCapStage as ScoreCapStage,
@@ -151,7 +158,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   try { return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt)); }

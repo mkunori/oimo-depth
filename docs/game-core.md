@@ -4,7 +4,7 @@
 
 ## 状態と責務
 
-#28以降の金額・SCORE・上限・価格・費用・生産量はGameNumberです。以下の表や例の数値は値を表し、カウンターと時間だけがnumberです。API・v7保存・精度の詳細は [巨大数移行](number-migration.md) を参照してください。
+#28以降の金額・SCORE・上限・価格・費用・生産量はGameNumberです。以下の表や例の数値は値を表し、カウンターと時間だけがnumberです。API・巨大数保存・精度の詳細は [巨大数移行](number-migration.md) を参照してください。
 
 `src/core/state.ts` の `createInitialState()` は毎回独立した状態を生成します。
 
@@ -16,6 +16,8 @@
 | `runStartingImo` | この周回の開始時に支給した芋。SCORE に含めない |
 | `scoreCapStage` | 現周回の上限段階。0: 1e6、1: 1e9、2: 1e12。各段階には権限と前段階の到達が必要 |
 | `researchRanks` | 周回の研究強化2種のランク。段階2だけ0〜3、それ以外は0 |
+| `postDeepResearchSkillLock` | 解析後の強化型購入制限。通常転生でfalse、累計4回目以降の解析では制限なし |
+| `permanent.deepResearchCount` | 非負安全整数の解析累計。権限・転生履歴と整合し、転生で維持 |
 | `permanent` | 転生回数・未使用ポイント・取得スキル。転生で維持する |
 | `automation` | 全体ON/OFF・方針・設備別設定・指定優先順。周回と分け、転生で維持する |
 | `productionRemainder` | 全収穫の符号付き補償端数（GameNumber）。有限範囲を検証し、転生でゼロへ戻す |

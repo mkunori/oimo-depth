@@ -26,9 +26,11 @@ function at(root: unknown, path: Path): unknown {
   return value;
 }
 
-/** Fixed pre-migration evidence. Regenerating v7 artifacts must not update this fixture. */
+/** Fixed pre-migration evidence. #37 intentionally changes research routes only;
+ * retain the original fixture and continue checking every unaffected route. */
 export function assertV6BalanceBaseline(suite: SimulationSuite): void {
   for (const [path, counts, capStage, ranks, prestigeCount, points, research, imo, score, starting] of baseline.states) {
+    if (path[0] === 'research') continue;
     const state = at(suite, path) as GameState;
     const label = path.join('.');
     expect(baseline.equipmentIds.map((id) => state.equipmentCounts[id]), label).toEqual(counts);
@@ -43,7 +45,7 @@ export function assertV6BalanceBaseline(suite: SimulationSuite): void {
     }
     if (score === [1e6, 1e9, 1e12][capStage]) expect(state.runEarnedScore.equals(getScoreCap(state)), label).toBe(true);
   }
-  for (const [path, expected] of baseline.counters) expect(at(suite, path), path.join('.')).toBe(expected);
-  for (const [path, expected] of baseline.times) expect(Math.abs((at(suite, path) as number) - expected), path.join('.')).toBeLessThanOrEqual(Math.max(1e-6, Math.abs(expected) * 1e-11));
-  for (const [path, expected] of baseline.amounts) expect(approximatelyEqual(at(suite, path) as GameNumber, expected, 1e-8, 1e-11), path.join('.')).toBe(true);
+  for (const [path, expected] of baseline.counters) if (path[0] !== 'research') expect(at(suite, path), path.join('.')).toBe(expected);
+  for (const [path, expected] of baseline.times) if (path[0] !== 'research') expect(Math.abs((at(suite, path) as number) - expected), path.join('.')).toBeLessThanOrEqual(Math.max(1e-6, Math.abs(expected) * 1e-11));
+  for (const [path, expected] of baseline.amounts) if (path[0] !== 'research') expect(approximatelyEqual(at(suite, path) as GameNumber, expected, 1e-8, 1e-11), path.join('.')).toBe(true);
 }

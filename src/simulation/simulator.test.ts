@@ -111,12 +111,22 @@ describe('event-driven simulation', () => {
       expect(trial.result.completed).toBe(true);
       expect(trial.initialState.runEarnedScore).toBeAmount(1e9);
       expect(trial.initialState.permanent.deepResearchUnlocked).toBe(true);
+      expect(trial.initialState.permanent.deepResearchCount).toBe(1);
+      expect(trial.initialState.postDeepResearchSkillLock).toBe(true);
+      expect(trial.initialState.permanent.skillRanks.harvest).toBe(0);
+      expect(trial.initialState.permanent.skillRanks.discount).toBe(0);
       expect(trial.initialState.permanent.skillRanks.automation > 0).toBe(trial.automated);
       expect(trial.result.state.runEarnedScore).toBeAmount(1e12);
       expect(trial.result.state.equipmentCounts.veinExtractor).toBeGreaterThan(0);
       expect(trial.result.state.equipmentCounts.concentrator).toBeGreaterThan(0);
       expect(trial.result.trace.filter((point) => point.kind === 'research-purchase').every((point) => point.elapsedSeconds % trial.scenario.visitSeconds! === 0)).toBe(true);
       if (trial.policy !== 'equipment-only') expect(trial.result.elapsedSeconds).toBeLessThanOrEqual(first.research.find((other) => other.automated === trial.automated && other.scenario.visitSeconds === trial.scenario.visitSeconds && other.policy === 'equipment-only')!.result.elapsedSeconds);
+    }
+    // #37 intentionally slows the first research interval; use a few representative
+    // schedules while the fixed v6 baseline continues guarding all earlier routes.
+    for (const [visit, manual, auto] of [[60, 6900, 3060], [21600, 43200, 21600], [43200, 86400, 43200]]) {
+      const trials = first.research.filter((trial) => trial.policy === 'geology-first' && trial.scenario.visitSeconds === visit);
+      expect(trials.map((trial) => trial.result.elapsedSeconds)).toEqual([manual, auto]);
     }
     for (const campaign of first.campaigns) {
       expect(campaign.completedRuns).toBe(6);

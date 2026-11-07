@@ -2,7 +2,7 @@ import { testAmount as gn, stringifyTestSave } from '../../test/amounts';
 
 import { describe, expect, it } from 'vitest';
 import { advanceGame } from '../../core/game';
-import { createSave, parseSave, serializeSave } from '../../core/save';
+import { createSave, parseSave, serializeSave, SAVE_VERSION } from '../../core/save';
 import { createInitialState } from '../../core/state';
 import { prestigeGame } from '../../core/prestige';
 import { GameSession } from './GameSession';
@@ -18,6 +18,9 @@ describe('research session transactions', () => {
     const before = game.session.getSnapshot().gameState;
     expect(game.session.deepResearch()).toBe(true);
     expect(game.session.deepResearch()).toBe(false);
+    expect(game.session.getSnapshot().gameState.permanent.deepResearchCount).toBe(1);
+    expect(game.session.getSnapshot().gameState.permanent.skillRanks.harvest).toBe(0);
+    expect(game.session.getSnapshot().gameState.permanent.unspentPoints).toBe(7);
     expect(game.session.getSnapshot().gameState.imo).toBeAmount(before.imo);
     expect(game.session.buyResearch('geology')).toBe(true);
     expect(parseSave(game.storage.value!).gameState.researchRanks.geology).toBe(1);
@@ -50,7 +53,7 @@ describe('research session transactions', () => {
     game.storage.value = serializeSave(createSave(ready, START)); game.session.start();
     game.elapse(60);
     expect(game.session.buyResearch('geology')).toBe(true);
-    expect(game.session.getSnapshot().gameState.runEarnedScore).toBeAmount(1e9 + 150);
+    expect(game.session.getSnapshot().gameState.runEarnedScore).toBeAmount(1e9 + 60);
     game.session.hide();
     expect(game.session.buyResearch('geology')).toBe(false);
     expect(game.session.resetResearch()).toBe(false);
@@ -59,6 +62,13 @@ describe('research session transactions', () => {
     expect(game.session.buyResearch('geology')).toBe(false);
     expect(game.session.getSnapshot().status).toBe('conflict');
     expect(game.storage.value).toBe(external);
+    const readyGame = setup();
+    readyGame.storage.value = serializeSave(createSave(createResearchReadyState(), START)); readyGame.session.start();
+    const original = readyGame.session.getSnapshot().gameState;
+    const conflicting = serializeSave(createSave(original, START + 1)); readyGame.storage.value = conflicting;
+    expect(readyGame.session.deepResearch()).toBe(false);
+    expect(readyGame.session.getSnapshot().gameState).toBe(original);
+    expect(readyGame.storage.value).toBe(conflicting);
   });
 });
 
@@ -225,7 +235,7 @@ describe('prestige persistence and migration', () => {
     const game = setup();
     game.storage.value = stringifyTestSave({ saveVersion: 1, savedAt: START - 1_000, gameState: { imo: gn(90), runEarnedScore: gn(100), equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } });
     game.session.start();
-    expect(JSON.parse(game.storage.value!).saveVersion).toBe(7);
+    expect(JSON.parse(game.storage.value!).saveVersion).toBe(SAVE_VERSION);
     expect(game.session.getSnapshot().gameState.imo).toBeAmount(92);
     expect(game.session.getSnapshot().gameState.runEarnedScore).toBeAmount(102);
     expect(game.session.getSnapshot().gameState.equipmentCounts.worker).toBe(1);
@@ -245,7 +255,7 @@ describe('prestige persistence and migration', () => {
 
   it.each([
     stringifyTestSave({ saveVersion: 2, savedAt: START, gameState: { imo: gn(0), runEarnedScore: gn(0), equipmentCounts: { worker: 0, cart: 0, harvester: 0 } } }),
-    stringifyTestSave({ saveVersion: 8, savedAt: START, gameState: createInitialState() }),
+    stringifyTestSave({ saveVersion: SAVE_VERSION + 1, savedAt: START, gameState: createInitialState() }),
   ])('preserves malformed v2 or future text without fallback %#', (text) => {
     const game = setup();
     game.storage.value = text;

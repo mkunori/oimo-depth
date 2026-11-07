@@ -1,8 +1,24 @@
 import { createEmptyResearch, getResearchSpent, RESEARCH } from '../data/research';
 import type { ResearchId } from '../data/research';
 import { getScoreCap } from '../data/scoreCaps';
-import { getProductionPerSecond } from './game';
+import { getProductionPerSecond, NumericProgressError } from './game';
 import type { GameState } from './state';
+import { ENHANCEMENT_SKILL_IDS, SKILLS } from '../data/skills';
+
+export type DeepMemoryChoice = 'discount' | 'startingImo';
+export function getDeepMemorySlots(count: number): number { return Math.min(3, Math.max(0, count - 1)); }
+
+/** Preview and execution share the same rank/refund calculation. Choice matters only on the third analysis. */
+export function getDeepResearchReset(state: GameState, choice: DeepMemoryChoice = 'discount') {
+  if (choice !== 'discount' && choice !== 'startingImo') throw new RangeError('Invalid deep memory choice.');
+  const count = state.permanent.deepResearchCount + 1;
+  if (!Number.isSafeInteger(count)) throw new NumericProgressError('Deep research count exceeds the safe integer range.');
+  const slots = getDeepMemorySlots(count);
+  const kept = ENHANCEMENT_SKILL_IDS.filter((id) => slots === 3 || (slots >= 1 && id === 'harvest') || (slots === 2 && id === choice));
+  const lost = ENHANCEMENT_SKILL_IDS.filter((id) => !kept.includes(id)).map((id) => ({ id, rank: state.permanent.skillRanks[id] }));
+  const refund = lost.reduce((sum, { id, rank }) => sum + SKILLS[id].costs.slice(0, rank).reduce<number>((total, cost) => total + cost, 0), 0);
+  return { count, slots, kept, lost, refund, locked: slots < 3 };
+}
 
 export function getDeepResearch(state: GameState) {
   getProductionPerSecond(state);
@@ -12,10 +28,17 @@ export function getDeepResearch(state: GameState) {
   return { canResearch: reason === null, reason };
 }
 
-/** 解放は無償で確定。権限と周回段階を分け、再到達時も同じ操作で突破する。 */
-export function performDeepResearch(state: GameState): GameState {
+/** 資産は持ち越し、保持枠に入らない強化スキルのポイントだけを返す。 */
+export function performDeepResearch(state: GameState, choice: DeepMemoryChoice = 'discount'): GameState {
   if (!getDeepResearch(state).canResearch) return state;
-  return { ...state, scoreCapStage: 2, permanent: { ...state.permanent, deepResearchUnlocked: true } };
+  const reset = getDeepResearchReset(state, choice);
+  if (reset.count > state.permanent.prestigeCount - 4) throw new NumericProgressError('Deep research count exceeds the prestige history.');
+  const points = state.permanent.unspentPoints + reset.refund;
+  if (!Number.isSafeInteger(points)) throw new NumericProgressError('Refund exceeds the safe integer range.');
+  const skillRanks = { ...state.permanent.skillRanks };
+  for (const { id } of reset.lost) skillRanks[id] = 0;
+  return { ...state, scoreCapStage: 2, postDeepResearchSkillLock: reset.locked,
+    permanent: { ...state.permanent, deepResearchUnlocked: true, deepResearchCount: reset.count, unspentPoints: points, skillRanks } };
 }
 
 export function getResearchPurchase(state: GameState, id: ResearchId) {

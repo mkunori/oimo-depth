@@ -49,14 +49,35 @@ function renderGame() {
 }
 
 describe('research UI', () => {
-  it('keeps research locked before 1e9 and confirms a free no-reset breakthrough separately from prestige', () => {
+  it('lets the third analysis retain starting supplies and updates the preview before confirmation', () => {
+    let ready = createResearchReadyState(true);
+    for (let count = 0; count < 2; count += 1) {
+      ready = prestigeGame(performDeepResearch(ready));
+      for (const id of ['harvest', 'harvest', 'harvest', 'discount', 'startingImo'] as const) ready = purchaseSkill(ready, id);
+      ready = advanceGame(performBreakthrough(advanceGame(ready, 1e6)), 1e9);
+    }
+    seedGame(ready); renderGame();
+    fireEvent.click(screen.getByRole('button', { name: '研究による突破' }));
+    const dialog = screen.getByRole('dialog', { name: /深層記憶/ });
+    fireEvent.change(within(dialog).getByLabelText('豊かな収穫に加えて保持する強化スキル'), { target: { value: 'startingImo' } });
+    expect(within(dialog).getByText(/失う強化スキル: 設備の目利き ランク1→0/)).toBeTruthy();
+    expect(within(dialog).getByText(/保持する種類: 豊かな収穫.*旅立ちの蓄え/)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: '無料で研究突破を実行' }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState).toEqual(performDeepResearch(ready, 'startingImo'));
+    expect((screen.getByRole('button', { name: '設備の目利きを強化' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('keeps research locked before 1e9 and confirms the skill reset separately from prestige', () => {
     seedGame(performBreakthrough(createBreakthroughReadyState()));
     const view = renderGame();
     expect((screen.getByRole('button', { name: '研究による突破' }) as HTMLButtonElement).disabled).toBe(true);
     view.unmount();
     const ready = createResearchReadyState(); seedGame(ready); renderGame();
     fireEvent.click(screen.getByRole('button', { name: '研究による突破' }));
-    let dialog = screen.getByRole('dialog', { name: /研究による突破：リセットなし/ });
+    let dialog = screen.getByRole('dialog', { name: /研究による突破：深層記憶/ });
+    expect(within(dialog).getByText(/豊かな収穫 ランク3→0/)).toBeTruthy();
+    expect(within(dialog).getByText('7pt')).toBeTruthy();
+    expect(within(dialog).getByText(/この周回では強化型スキルを再購入できません/)).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'キャンセル' }));
     expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.scoreCapStage).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: '研究による突破' }));
@@ -68,7 +89,7 @@ describe('research UI', () => {
     expect((screen.getByRole('button', { name: '研究による突破' }) as HTMLButtonElement).disabled).toBe(true);
     tickAfter(1);
     expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.imo).toBeAmount(ready.imo);
-    expect(screen.getByLabelText('収穫速度').textContent).toBe('2.5');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('1');
   });
 
   it('purchases and refunds research, unlocks new devices, and explains the 1e12 stop', () => {
@@ -76,7 +97,7 @@ describe('research UI', () => {
     const view = renderGame();
     fireEvent.click(screen.getByRole('button', { name: /地層収穫学を強化/ }));
     expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.researchRanks.geology).toBe(1);
-    expect(screen.getByLabelText('収穫速度').textContent).toBe('5');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('2');
     fireEvent.click(screen.getByRole('button', { name: /研究強化を振り直す/ }));
     expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.imo).toBeAmount(ready.imo);
     fireEvent.click(screen.getByRole('button', { name: '地脈抽出機を1台購入' }));
