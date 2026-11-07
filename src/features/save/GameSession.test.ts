@@ -8,7 +8,7 @@ import { prestigeGame } from '../../core/prestige';
 import { GameSession } from './GameSession';
 import { SAVE_STORAGE_KEY } from './SaveRepository';
 import type { SaveStorage } from './SaveRepository';
-import { createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState } from '../../test/progress';
+import { createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from '../../test/progress';
 import { performDeepResearch, purchaseResearch } from '../../core/research';
 
 describe('research session transactions', () => {
@@ -34,14 +34,14 @@ describe('research session transactions', () => {
     expect(next.resetResearch()).toBe(false);
   });
 
-  it.each(['breakthrough', 'upgrade', 'refund'] as const)('retains the prior state/raw save when %s cannot be written', (action) => {
+  it.each(['breakthrough', 'root', 'upgrade', 'refund'] as const)('retains the prior state/raw save when %s cannot be written', (action) => {
     const game = setup();
     const ready = createResearchReadyState();
-    const initial = action === 'breakthrough' ? ready : action === 'upgrade' ? performDeepResearch(ready) : purchaseResearch(performDeepResearch(ready), 'geology');
+    const initial = action === 'root' ? createRootConnectionReadyState() : action === 'breakthrough' ? ready : action === 'upgrade' ? performDeepResearch(ready) : purchaseResearch(performDeepResearch(ready), 'geology');
     game.storage.value = serializeSave(createSave(initial, START)); game.session.start();
     const state = game.session.getSnapshot().gameState; const raw = game.storage.value;
     game.storage.failWrites = true;
-    const succeeded = action === 'breakthrough' ? game.session.deepResearch() : action === 'upgrade' ? game.session.buyResearch('geology') : game.session.resetResearch();
+    const succeeded = action === 'root' ? game.session.rootConnection() : action === 'breakthrough' ? game.session.deepResearch() : action === 'upgrade' ? game.session.buyResearch('geology') : game.session.resetResearch();
     expect(succeeded).toBe(false);
     expect(game.session.getSnapshot().gameState).toBe(state);
     expect(game.storage.value).toBe(raw);
@@ -173,7 +173,7 @@ describe('breakthrough session transactions', () => {
     game.session.start();
     const before = game.session.getSnapshot().gameState;
     expect(game.session.breakthrough()).toBe(true);
-    expect(game.session.getSnapshot().gameState).toEqual({ ...before, scoreCapStage: 1 });
+    expect(game.session.getSnapshot().gameState).toEqual({ ...before, scoreCapStage: 1, permanent: { ...before.permanent, maxDiscoveredStage: 1 } });
     expect(parseSave(game.storage.value!).gameState.scoreCapStage).toBe(1);
     expect(game.session.breakthrough()).toBe(false);
     const restored = game.nextSession(); restored.start();

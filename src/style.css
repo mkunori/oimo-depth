@@ -70,6 +70,9 @@ progress::-moz-progress-bar { background: var(--green); }
 .mode-option input:checked + span { background: var(--ink); color: #fffdf8; }
 .shop-note { font-size: 11px; color: var(--muted); margin: 9px 0 4px; }
 .equipment-list { list-style: none; margin: 0; padding: 0; }
+.root-link-summary { border: 1px solid var(--line); padding: 16px; margin: 16px 0; font-size: 13px; }
+.root-link-summary h3 { font-size: 15px; }
+.root-link-summary p { margin-top: 8px; }
 .equipment-list li + li { border-top: 1px solid var(--line); }
 .equipment { display: grid; grid-template-columns: 42px minmax(0, 1fr) 126px; gap: 8px 12px; padding: 22px 0; align-items: center; }
 .equipment-list li:last-child .equipment { padding-bottom: 0; }

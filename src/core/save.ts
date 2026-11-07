@@ -1,7 +1,7 @@
 import { GameNumber, gn, encodeGameNumbers } from './numbers';
 import { advanceWithAutomation, getProductionPerSecond, getEquipmentPrice } from './game';
 import type { GameState } from './state';
-import { createEmptyEquipmentCounts, EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS } from '../data/equipment';
+import { createEmptyEquipmentCounts, EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS, isRootEquipment } from '../data/equipment';
 import { SKILL_IDS } from '../data/skills';
 import { createInitialPermanent } from './state';
 import type { PermanentProgress } from './state';
@@ -12,7 +12,7 @@ import { createEmptyResearch, RESEARCH_IDS } from '../data/research';
 import type { ResearchRanks } from '../data/research';
 import { assertPermanentProgress } from './skills';
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -47,7 +47,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 = SAVE_VERSION, internal = false): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = SAVE_VERSION, internal = false): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (state.imo === undefined || state.runEarnedScore === undefined) {
@@ -56,7 +56,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 = 
   const equipmentCounts = createEmptyEquipmentCounts();
   for (const id of EQUIPMENT_IDS) {
     const isNewId = !(INITIAL_EQUIPMENT_IDS as readonly string[]).includes(id);
-    const introduced = id === 'veinExtractor' || id === 'concentrator' ? 6 : isNewId ? 3 : 1;
+    const introduced = isRootEquipment(id) ? 9 : id === 'veinExtractor' || id === 'concentrator' ? 6 : isNewId ? 3 : 1;
     const count = version < introduced && counts[id] === undefined ? 0 : counts[id];
     if (version < introduced && count !== 0) throw new SaveDataError('旧形式に未対応の設備があります。');
     if (typeof count !== 'number') {
@@ -79,27 +79,33 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 = 
       || state.runStartingImo === undefined) throw new SaveDataError('恒久データが正しくありません。');
     if (version >= 6 && typeof savedPermanent.deepResearchUnlocked !== 'boolean') throw new SaveDataError('研究権限が正しくありません。');
     if (version >= 8 && typeof savedPermanent.deepResearchCount !== 'number') throw new SaveDataError('解析累計が正しくありません。');
+    if (version >= 9 && (typeof savedPermanent.rootConnectionUnlocked !== 'boolean'
+      || ![0, 1, 2, 3].includes(savedPermanent.maxDiscoveredStage as number))) throw new SaveDataError('発見履歴・根脈接続権が正しくありません。');
     permanent = { prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks,
+      rootConnectionUnlocked: version >= 9 ? savedPermanent.rootConnectionUnlocked as boolean : false,
+      maxDiscoveredStage: version >= 9 ? savedPermanent.maxDiscoveredStage as ScoreCapStage
+        : version >= 6 && savedPermanent.deepResearchUnlocked ? 2 : version >= 4 && state.scoreCapStage === 1 ? 1 : 0,
       deepResearchCount: version >= 8 ? savedPermanent.deepResearchCount as number : version >= 6 && savedPermanent.deepResearchUnlocked ? 1 : 0,
       deepResearchUnlocked: version >= 6 ? savedPermanent.deepResearchUnlocked as boolean : false };
     // Legacy formats could not reset skill prerequisites. Validate their original
     // acquisition rules before granting the new history-based exception.
     if (version < 8) assertPermanentProgress(permanent, false);
   }
-  if ((version >= 4 && state.scoreCapStage !== 0 && state.scoreCapStage !== 1 && !(version >= 6 && state.scoreCapStage === 2))
+  if ((version >= 4 && state.scoreCapStage !== 0 && state.scoreCapStage !== 1 && !(version >= 6 && state.scoreCapStage === 2) && !(version >= 9 && state.scoreCapStage === 3))
     || (version < 4 && state.scoreCapStage !== undefined && state.scoreCapStage !== 0)) throw new SaveDataError('SCORE上限段階が正しくありません。');
   let automation: AutomationSettings;
   try {
     if (version < 5) automation = createDefaultAutomation();
-    else if (version === 5) {
-      const previousIds = EQUIPMENT_IDS.filter((id) => id !== 'veinExtractor' && id !== 'concentrator');
+    else if (version < 9) {
+      const previousIds = EQUIPMENT_IDS.filter((id) => !isRootEquipment(id) && !(version === 5 && (id === 'veinExtractor' || id === 'concentrator')));
+      const addedIds = EQUIPMENT_IDS.filter((id) => !previousIds.includes(id));
       const old = record(state.automation);
       const selected = record(old.equipment);
       if (Object.keys(selected).length !== previousIds.length || previousIds.some((id) => typeof selected[id] !== 'boolean')
         || !Array.isArray(old.priority) || old.priority.length !== previousIds.length
         || new Set(old.priority).size !== previousIds.length || old.priority.some((id) => !previousIds.includes(id))) throw new Error();
-      automation = readAutomation({ ...old, equipment: { ...selected, veinExtractor: true, concentrator: true },
-        priority: [...old.priority, 'veinExtractor', 'concentrator'] });
+      automation = readAutomation({ ...old, equipment: { ...selected, ...Object.fromEntries(addedIds.map((id) => [id, true])) },
+        priority: [...old.priority, ...addedIds] });
     } else automation = readAutomation(state.automation);
   }
   catch { throw new SaveDataError('自動購入設定が正しくありません。'); }
@@ -158,7 +164,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   try { return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt)); }

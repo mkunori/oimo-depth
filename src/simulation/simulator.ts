@@ -81,7 +81,7 @@ export function validateScenario(scenario: Scenario): void {
     || scenario.equipmentIds.some((id) => !EQUIPMENT_IDS.includes(id)))) throw new RangeError('Invalid equipment selection.');
   if (!['online', 'offline'].includes(scenario.presence)
     || !['early', 'cap'].includes(scenario.prestigeAt)
-    || !['none', 'payback', 'highest-tier'].includes(scenario.equipment)
+    || !['none', 'payback', 'highest-tier', 'root-saving'].includes(scenario.equipment)
     || !Object.hasOwn(SKILL_PLANS, scenario.skillPlan)) throw new RangeError('Unknown simulation policy.');
   if (scenario.visitSeconds !== null) {
     positive(scenario.visitSeconds, 'visitSeconds');
@@ -119,7 +119,7 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
   };
   const invest = () => {
     // 研究は訪問時の手動操作だけ。ONでもオフライン進行中には実行しない。
-    if (scenario.research && state.scoreCapStage === 2) {
+    if (scenario.research && state.scoreCapStage >= 2) {
       const order = scenario.research === 'geology-first' ? ['geology', 'resonance'] as const : ['resonance', 'geology'] as const;
       for (const id of order) {
         while (true) {

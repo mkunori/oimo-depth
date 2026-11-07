@@ -29,6 +29,14 @@ export function EquipmentIcon({ id }: { readonly id: EquipmentId }) {
       {id === 'concentrator' && <>
         <path d="M10 40h28M14 40V22L9 10h30l-5 12v18M14 22h20M20 27l-3 6 7 4 7-4-3-6M24 10V4M19 4h10" />
       </>}
+      {id === 'rootRelay' && <>
+        <path d="M10 41h28M16 41l5-28h6l5 28M18 29h12M20 21h8M24 13V5M15 9l-6 6M33 9l6 6M12 24l-7 5M36 24l7 5" />
+        <circle cx="24" cy="9" r="3" />
+      </>}
+      {id === 'coreChamber' && <>
+        <path d="M13 9h22M15 9v29q9 7 18 0V9M11 41h26M12 4h24v5H12zM15 20h18M15 33h18M24 20v-5" />
+        <ellipse cx="24" cy="27" rx="5" ry="7" />
+      </>}
     </svg>
   );
 }

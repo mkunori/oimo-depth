@@ -2,7 +2,7 @@ import { AUTOMATION_POLICIES } from '../../data/automation';
 import type { AutomationPolicy, AutomationSettings } from '../../data/automation';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../../data/equipment';
 import type { EquipmentId } from '../../data/equipment';
-import { getEquipmentAvailability } from '../../core/game';
+import { getEquipmentAvailability, isEquipmentDiscovered } from '../../core/game';
 import type { GameState } from '../../core/state';
 import { formatNumber } from '../../components/formatNumber';
 
@@ -16,6 +16,7 @@ interface Props {
 export function AutomationPanel({ state, isPaused, automaticPurchases, onChange }: Props) {
   const settings = state.automation;
   const unlocked = state.permanent.skillRanks.automation > 0;
+  const visibleIds = EQUIPMENT_IDS.filter((id) => isEquipmentDiscovered(id, state));
   const reorder = (index: number, id: EquipmentId) => {
     const priority = [...settings.priority];
     const other = priority.indexOf(id);
@@ -35,15 +36,15 @@ export function AutomationPanel({ state, isPaused, automaticPurchases, onChange 
         </select></label>
         <p className="shop-note">{settings.policy === 'balanced' ? '所有台数が最少の設備を次の目標にして貯めます。同数は設備の掲載順です。' : settings.policy === 'efficient' ? '次の1台の価格÷実際の生産増分が最小の設備を目標にして貯めます。台数ボーナスも含みます。' : '買える設備から上の優先順で購入します。買えなければ次へ進み、資金は保留しません。'}</p>
         <div className="automation-equipment">
-          {EQUIPMENT_IDS.map((id) => <div key={id}>
+          {visibleIds.map((id) => <div key={id}>
             <label className="automation-toggle"><input type="checkbox" checked={settings.equipment[id]} onChange={(e) => onChange({ ...settings, equipment: { ...settings.equipment, [id]: e.currentTarget.checked } })} />{EQUIPMENT[id].name}の自動購入</label>
             {!getEquipmentAvailability(id, state).unlocked && <p className="shop-note">上限{formatNumber(getEquipmentAvailability(id, state).requiredScoreCap)}で解禁。現在は購入対象から除外します。</p>}
           </div>)}
         </div>
         {settings.policy === 'priority' && <div className="automation-priority">
           <p>指定優先順（変更すると選んだ設備と入れ替えます）</p>
-          {settings.priority.map((id, index) => <label key={index}>第{index + 1}優先の設備<select value={id} onChange={(e) => reorder(index, e.currentTarget.value as EquipmentId)}>
-            {EQUIPMENT_IDS.map((equipmentId) => <option key={equipmentId} value={equipmentId}>{EQUIPMENT[equipmentId].name}</option>)}
+          {settings.priority.filter((id) => isEquipmentDiscovered(id, state)).map((id, index) => <label key={id}>第{index + 1}優先の設備<select value={id} onChange={(e) => reorder(settings.priority.indexOf(id), e.currentTarget.value as EquipmentId)}>
+            {visibleIds.map((equipmentId) => <option key={equipmentId} value={equipmentId}>{EQUIPMENT[equipmentId].name}</option>)}
           </select></label>)}
         </div>}
       </fieldset>

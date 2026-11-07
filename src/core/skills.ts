@@ -4,6 +4,11 @@ import type { PermanentProgress } from './state';
 import { gn } from './numbers';
 
 export function assertPermanentProgress(permanent: PermanentProgress, allowHistoricalUnlocks = true): void {
+  if (![0, 1, 2, 3].includes(permanent.maxDiscoveredStage)
+    || typeof permanent.rootConnectionUnlocked !== 'boolean'
+    || permanent.rootConnectionUnlocked !== (permanent.maxDiscoveredStage === 3)
+    || (permanent.maxDiscoveredStage >= 1 && permanent.skillRanks.breakthrough < 1)
+    || (permanent.maxDiscoveredStage >= 2) !== permanent.deepResearchUnlocked) throw new RangeError('Invalid discovery or root connection permission.');
   if (!Number.isSafeInteger(permanent.deepResearchCount) || permanent.deepResearchCount < 0
     || permanent.deepResearchUnlocked !== (permanent.deepResearchCount > 0)
     || permanent.deepResearchCount > Math.max(0, permanent.prestigeCount - 4)) throw new RangeError('Invalid deep research history.');

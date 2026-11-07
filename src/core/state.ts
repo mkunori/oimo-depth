@@ -10,6 +10,8 @@ import { GameNumber, gn } from './numbers';
 
 /** 転生で引き継ぐデータ。将来の恒久データはこの境界に追加する。 */
 export interface PermanentProgress {
+  readonly rootConnectionUnlocked: boolean;
+  readonly maxDiscoveredStage: ScoreCapStage;
   readonly deepResearchCount: number;
   readonly deepResearchUnlocked: boolean;
   readonly prestigeCount: number;
@@ -18,7 +20,7 @@ export interface PermanentProgress {
 }
 
 export function createInitialPermanent(): PermanentProgress {
-  return { deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
+  return { rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
 }
 
 /** 転生時に初期化するデータ。初期所持芋は収穫累計とは別に管理する。 */

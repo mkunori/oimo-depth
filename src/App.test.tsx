@@ -12,7 +12,8 @@ import { SAVE_STORAGE_KEY } from './features/save/SaveRepository';
 import { advanceGame } from './core/game';
 import { prestigeGame, purchaseSkill } from './core/prestige';
 import type { GameState } from './core/state';
-import { createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState } from './test/progress';
+import { createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from './test/progress';
+import { performRootConnection } from './core/rootConnection';
 import { performDeepResearch } from './core/research';
 import { performBreakthrough } from './core/breakthrough';
 
@@ -49,6 +50,43 @@ function renderGame() {
 }
 
 describe('research UI', () => {
+  it('keeps undiscovered root devices out of HTML/settings, reveals them only on confirmed discovery and retains names after prestige', () => {
+    const initial = createInitialState(); seedGame({ ...initial, automation: { ...initial.automation, policy: 'priority' } });
+    let view = renderGame();
+    expect(view.container.innerHTML).not.toMatch(/根脈中継塔|芋核培養槽|rootRelay|coreChamber/);
+    expect(screen.queryByRole('button', { name: '根脈接続解析' })).toBeNull();
+    view.unmount();
+    const ready = createRootConnectionReadyState(true); seedGame({ ...ready, automation: { ...ready.automation, policy: 'priority' } });
+    view = renderGame();
+    expect(view.container.innerHTML).not.toMatch(/根脈中継塔|芋核培養槽|rootRelay|coreChamber/);
+    expect(screen.getByText('次の発見: ？？？')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '根脈接続解析' }));
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.scoreCapStage).toBe(2);
+    fireEvent.click(screen.getByRole('button', { name: '根脈接続解析' }));
+    fireEvent.click(screen.getByRole('button', { name: '無料で根脈接続を実行' }));
+    const connected = parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState;
+    expect(connected.permanent.maxDiscoveredStage).toBe(3);
+    expect(connected.permanent.deepResearchCount).toBe(1);
+    expect(screen.getByRole('article', { name: '根脈中継塔' })).toBeTruthy();
+    expect(screen.getByLabelText('SCORE上限').textContent).toBe('1E15');
+    view.unmount();
+    const funded = { ...connected, imo: gn(8e14), runEarnedScore: gn(9e14) }; seedGame(funded); view = renderGame();
+    fireEvent.click(screen.getByRole('button', { name: '根脈中継塔を1台購入' }));
+    fireEvent.click(screen.getByRole('button', { name: '根脈中継塔を1台購入' }));
+    fireEvent.click(screen.getByRole('button', { name: '芋核培養槽を1台購入' }));
+    expect(screen.getByLabelText('設備連携の組数').textContent).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: '転生する' })); fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
+    expect(screen.getByRole('article', { name: '芋核培養槽' })).toBeTruthy();
+    expect(screen.getByText('この周回は上限段階の再突破が必要です。')).toBeTruthy();
+    expect((screen.getByRole('button', { name: '根脈中継塔を購入' }) as HTMLButtonElement).disabled).toBe(true);
+    view.unmount();
+    seedGame(advanceGame(performRootConnection(ready), Number.MAX_VALUE)); renderGame();
+    expect(screen.getByLabelText('現在SCORE').textContent).toBe('1E15');
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
+    expect((screen.getByRole('button', { name: '芋核培養槽を購入' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('lets the third analysis retain starting supplies and updates the preview before confirmation', () => {
     let ready = createResearchReadyState(true);
     for (let count = 0; count < 2; count += 1) {
@@ -106,7 +144,7 @@ describe('research UI', () => {
     seedGame(advanceGame(ready, Number.MAX_VALUE)); renderGame();
     expect(screen.getByLabelText('現在SCORE').textContent).toBe('1E12');
     expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
-    expect(within(screen.getByRole('region', { name: '採掘' })).getByText(/さらに先の突破・上位転生は未実装/)).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: '採掘' })).getByText(/根脈接続解析で、転生せずに上限1E15/)).toBeTruthy();
     expect((screen.getByRole('button', { name: /地層収穫学を強化/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
@@ -540,7 +578,7 @@ describe('breakthrough UI', () => {
     expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState).toEqual(state);
     fireEvent.click(trigger); fireEvent.click(screen.getByRole('button', { name: '限界突破を実行' }));
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState).toEqual({ ...state, scoreCapStage: 1 });
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState).toEqual(performBreakthrough(state));
     expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1);
     expect(screen.getByLabelText('現在SCORE').textContent).toBe('1,000,000');
     expect(screen.getByLabelText('所持芋').textContent).toBe('1,234');

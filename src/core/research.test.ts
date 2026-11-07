@@ -59,7 +59,7 @@ describe('deep research breakthrough', () => {
       permanent: { ...createResearchReadyState(true).permanent, deepResearchUnlocked: true } };
     const migrated = parseSave(stringifyTestSave({ saveVersion: 7, savedAt: 321, gameState: old }));
     expect(migrated.savedAt).toBe(321);
-    expect(migrated.gameState).toEqual({ ...old, permanent: { ...old.permanent, deepResearchCount: 1 } });
+    expect(migrated.gameState).toEqual({ ...old, permanent: { ...old.permanent, deepResearchCount: 1, maxDiscoveredStage: 2 } });
     expect(migrated.gameState.postDeepResearchSkillLock).toBe(false);
     const reset = performDeepResearch(createResearchReadyState(true));
     for (const change of [
@@ -85,7 +85,7 @@ describe('deep research breakthrough', () => {
     Object.freeze(before.permanent); Object.freeze(before.equipmentCounts); Object.freeze(before);
     const after = performDeepResearch(before);
     expect(after).toEqual({ ...before, scoreCapStage: 2, postDeepResearchSkillLock: true,
-      permanent: { ...before.permanent, deepResearchUnlocked: true, deepResearchCount: 1, unspentPoints: 7,
+      permanent: { ...before.permanent, deepResearchUnlocked: true, deepResearchCount: 1, maxDiscoveredStage: 2, unspentPoints: 7,
         skillRanks: { ...before.permanent.skillRanks, harvest: 0, discount: 0 } } });
     expect(after.equipmentCounts).toBe(before.equipmentCounts);
     expect(after.automation).toBe(before.automation);
@@ -204,7 +204,7 @@ describe('run research upgrades', () => {
 describe('v6 save and migrations', () => {
   it('migrates true v5 flags/order/carry/assets and appends enabled new devices without changing master', () => {
     const initial = createResearchReadyState(true);
-    const ids = EQUIPMENT_IDS.filter((id) => id !== 'veinExtractor' && id !== 'concentrator');
+    const ids = EQUIPMENT_IDS.filter((id) => !['veinExtractor', 'concentrator', 'rootRelay', 'coreChamber'].includes(id));
     const { researchRanks: _ranks, ...old } = initial;
     const { deepResearchUnlocked: _unlock, ...permanent } = initial.permanent;
     const legacy = { ...old, permanent,
@@ -217,7 +217,7 @@ describe('v6 save and migrations', () => {
     expect(save.gameState.imo).toBeAmount(initial.imo);
     expect(save.gameState.equipmentCounts.refinery).toBe(3);
     expect(save.gameState.automation).toEqual({ ...legacy.automation,
-      equipment: { ...legacy.automation.equipment, veinExtractor: true, concentrator: true }, priority: [...legacy.automation.priority, 'veinExtractor', 'concentrator'] });
+      equipment: { ...legacy.automation.equipment, veinExtractor: true, concentrator: true, rootRelay: true, coreChamber: true }, priority: [...legacy.automation.priority, 'veinExtractor', 'concentrator', 'rootRelay', 'coreChamber'] });
     expect(save.gameState.productionRemainder).toEqual({ score: legacy.automationRemainder.score, imo: legacy.automationRemainder.imo });
     expect(save.gameState.researchRanks).toEqual({ geology: 0, resonance: 0 });
     expect(save.gameState.permanent.deepResearchUnlocked).toBe(false);
