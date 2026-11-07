@@ -1,3 +1,4 @@
+import { assertRootProgress, getRootBonuses } from './rootProgress';
 import { SKILLS, SKILL_IDS, isEnhancementSkill } from '../data/skills';
 import type { SkillId } from '../data/skills';
 import type { PermanentProgress } from './state';
@@ -5,6 +6,7 @@ import { gn } from './numbers';
 import { assertExcavation } from './excavation';
 
 export function assertPermanentProgress(permanent: PermanentProgress, allowHistoricalUnlocks = true): void {
+  assertRootProgress(permanent);
   assertExcavation(permanent);
   if (![0, 1, 2, 3, 4].includes(permanent.maxDiscoveredStage)
     || typeof permanent.originAnalysisUnlocked !== 'boolean'
@@ -15,7 +17,7 @@ export function assertPermanentProgress(permanent: PermanentProgress, allowHisto
     || (permanent.maxDiscoveredStage >= 2) !== permanent.deepResearchUnlocked) throw new RangeError('Invalid discovery or root connection permission.');
   if (!Number.isSafeInteger(permanent.deepResearchCount) || permanent.deepResearchCount < 0
     || permanent.deepResearchUnlocked !== (permanent.deepResearchCount > 0)
-    || permanent.deepResearchCount > Math.max(0, permanent.prestigeCount - 4)) throw new RangeError('Invalid deep research history.');
+    || permanent.deepResearchCount - permanent.rootRebirthCount > Math.max(0, permanent.prestigeCount - 4)) throw new RangeError('Invalid deep research history.');
   if (typeof permanent.deepResearchUnlocked !== 'boolean'
     || (permanent.deepResearchUnlocked && permanent.skillRanks.breakthrough < 1)) throw new RangeError('Invalid deep research permission.');
   if (!Number.isSafeInteger(permanent.prestigeCount) || permanent.prestigeCount < 0
@@ -55,7 +57,10 @@ export function getSkillBonuses(permanent: PermanentProgress) {
     if (effect.type === 'discount') bonuses.equipmentDiscountPercent += amount;
     if (effect.type === 'startingImo') bonuses.startingImo = bonuses.startingImo.add(amount);
   }
-  bonuses.equipmentPriceMultiplier = 1 - bonuses.equipmentDiscountPercent / 100;
+  const root = getRootBonuses(permanent);
+  bonuses.productionMultiplier *= root.production;
+  bonuses.startingImo = bonuses.startingImo.add(root.startingImo);
+  bonuses.equipmentPriceMultiplier = (1 - bonuses.equipmentDiscountPercent / 100) * root.priceMultiplier;
   return bonuses;
 }
 
@@ -65,7 +70,7 @@ export function getSkillPurchase(permanent: PermanentProgress, id: SkillId, post
   const definition = SKILLS[id];
   const rank = permanent.skillRanks[id];
   const cost = definition.costs[rank] ?? null;
-  const reason = postDeepResearchSkillLock && isEnhancementSkill(id) ? '深層解析後の強化スキルは、次の通常転生まで再購入できません。'
+  const reason = postDeepResearchSkillLock && isEnhancementSkill(id) ? '深層解析後の強化スキルは、この周回では再購入できません。'
     : rank >= definition.maxRank ? '最大ランクに到達しています。'
     : definition.prerequisites.some((required) => permanent.skillRanks[required.id] < required.rank)
       ? '前提スキルが未取得です。'

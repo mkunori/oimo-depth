@@ -46,6 +46,8 @@ export function useMiningGame() {
     reset: session.reset,
     dismissReport: session.dismissReport,
     prestige: session.prestige,
+    rootRebirth: session.rootRebirth,
+    buyRootUpgrade: session.buyRootUpgrade,
     buySkill: session.buySkill,
     breakthrough: session.breakthrough,
     setAutomation: session.setAutomation,

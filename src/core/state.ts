@@ -1,3 +1,5 @@
+import { createInitialRootProgress } from '../data/root';
+import type { RootUpgradeRanks } from '../data/root';
 import { createEmptyOriginResearch } from '../data/originResearch';
 import type { OriginResearchRanks } from '../data/originResearch';
 import type { EquipmentId } from '../data/equipment';
@@ -14,6 +16,12 @@ import type { DigResearchRanks } from '../data/depth';
 
 /** 転生で引き継ぐデータ。将来の恒久データはこの境界に追加する。 */
 export interface PermanentProgress {
+  readonly rootRebirthCount: number;
+  readonly unspentRootCrystals: number;
+  readonly totalRootCrystalsEarned: number;
+  readonly totalRootCrystalsSpent: number;
+  readonly rootUpgradeRanks: RootUpgradeRanks;
+  readonly equipmentSystemUnlocked: boolean;
   readonly depthMeters: number;
   readonly depthRemainder: number;
   readonly digResearchRanks: DigResearchRanks;
@@ -28,7 +36,7 @@ export interface PermanentProgress {
 }
 
 export function createInitialPermanent(): PermanentProgress {
-  return { depthMeters: 0, depthRemainder: 0, digResearchRanks: createEmptyDigResearch(), originAnalysisUnlocked: false, rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
+  return { ...createInitialRootProgress(), depthMeters: 0, depthRemainder: 0, digResearchRanks: createEmptyDigResearch(), originAnalysisUnlocked: false, rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
 }
 
 /** 転生時に初期化するデータ。初期所持芋は収穫累計とは別に管理する。 */

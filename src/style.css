@@ -203,3 +203,15 @@ textarea { display: block; width: 100%; min-width: 0; resize: vertical; padding:
 .research-node { padding: 16px; border: 1px solid var(--border, #d7d1c5); border-radius: 12px; }
 .research-node h3 span { display: block; font-size: .85em; font-weight: normal; }
 .research-panel button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.root-panel { margin-top: 24px; }
+.root-panel p { line-height: 1.7; overflow-wrap: anywhere; }
+.root-panel button { min-height: 44px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.root-stats { display: flex; flex-wrap: wrap; gap: 16px 32px; margin: 24px 0; }
+.root-stats dt { font-size: .85em; }
+.root-stats dd { margin: 8px 0 0; font-weight: 600; }
+.root-reset-scope summary { cursor: pointer; padding: 14px 0; }
+.root-equipment-gate { border-left: 2px solid var(--ink, #302d25); padding: 12px 16px; margin: 24px 0; }
+.root-discovery { width: 80px; height: 56px; }
+.root-discovery path { animation: root-unfold 1.2s ease-out; }
+@keyframes root-unfold { from { stroke-dasharray: 200; stroke-dashoffset: 200; opacity: .25; } to { stroke-dasharray: 200; stroke-dashoffset: 0; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .root-discovery path { animation: none; } }

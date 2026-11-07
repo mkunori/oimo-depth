@@ -3,7 +3,7 @@ import { approximatelyEqual, gn } from '../core/numbers';
 type Row = Record<string, unknown>;
 const ROUNDING_ULPS = 64 * Number.EPSILON;
 const timeField = (key: string) => key.endsWith('Seconds') || key.endsWith('_seconds') || key === 'seconds';
-const depthField = (key: string) => ['depthMeters', 'depth_meters', 'depthRemainder', 'digSpeed', 'digPower', 'actual_dig_speed'].includes(key);
+const depthField = (key: string) => ['depthMeters', 'depth_meters', 'depthRemainder', 'digSpeed', 'digPower', 'actual_dig_speed'].includes(key) || key.endsWith('_depth_meters');
 
 /** Comparison artifacts may contain platform libm rounding; never use this for
  * core purchases or save validation. Counts, ranks, schema and model hash stay
@@ -32,15 +32,15 @@ function sameOrigin(a: unknown, b: unknown, key = '', score = 1, depth = 1, carr
   return Object.entries(left).every(([name, value]) => sameOrigin(value, right[name], name, localScore, localDepth, carry || name === 'productionRemainder'));
 }
 
-/** Every older family and every non-origin metadata field remains byte exact. */
+/** Every earlier family and all non-origin/non-ROOT metadata stay byte exact. */
 export function equivalentOriginArtifact(name: string, expected: string, actual: string): boolean {
   try {
     if (name === 'results.json') {
-      const { origins: a, ...left } = JSON.parse(expected) as Row;
-      const { origins: b, ...right } = JSON.parse(actual) as Row;
-      return a !== undefined && b !== undefined && JSON.stringify(left) === JSON.stringify(right) && sameOrigin(a, b);
+      const { origins: a, rootCycles: rootsA, ...left } = JSON.parse(expected) as Row;
+      const { origins: b, rootCycles: rootsB, ...right } = JSON.parse(actual) as Row;
+      return a !== undefined && b !== undefined && JSON.stringify(left) === JSON.stringify(right) && sameOrigin(a, b) && sameOrigin(rootsA, rootsB);
     }
-    if (name !== 'origin.csv' && name !== 'origin-timeline.csv') return false;
+    if (!['origin.csv', 'origin-timeline.csv', 'root-cycle.csv', 'root-cycle-timeline.csv'].includes(name)) return false;
     // These generated CSVs quote every cell and contain no embedded line breaks.
     const parse = (text: string) => text.trimEnd().split('\n').map((line) => JSON.parse(`[${line}]`) as string[]);
     const left = parse(expected), right = parse(actual);

@@ -1,3 +1,4 @@
+import { getRootBonuses } from './rootProgress';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../data/equipment';
 import { DEPTH_BALANCE, DIG_RESEARCH, DIG_RESEARCH_IDS, STRATA } from '../data/depth';
 import type { PermanentProgress, GameState } from './state';
@@ -21,7 +22,7 @@ export function getDigPower(state: Pick<GameState, 'permanent' | 'equipmentCount
   const base = EQUIPMENT_IDS.reduce<number>((sum, id) => sum + counts[id] * EQUIPMENT[id].digPowerPerUnit, DEPTH_BALANCE.baseDigPower);
   const linked = Math.min(Math.floor(counts.rootRelay / 2), counts.coreChamber);
   const bonus = permanent.depthMeters >= 10000 ? 1 + linked * DEPTH_BALANCE.linkBonusPerPair : 1;
-  const result = base * 2 ** (permanent.digResearchRanks.basic + permanent.digResearchRanks.vein) * bonus;
+  const result = base * 2 ** (permanent.digResearchRanks.basic + permanent.digResearchRanks.vein) * bonus * getRootBonuses(permanent).lateAndDig;
   if (!Number.isFinite(result) || result <= 0) throw new DepthProgressError('Dig power must be positive and finite.');
   return result;
 }

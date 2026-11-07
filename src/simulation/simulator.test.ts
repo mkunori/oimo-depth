@@ -133,6 +133,21 @@ describe('event-driven simulation', () => {
     expect(first.research).toHaveLength(18);
     expect(first.rootConnections).toHaveLength(13);
     expect(first.origins).toHaveLength(10);
+    expect(first.rootCycles).toHaveLength(8);
+    for (const trial of first.rootCycles) {
+      expect(trial.completed).toBe(true);
+      expect(trial.elapsedSeconds).toBeLessThan(trial.firstRootSeconds);
+      expect(trial.afterRoot.permanent.unspentRootCrystals).toBe(1);
+      expect(trial.afterRoot.permanent.prestigeCount).toBe(trial.firstState.permanent.prestigeCount);
+      expect(trial.afterRoot.permanent.unspentPoints).toBe(trial.firstState.permanent.unspentPoints);
+      expect(trial.state.permanent.prestigeCount).toBe(trial.firstState.permanent.prestigeCount);
+      expect(trial.afterSecondRoot?.permanent.rootRebirthCount).toBe(2);
+      expect(trial.afterSecondRoot?.permanent.totalRootCrystalsEarned).toBe(2);
+      expect(trial.afterSecondRoot?.permanent.unspentRootCrystals).toBe(1);
+      expect(trial.stages).toHaveLength(5);
+      expect(trial.stages[0]!.result.purchases).toBeGreaterThan(0);
+      expect(trial.state.permanent.depthMeters).toBeGreaterThan(trial.firstState.permanent.depthMeters);
+    }
     for (const trial of first.origins.filter((trial) => trial.policy === 'research')) {
       expect(trial.result.completed).toBe(true);
       expect(trial.initialState.runEarnedScore).toBeAmount(1e15);
@@ -205,7 +220,7 @@ describe('event-driven simulation', () => {
       expect(campaign.trace.every((point) => point.equipmentCounts.deepDrill === 0 && point.equipmentCounts.refinery === 0)).toBe(true);
       expect(campaign.runs.every((run) => getProductionPerSecond(run.result.state).gt(0))).toBe(true);
     }
-  }, 30_000); // 全方策を2回生成して比較するため、共有CI向けに個別の実行時間を確保する。
+  }, 45_000); // ROOT再周回を含む全方策を2回比較するため、共有CI向けに個別の実行時間を確保する。
 
   it.each([0, -1, NaN, Infinity])('rejects invalid horizon %s', (seconds) => {
     expect(() => simulateRun(createInitialState(), idle, seconds)).toThrow(RangeError);

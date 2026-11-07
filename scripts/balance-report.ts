@@ -43,7 +43,7 @@ function json(value: unknown): string {
 }
 
 function chart(id: string, options: Plot.PlotOptions, legend: readonly { label: string; color: string }[] = [], note = ''): string {
-  if (['score', 'expansion', 'breakthrough', 'automation', 'research', 'root', 'origin'].includes(id)) {
+  if (['score', 'expansion', 'breakthrough', 'automation', 'research', 'root', 'origin', 'root-cycle'].includes(id)) {
     const domain = options.y?.domain ? Array.from(options.y.domain, (value: unknown) => gn(value as number | GameNumber).log10().toFiniteNumber()) : undefined;
     options = { ...options, y: { ...options.y, type: 'linear', domain, tickFormat: (value: number) => `10^${Number(value.toFixed(2))}` } };
   }
@@ -101,14 +101,29 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
   const compactResearch = suite.research.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
   const compactRoots = suite.rootConnections.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
   const compactOrigins = suite.origins.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
+  const compactRootCycles = suite.rootCycles.map(({ trace: _trace, stages, ...trial }) => ({ ...trial,
+    stages: stages.map(({ result: { trace: _stageTrace, ...result }, ...stage }) => ({ ...stage, result })) }));
   const compactDepth = {
     campaigns: suite.depth.campaigns.map(({ result: { trace: _trace, runs, ...result }, ...trial }) => ({ ...trial, result: { ...result,
       runs: runs.map(({ result: { trace: _runTrace, ...runResult }, ...run }) => ({ ...run, result: runResult })) } })),
     late: suite.depth.late.map(({ result: { trace: _trace, ...result }, resumed: { trace: _resumedTrace, ...resumed }, ...trial }) => ({ ...trial, result, resumed })),
   };
-  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, origins: _origins, depth: _depth, ...metadata } = suite;
+  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, origins: _origins, rootCycles: _rootCycles, depth: _depth, ...metadata } = suite;
   const files: Record<string, string> = {
-    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, origins: originReportValue(compactOrigins), depth: compactDepth }),
+    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, origins: originReportValue(compactOrigins), rootCycles: originReportValue(compactRootCycles), depth: compactDepth }),
+    'root-cycle.csv': csv([
+      ['scenario', 'automated', 'choice', 'visit_seconds', 'completed', 'first_root_seconds', 'second_root_seconds', 'total_seconds', 'initial_production', 'final_production', 'first_depth_meters', 'second_depth_meters', 'normal_prestige_count', 'normal_points', 'root_count', 'root_crystals', 'idle_at_cap_seconds', 'stage0_seconds', 'stage1_seconds', 'stage2_seconds', 'stage3_seconds', 'stage4_seconds'],
+      ...suite.rootCycles.map((trial) => [trial.scenario.id, String(trial.automated), trial.choice, trial.scenario.visitSeconds, String(trial.completed),
+        trial.firstRootSeconds, trial.elapsedSeconds, trial.totalSeconds, trial.initialProduction, trial.finalProduction,
+        trial.firstState.permanent.depthMeters, trial.state.permanent.depthMeters, trial.state.permanent.prestigeCount, trial.state.permanent.unspentPoints,
+        trial.afterSecondRoot?.permanent.rootRebirthCount ?? trial.state.permanent.rootRebirthCount, trial.afterSecondRoot?.permanent.unspentRootCrystals ?? trial.state.permanent.unspentRootCrystals,
+        trial.stages.reduce((sum, stage) => sum + stage.result.idleAtCapSeconds, 0), ...[0, 1, 2, 3, 4].map((stage) => trial.stages[stage]?.result.elapsedSeconds ?? null)]),
+    ], true),
+    'root-cycle-timeline.csv': csv([
+      ['scenario', 'stage', 'event', 'seconds', 'score', 'imo', 'production', 'actual_production', 'depth_meters', ...EQUIPMENT_IDS],
+      ...suite.rootCycles.flatMap((trial) => trial.stages.flatMap((stage) => stage.result.trace.map((point) => [trial.scenario.id, stage.stage, point.kind,
+        stage.startsAtSeconds + point.elapsedSeconds, point.score, point.imo, point.production, point.actualProduction, point.depthMeters, ...EQUIPMENT_IDS.map((id) => point.equipmentCounts[id])]))),
+    ], true),
     'origin.csv': csv([
       ['scenario', 'automated', 'policy', 'visit_seconds', 'completed', 'before_analysis_seconds', 'after_analysis_seconds', 'total_seconds', 'idle_at_cap_seconds', 'purchases', 'initial_production', 'final_production', 'links', 'harvest_rank', 'link_rank', 'depth_meters', ...EQUIPMENT_IDS],
       ...suite.origins.map((trial) => [trial.scenario.id, String(trial.automated), trial.policy, trial.scenario.visitSeconds, String(trial.result.completed),
@@ -223,7 +238,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '# 現行バランスのシミュレーション結果', '',
     `コア識別子（LF 正規化 SHA-256）: \`${coreSha256}\`。${suite.runCount}周回、打切り ${time(suite.maxSeconds)}。生成日時や乱数を含まない再現可能な結果です。`, '',
     'これは方策比較であり、最適解の探索やプレイヤー全体の平均ではありません。生産・価格・報酬・保存は実コアから計算しています。', '',
-    '結果形式v2・セーブv11。JSON/CSVの芋金額・生産速度はgn1文字列、台数・ランク・秒数・DEPTH・掘削速度はnumberです。数値移行は [巨大数移行](../../number-migration.md)、深層解析は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md)、恒久深度は [DEPTH](../../depth.md)、第4突破は [根源領域](../../origin.md) を参照してください。', '',
+    '結果形式v2・セーブv12。JSON/CSVの芋金額・生産速度はgn1文字列、台数・ランク・秒数・DEPTH・掘削速度はnumberです。数値移行は [巨大数移行](../../number-migration.md)、深層解析は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md)、恒久深度は [DEPTH](../../depth.md)、第4突破は [根源領域](../../origin.md)、根源転生は [ROOT](../../root-rebirth.md) を参照してください。', '',
     '## 現行パラメータ', '',
     `基礎生産 ${number(suite.parameters.balance.baseProduction)}/秒、上限 ${number(suite.parameters.balance.scoreCap)}、転生解禁 ${number(suite.parameters.prestige.unlockScore)}、報酬 ${suite.parameters.prestige.earlyReward}/${suite.parameters.prestige.capReward}pt、オフライン上限 ${time(suite.parameters.offlineLimitSeconds)}。`, '',
     '| 設備 | 基礎価格 | 台数価格倍率 | 1台あたり基礎生産 | 解禁する上限 | 台数/追加倍率（乗算） |', '| --- | ---: | ---: | ---: | ---: | --- |',
@@ -329,7 +344,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     ...suite.rootConnections.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.policy === 'control' ? '既存設備のみ' : trial.policy === 'saving' ? '連携設備へ貯蓄' : '連携設備あり'} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '打切り'} | ${trial.result.purchases} | ${trial.links} | ×${number(trial.productionMultiplier)} | ${time(trial.result.idleAtCapSeconds)} |`), '',
     '段階3の目標は研究あり・1分自動で2〜6h、6h確認で6〜18h、12h確認で12〜36hです。連携追加生産には全体・地層倍率を適用し、地脈共鳴の対象は従来の2設備に限定します。1e15到達後は第4突破を選べます。', '',
     '## 恒久DEPTHと任意の掘削研究（#30）', '',
-    '設備の掘削力を地層の硬さで割り、SCOREの稼働時間だけ深度を進めます。地層境界はイベントで切替。通常転生でも深度と購入済み掘削研究を保持し、芋生産の研究・設備優先方針は変えません。研究あり方策は確認時にだけ所持芋で任意強化を買います。ROOTは未実装で、以下は通常転生とROOT前の正規段階3の比較です。', '',
+    '設備の掘削力を地層の硬さで割り、SCOREの稼働時間だけ深度を進めます。地層境界はイベントで切替。通常転生でも深度と購入済み掘削研究を保持し、芋生産の研究・設備優先方針は変えません。研究あり方策は確認時にだけ所持芋で任意強化を買います。以下は通常転生とROOT前の正規段階3の比較で、ROOT後の比較は後段に分けています。', '',
     '| 確認 | 掘削研究 | 初周の深度 | 6周後の深度 | 到達層 | 総時間 |', '| --- | --- | ---: | ---: | --- | ---: |',
     ...suite.depth.campaigns.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.digResearch ? 'あり' : 'なし'} | ${number(trial.result.runs[0]?.result.state.permanent.depthMeters ?? 0)} m | ${number(trial.result.state.permanent.depthMeters)} m | ${STRATA[getStratum(trial.result.state.permanent.depthMeters)]!.name} | ${time(trial.result.elapsedSeconds)} |`), '',
     '| 確認 | 掘削研究 | 段階3開始深度 | 1e15時の深度 | 到達層 | 通常転生後の次回転生判断時 |', '| --- | --- | ---: | ---: | --- | ---: |',
@@ -340,6 +355,11 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '| --- | --- | --- | ---: | ---: | ---: | ---: |',
     ...suite.origins.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.policy === 'hold' ? '追加購入なし' : trial.policy === 'equipment' ? '新設備・新研究なし' : '新設備と新研究'} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '90日で打切り'} | ${trial.result.completed ? time(trial.totalSeconds) : '90日で打切り'} | ${number(trial.result.state.permanent.depthMeters)} m | ${time(trial.result.idleAtCapSeconds)} |`), '',
     '1分/6h/12h×自動ON/OFFの6経路を実際の初期状態から継続。対照は6hの追加購入なし・新研究なし4経路だけとし、研究順や全組合せは増やしません。研究・突破は確認時のみ手動です。各段階の停止待ちは既存campaign/breakthrough/research/rootとorigin CSVに記録します。1日2〜4回確認で追加数日、初期から1〜3週間は参考目標で、全方策や最適値の保証ではありません。詳細は [根源領域](../../origin.md)。', '',
+    '## ROOT REBIRTH・初回と再到達', '',
+    '| 確認 | 購入 | 最初の結晶 | 初期→初回ROOT | ROOT後→2回目 | 序盤1E6まで | 2回目までのDEPTH |',
+    '| --- | --- | --- | ---: | ---: | ---: | ---: |',
+    ...suite.rootCycles.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.choice === 'blessing' ? '原初の恵み' : '根源の記憶'} | ${time(trial.firstRootSeconds)} | ${trial.completed ? time(trial.elapsedSeconds) : '打切り'} | ${time(trial.stages[0]?.result.elapsedSeconds)} | ${number(trial.state.permanent.depthMeters)} m |`), '',
+    '初回ROOTで全収穫×3、結晶1個を手動で使用。維持した通常ポイントだけで収穫3/割引1を再取得し、通常転生を挟まず段階0〜4を再突破します。第2深層解析では収穫3を保持し割引を返還します。根源の記憶は設備割引が即時、初期芋は次のリセットから支給するため、最初のROOT直後に芋を捏造しません。詳細・保持検証は [ROOT](../../root-rebirth.md)。', '',
     '## 検証範囲と未確定事項', '', '| 項目 | 区分 | 内容 |', '| --- | --- | --- |',
     ...suite.coverage.map((row) => `| ${row.feature} | ${row.status} | ${row.detail} |`), '',
     '## 図と機械可読データ', '',
@@ -351,6 +371,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '- [設備連携の比較](root-connection.svg) / [比較CSV](root-connection.csv) / [購入時系列](root-connection-timeline.csv)',
     '- [恒久DEPTHの比較](depth.svg) / [SCORE帯ごとの深度・待機CSV](depth.csv) / [進行時系列](depth-timeline.csv)',
     '- [第4突破の比較](origin.svg) / [初期状態から1E18までの時間・深度CSV](origin.csv) / [設備・研究・リンクの時系列](origin-timeline.csv)',
+    '- [ROOT後の選択比較](root-cycle.svg) / [初回・2回目の経路CSV](root-cycle.csv) / [再突破の時系列](root-cycle-timeline.csv)',
     '- [全結果 JSON](results.json) / [周回 CSV](runs.csv) / [時系列 CSV](timeline.csv) / [将来試算 CSV](projections.csv)', '',
     '再生成方法・方策の定義・後続 Issue の判断材料は [検証ガイド](../README.md) を参照してください。', '');
   files['report.md'] = lines.join('\n');
@@ -456,5 +477,14 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     color: { domain: originTrials.map((trial) => trial.scenario.id), range: [...colors, '#336b68'] },
     marks: [amountLineY(originPoints, { x: 'days', y: 'score', stroke: 'id', clip: true })],
   }, originTrials.map((trial, index) => ({ label: `${trial.automated ? '自動' : '手動'} / ${trial.policy === 'hold' ? '追加購入なし' : trial.policy === 'equipment' ? '設備のみ' : '設備と研究'}`, color: [...colors, '#336b68'][index]! })), '通常の初期状態から継続。研究は確認時のみ手動購入。打切り90日');
+  const cycleTrials = suite.rootCycles.filter((trial) => trial.automated && trial.scenario.visitSeconds === 60);
+  const cyclePoints = cycleTrials.flatMap((trial) => trial.trace.filter((point) => point.score.gt(0)).map((point) => ({ ...point, id: trial.scenario.id, hours: point.elapsedSeconds / 3600 })));
+  files['root-cycle.svg'] = chart('root-cycle', {
+    ariaLabel: '初回ROOT後、1分自動購入で全収穫と設備割引の結晶選択を比較。',
+    x: { label: '初回ROOT後の経過時間 (hours)', grid: true },
+    y: { label: 'SCORE (log)', domain: [1, 1e18], grid: true },
+    color: { domain: cycleTrials.map((trial) => trial.scenario.id), range: colors.slice(0, 2) },
+    marks: [amountLineY(cyclePoints, { x: 'hours', y: 'score', stroke: 'id' })],
+  }, cycleTrials.map((trial, index) => ({ label: trial.choice === 'blessing' ? '原初の恵み / 全収穫' : '根源の記憶 / 設備割引', color: colors[index]! })), '実際の初回ROOT→通常転生なし→段階0〜4の再突破→2回目ROOT');
   return files;
 }
