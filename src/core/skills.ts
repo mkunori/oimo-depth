@@ -6,9 +6,11 @@ import { assertExcavation } from './excavation';
 
 export function assertPermanentProgress(permanent: PermanentProgress, allowHistoricalUnlocks = true): void {
   assertExcavation(permanent);
-  if (![0, 1, 2, 3].includes(permanent.maxDiscoveredStage)
+  if (![0, 1, 2, 3, 4].includes(permanent.maxDiscoveredStage)
+    || typeof permanent.originAnalysisUnlocked !== 'boolean'
+    || permanent.originAnalysisUnlocked !== (permanent.maxDiscoveredStage === 4)
     || typeof permanent.rootConnectionUnlocked !== 'boolean'
-    || permanent.rootConnectionUnlocked !== (permanent.maxDiscoveredStage === 3)
+    || permanent.rootConnectionUnlocked !== (permanent.maxDiscoveredStage >= 3)
     || (permanent.maxDiscoveredStage >= 1 && permanent.skillRanks.breakthrough < 1)
     || (permanent.maxDiscoveredStage >= 2) !== permanent.deepResearchUnlocked) throw new RangeError('Invalid discovery or root connection permission.');
   if (!Number.isSafeInteger(permanent.deepResearchCount) || permanent.deepResearchCount < 0

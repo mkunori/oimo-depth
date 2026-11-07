@@ -111,6 +111,20 @@ describe('event-driven simulation', () => {
     expect(first.campaigns).toHaveLength(15);
     expect(first.research).toHaveLength(18);
     expect(first.rootConnections).toHaveLength(13);
+    expect(first.origins).toHaveLength(10);
+    for (const trial of first.origins.filter((trial) => trial.policy === 'research')) {
+      expect(trial.result.completed).toBe(true);
+      expect(trial.initialState.runEarnedScore).toBeAmount(1e15);
+      expect(trial.result.state.runEarnedScore).toBeAmount(1e18);
+      expect(trial.result.state.permanent.depthMeters).toBeGreaterThan(trial.initialState.permanent.depthMeters);
+      expect(trial.result.trace.some((point) => point.kind === 'research-purchase')).toBe(true);
+      if (trial.scenario.visitSeconds! >= 21600) {
+        expect(trial.result.elapsedSeconds / 86400).toBeGreaterThanOrEqual(2);
+        expect(trial.result.elapsedSeconds / 86400).toBeLessThanOrEqual(7);
+        expect(trial.result.state.equipmentCounts.originMiner).toBeGreaterThan(0);
+        expect(trial.result.state.equipmentCounts.imoReactor).toBeGreaterThan(0);
+      }
+    }
     expect(first.depth.campaigns).toHaveLength(6);
     expect(first.depth.late).toHaveLength(6);
     for (const trial of first.depth.campaigns) {

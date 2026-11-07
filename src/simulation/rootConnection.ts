@@ -1,7 +1,7 @@
 import { performRootConnection } from '../core/rootConnection';
 import { configureAutomation, getProductionPerSecond, getRootLink } from '../core/game';
 import { createSave, parseSave, serializeSave } from '../core/save';
-import { EQUIPMENT_IDS, isRootEquipment } from '../data/equipment';
+import { EQUIPMENT_IDS, isOriginEquipment, isRootEquipment } from '../data/equipment';
 import type { simulateResearch } from './research';
 import { simulateRun } from './simulator';
 
@@ -12,7 +12,7 @@ export function simulateRootConnections(research: ReturnType<typeof simulateRese
     .flatMap((previous) => (previous.scenario.visitSeconds === 60 && !previous.automated ? ['control', 'linked', 'saving'] as const : ['control', 'linked'] as const).map((policy) => {
       const linked = policy !== 'control';
       const unlocked = performRootConnection(previous.result.state);
-      const equipmentIds = EQUIPMENT_IDS.filter((id) => linked || !isRootEquipment(id));
+      const equipmentIds = EQUIPMENT_IDS.filter((id) => !isOriginEquipment(id) && (linked || !isRootEquipment(id)));
       const base = configureAutomation(unlocked, { ...unlocked.automation,
         equipment: { ...unlocked.automation.equipment, rootRelay: linked, coreChamber: linked } });
       const initialState = parseSave(serializeSave(createSave(base, 0))).gameState;

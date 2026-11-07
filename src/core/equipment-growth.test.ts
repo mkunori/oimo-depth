@@ -9,7 +9,7 @@ import {
 import { createInitialState } from './state';
 import { createSave, parseSave, SAVE_VERSION, serializeSave, settleOffline } from './save';
 import { prestigeGame, purchaseSkill } from './prestige';
-import { EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS, isRootEquipment } from '../data/equipment';
+import { EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS, isOriginEquipment, isRootEquipment } from '../data/equipment';
 import { createBreakthroughReadyState } from '../test/progress';
 import { performBreakthrough } from './breakthrough';
 import { performDeepResearch } from './research';
@@ -43,7 +43,7 @@ describe('equipment milestones', () => {
     expect(parseSave(serializeSave(createSave(state, 0))).gameState).toEqual(state);
   });
 
-  it.each(EQUIPMENT_IDS.filter((id) => !isRootEquipment(id)))('keeps individual and bulk cost/count/effects identical for %s', (id) => {
+  it.each(EQUIPMENT_IDS.filter((id) => !isRootEquipment(id) && !isOriginEquipment(id)))('keeps individual and bulk cost/count/effects identical for %s', (id) => {
     for (const count of [0, 9, 24, 49]) {
       const state = { ...performDeepResearch(advanceGame(performBreakthrough(createBreakthroughReadyState()), 1e9)), imo: gn(1e12 - 1), runEarnedScore: gn(1e12 - 1),
         equipmentCounts: { ...createInitialState().equipmentCounts, [id]: count } };

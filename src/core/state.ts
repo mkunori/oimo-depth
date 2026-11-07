@@ -1,3 +1,5 @@
+import { createEmptyOriginResearch } from '../data/originResearch';
+import type { OriginResearchRanks } from '../data/originResearch';
 import type { EquipmentId } from '../data/equipment';
 import { createEmptyEquipmentCounts } from '../data/equipment';
 import type { SkillId } from '../data/skills';
@@ -15,6 +17,7 @@ export interface PermanentProgress {
   readonly depthMeters: number;
   readonly depthRemainder: number;
   readonly digResearchRanks: DigResearchRanks;
+  readonly originAnalysisUnlocked: boolean;
   readonly rootConnectionUnlocked: boolean;
   readonly maxDiscoveredStage: ScoreCapStage;
   readonly deepResearchCount: number;
@@ -25,12 +28,13 @@ export interface PermanentProgress {
 }
 
 export function createInitialPermanent(): PermanentProgress {
-  return { depthMeters: 0, depthRemainder: 0, digResearchRanks: createEmptyDigResearch(), rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
+  return { depthMeters: 0, depthRemainder: 0, digResearchRanks: createEmptyDigResearch(), originAnalysisUnlocked: false, rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
 }
 
 /** 転生時に初期化するデータ。初期所持芋は収穫累計とは別に管理する。 */
 export interface RunState {
   readonly postDeepResearchSkillLock: boolean;
+  readonly originResearchRanks: OriginResearchRanks;
   readonly researchRanks: ResearchRanks;
   /** 設備購入で消費する芋の残高。 */
   readonly imo: GameNumber;
@@ -55,6 +59,7 @@ export function createInitialState(): GameState {
     runEarnedScore: gn(0),
     runStartingImo: gn(0),
     scoreCapStage: 0,
+    originResearchRanks: createEmptyOriginResearch(),
     researchRanks: createEmptyResearch(),
     equipmentCounts: createEmptyEquipmentCounts(),
     permanent: createInitialPermanent(),

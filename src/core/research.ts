@@ -1,3 +1,5 @@
+import { createEmptyOriginResearch, getOriginResearchSpent, ORIGIN_RESEARCH } from '../data/originResearch';
+import type { OriginResearchId } from '../data/originResearch';
 import { createEmptyResearch, getResearchSpent, RESEARCH } from '../data/research';
 import type { ResearchId } from '../data/research';
 import { getScoreCap } from '../data/scoreCaps';
@@ -63,7 +65,24 @@ export function purchaseResearch(state: GameState, id: ResearchId): GameState {
 /** 同じ周回内で配分を試し直せる。返金はSCOREに加算しない。 */
 export function resetResearch(state: GameState): GameState {
   getProductionPerSecond(state);
-  const refund = getResearchSpent(state.researchRanks);
+  const refund = getResearchSpent(state.researchRanks).add(getOriginResearchSpent(state.originResearchRanks));
   if (state.scoreCapStage < 2 || state.runEarnedScore.gte(getScoreCap(state)) || refund.equals(0)) return state;
-  return { ...state, imo: state.imo.add(refund), researchRanks: createEmptyResearch() };
+  return { ...state, imo: state.imo.add(refund), researchRanks: createEmptyResearch(), originResearchRanks: createEmptyOriginResearch() };
+}
+
+export function getOriginResearchPurchase(state: GameState, id: OriginResearchId) {
+  getProductionPerSecond(state);
+  if (!Object.hasOwn(ORIGIN_RESEARCH, id)) throw new RangeError('Unknown origin research.');
+  const rank = state.originResearchRanks[id];
+  const cost = ORIGIN_RESEARCH[id].costs[rank] ?? null;
+  const reason = state.scoreCapStage < 4 ? '地底核心の解析でSCORE上限1E18へ進むと強化できます。'
+    : state.runEarnedScore.gte(getScoreCap(state)) ? 'SCORE上限到達のため購入を停止しています。'
+      : cost === null ? '最大ランクです。' : state.imo.lt(cost) ? '所持芋が足りません。' : null;
+  return { cost, rank, canPurchase: reason === null, reason };
+}
+export function purchaseOriginResearch(state: GameState, id: OriginResearchId): GameState {
+  const quote = getOriginResearchPurchase(state, id);
+  if (!quote.canPurchase || quote.cost === null) return state;
+  return { ...state, imo: state.imo.subtract(quote.cost),
+    originResearchRanks: { ...state.originResearchRanks, [id]: quote.rank + 1 } };
 }

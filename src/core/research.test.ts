@@ -204,7 +204,7 @@ describe('run research upgrades', () => {
 describe('v6 save and migrations', () => {
   it('migrates true v5 flags/order/carry/assets and appends enabled new devices without changing master', () => {
     const initial = createResearchReadyState(true);
-    const ids = EQUIPMENT_IDS.filter((id) => !['veinExtractor', 'concentrator', 'rootRelay', 'coreChamber'].includes(id));
+    const ids = EQUIPMENT_IDS.filter((id) => !['veinExtractor', 'concentrator', 'rootRelay', 'coreChamber', 'originMiner', 'imoReactor'].includes(id));
     const { researchRanks: _ranks, ...old } = initial;
     const { deepResearchUnlocked: _unlock, ...permanent } = initial.permanent;
     const legacy = { ...old, permanent,
@@ -217,7 +217,7 @@ describe('v6 save and migrations', () => {
     expect(save.gameState.imo).toBeAmount(initial.imo);
     expect(save.gameState.equipmentCounts.refinery).toBe(3);
     expect(save.gameState.automation).toEqual({ ...legacy.automation,
-      equipment: { ...legacy.automation.equipment, veinExtractor: true, concentrator: true, rootRelay: true, coreChamber: true }, priority: [...legacy.automation.priority, 'veinExtractor', 'concentrator', 'rootRelay', 'coreChamber'] });
+      equipment: { ...legacy.automation.equipment, veinExtractor: true, concentrator: true, rootRelay: true, coreChamber: true, originMiner: true, imoReactor: true }, priority: [...legacy.automation.priority, 'veinExtractor', 'concentrator', 'rootRelay', 'coreChamber', 'originMiner', 'imoReactor'] });
     expect(save.gameState.productionRemainder).toEqual({ score: legacy.automationRemainder.score, imo: legacy.automationRemainder.imo });
     expect(save.gameState.researchRanks).toEqual({ geology: 0, resonance: 0 });
     expect(save.gameState.permanent.deepResearchUnlocked).toBe(false);

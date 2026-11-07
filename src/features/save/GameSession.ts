@@ -12,6 +12,10 @@ import { SKILLS } from '../../data/skills';
 import type { SkillId } from '../../data/skills';
 import { getScoreCap } from '../../data/scoreCaps';
 import { performBreakthrough } from '../../core/breakthrough';
+import { performOriginAnalysis } from '../../core/origin';
+import { ORIGIN_RESEARCH } from '../../data/originResearch';
+import type { OriginResearchId } from '../../data/originResearch';
+import { purchaseOriginResearch } from '../../core/research';
 import { performRootConnection } from '../../core/rootConnection';
 import { purchaseDigResearch } from '../../core/digResearch';
 import { DIG_RESEARCH, STRATA } from '../../data/depth';
@@ -218,6 +222,10 @@ export class GameSession {
   rootConnection = (): boolean => this.researchAction(performRootConnection, this.snapshot.gameState.permanent.rootConnectionUnlocked
     ? '根脈接続を再実行しました。上限1E15で同じ周回を継続します。'
     : '根脈接続を解析しました。根脈中継塔・芋核培養槽を発見！ 上限1E15で同じ周回を継続します。');
+  originAnalysis = (): boolean => this.researchAction(performOriginAnalysis, this.snapshot.gameState.permanent.originAnalysisUnlocked
+    ? '地底核心を再解析しました。上限1E18で同じ周回を継続します。'
+    : '地底核心を解析しました。根源採掘機・芋核炉と根源研究を発見！ 上限1E18で同じ周回を継続します。');
+  buyOriginResearch = (id: OriginResearchId): boolean => this.researchAction((state) => purchaseOriginResearch(state, id), `${ORIGIN_RESEARCH[id].name}を強化しました。`);
   buyResearch = (id: ResearchId): boolean => this.researchAction((state) => purchaseResearch(state, id), `${RESEARCH[id].name}を強化しました。`);
   buyDigResearch = (id: DigResearchId): boolean => this.researchAction((state) => purchaseDigResearch(state, id), `${DIG_RESEARCH[id].name}を強化しました。掘削研究は転生後も保持します。`);
   resetResearch = (): boolean => this.researchAction(resetResearch, '研究強化を振り直しました。使用した芋を全額返却しました。');

@@ -79,9 +79,21 @@ export const EQUIPMENT = Object.freeze({
     name: '芋核培養槽', basePrice: gn(2e14), priceMultiplier: gn(1.3), productionPerUnit: gn(5e9),
     unlockAtScoreCap: gn(1e15), milestones: [],
   }),
+  originMiner: Object.freeze({
+    digPowerPerUnit: 5,
+    name: '根源採掘機', basePrice: gn(2e15), priceMultiplier: gn(1.22), productionPerUnit: gn(5e9),
+    unlockAtScoreCap: gn(1e18), milestones: [],
+  }),
+  imoReactor: Object.freeze({
+    digPowerPerUnit: 0.05,
+    name: '芋核炉', basePrice: gn(2e16), priceMultiplier: gn(1.3), productionPerUnit: gn(5e10),
+    unlockAtScoreCap: gn(1e18), milestones: [],
+  }),
 } satisfies Record<string, EquipmentDefinition>);
 
 export type EquipmentId = keyof typeof EQUIPMENT;
+export const ORIGIN_EQUIPMENT_IDS = ['originMiner', 'imoReactor'] as const;
+export function isOriginEquipment(id: EquipmentId): boolean { return (ORIGIN_EQUIPMENT_IDS as readonly EquipmentId[]).includes(id); }
 export const ROOT_EQUIPMENT_IDS = ['rootRelay', 'coreChamber'] as const;
 export const ROOT_LINK_PRODUCTION = gn(5e9);
 export function isRootEquipment(id: EquipmentId): boolean { return (ROOT_EQUIPMENT_IDS as readonly EquipmentId[]).includes(id); }

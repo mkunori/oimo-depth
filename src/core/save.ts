@@ -1,7 +1,9 @@
+import { createEmptyOriginResearch, ORIGIN_RESEARCH_IDS } from '../data/originResearch';
+import type { OriginResearchRanks } from '../data/originResearch';
 import { GameNumber, gn, encodeGameNumbers } from './numbers';
 import { advanceWithAutomation, getProductionPerSecond, getEquipmentPrice } from './game';
 import type { GameState } from './state';
-import { createEmptyEquipmentCounts, EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS, isRootEquipment } from '../data/equipment';
+import { createEmptyEquipmentCounts, EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS, isOriginEquipment, isRootEquipment } from '../data/equipment';
 import { SKILL_IDS } from '../data/skills';
 import { createInitialPermanent } from './state';
 import type { PermanentProgress } from './state';
@@ -14,7 +16,7 @@ import { assertPermanentProgress } from './skills';
 import { createEmptyDigResearch, DIG_RESEARCH_IDS } from '../data/depth';
 import type { DigResearchRanks } from '../data/depth';
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -50,7 +52,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 = SAVE_VERSION, internal = false): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 = SAVE_VERSION, internal = false): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (state.imo === undefined || state.runEarnedScore === undefined) {
@@ -59,7 +61,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
   const equipmentCounts = createEmptyEquipmentCounts();
   for (const id of EQUIPMENT_IDS) {
     const isNewId = !(INITIAL_EQUIPMENT_IDS as readonly string[]).includes(id);
-    const introduced = isRootEquipment(id) ? 9 : id === 'veinExtractor' || id === 'concentrator' ? 6 : isNewId ? 3 : 1;
+    const introduced = isOriginEquipment(id) ? 11 : isRootEquipment(id) ? 9 : id === 'veinExtractor' || id === 'concentrator' ? 6 : isNewId ? 3 : 1;
     const count = version < introduced && counts[id] === undefined ? 0 : counts[id];
     if (version < introduced && count !== 0) throw new SaveDataError('旧形式に未対応の設備があります。');
     if (typeof count !== 'number') {
@@ -83,7 +85,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     if (version >= 6 && typeof savedPermanent.deepResearchUnlocked !== 'boolean') throw new SaveDataError('研究権限が正しくありません。');
     if (version >= 8 && typeof savedPermanent.deepResearchCount !== 'number') throw new SaveDataError('解析累計が正しくありません。');
     if (version >= 9 && (typeof savedPermanent.rootConnectionUnlocked !== 'boolean'
-      || ![0, 1, 2, 3].includes(savedPermanent.maxDiscoveredStage as number))) throw new SaveDataError('発見履歴・根脈接続権が正しくありません。');
+      || !(version >= 11 ? [0, 1, 2, 3, 4] : [0, 1, 2, 3]).includes(savedPermanent.maxDiscoveredStage as number))) throw new SaveDataError('発見履歴・根脈接続権が正しくありません。');
     permanent = { prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks,
       depthMeters: version >= 10 ? savedPermanent.depthMeters as number : 0,
       depthRemainder: version >= 10 ? savedPermanent.depthRemainder as number : 0,
@@ -92,6 +94,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
         if (DIG_RESEARCH_IDS.some((id) => typeof dig[id] !== 'number')) throw new SaveDataError('掘削研究が正しくありません。');
         return Object.fromEntries(DIG_RESEARCH_IDS.map((id) => [id, dig[id]])) as DigResearchRanks;
       })() : createEmptyDigResearch(),
+      originAnalysisUnlocked: version >= 11 ? savedPermanent.originAnalysisUnlocked as boolean : false,
       rootConnectionUnlocked: version >= 9 ? savedPermanent.rootConnectionUnlocked as boolean : false,
       maxDiscoveredStage: version >= 9 ? savedPermanent.maxDiscoveredStage as ScoreCapStage
         : version >= 6 && savedPermanent.deepResearchUnlocked ? 2 : version >= 4 && state.scoreCapStage === 1 ? 1 : 0,
@@ -101,13 +104,13 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     // acquisition rules before granting the new history-based exception.
     if (version < 8) assertPermanentProgress(permanent, false);
   }
-  if ((version >= 4 && state.scoreCapStage !== 0 && state.scoreCapStage !== 1 && !(version >= 6 && state.scoreCapStage === 2) && !(version >= 9 && state.scoreCapStage === 3))
+  if ((version >= 4 && state.scoreCapStage !== 0 && state.scoreCapStage !== 1 && !(version >= 6 && state.scoreCapStage === 2) && !(version >= 9 && state.scoreCapStage === 3) && !(version >= 11 && state.scoreCapStage === 4))
     || (version < 4 && state.scoreCapStage !== undefined && state.scoreCapStage !== 0)) throw new SaveDataError('SCORE上限段階が正しくありません。');
   let automation: AutomationSettings;
   try {
     if (version < 5) automation = createDefaultAutomation();
-    else if (version < 9) {
-      const previousIds = EQUIPMENT_IDS.filter((id) => !isRootEquipment(id) && !(version === 5 && (id === 'veinExtractor' || id === 'concentrator')));
+    else if (version < 11) {
+      const previousIds = EQUIPMENT_IDS.filter((id) => !isOriginEquipment(id) && !(version < 9 && isRootEquipment(id)) && !(version === 5 && (id === 'veinExtractor' || id === 'concentrator')));
       const addedIds = EQUIPMENT_IDS.filter((id) => !previousIds.includes(id));
       const old = record(state.automation);
       const selected = record(old.equipment);
@@ -144,6 +147,10 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     scoreCapStage: version < 4 ? 0 : state.scoreCapStage as ScoreCapStage,
     permanent,
     automation,
+    originResearchRanks: version < 11 ? createEmptyOriginResearch() : (() => {
+      const ranks = record(state.originResearchRanks);
+      return Object.fromEntries(ORIGIN_RESEARCH_IDS.map((id) => [id, ranks[id]])) as OriginResearchRanks;
+    })(),
     researchRanks: version < 6 ? createEmptyResearch() : (() => {
       const ranks = record(state.researchRanks);
       if (RESEARCH_IDS.some((id) => typeof ranks[id] !== 'number')) throw new SaveDataError('研究ランクが正しくありません。');
@@ -155,7 +162,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     getProductionPerSecond(result);
     for (const id of EQUIPMENT_IDS) {
       const price = getEquipmentPrice(id, equipmentCounts[id], permanent);
-      if (version < 7 && price.gt(Number.MAX_SAFE_INTEGER)) throw new SaveDataError('旧セーブの設備価格が範囲外です。');
+      if (version < 7 && !isOriginEquipment(id) && price.gt(Number.MAX_SAFE_INTEGER)) throw new SaveDataError('旧セーブの設備価格が範囲外です。');
     }
   } catch {
     throw new SaveDataError('セーブの数値が範囲外です。');
@@ -174,7 +181,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== 10 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   try { return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt)); }

@@ -14,7 +14,8 @@ import type { EquipmentId } from '../data/equipment';
 import { PRESTIGE_BALANCE } from '../data/skills';
 import { investEquipment, investSkills, SKILL_PLANS } from './policies';
 import type { EquipmentPolicy, SkillPlan } from './policies';
-import { purchaseResearch } from '../core/research';
+import { ORIGIN_RESEARCH_IDS } from '../data/originResearch';
+import { purchaseOriginResearch, purchaseResearch } from '../core/research';
 import { purchaseDigResearch } from '../core/digResearch';
 import { getDigPower, getDigSpeed, getStratum } from '../core/excavation';
 import { DIG_RESEARCH_IDS, STRATA } from '../data/depth';
@@ -31,6 +32,7 @@ export interface Scenario {
   readonly equipmentIds?: readonly EquipmentId[];
   readonly automation?: AutomationPolicy;
   readonly research?: 'geology-first' | 'resonance-first';
+  readonly originResearch?: boolean;
   readonly digResearch?: boolean;
 }
 
@@ -42,6 +44,7 @@ export interface Milestone {
 }
 
 export interface TracePoint {
+  readonly originResearchRanks: GameState['originResearchRanks'];
   readonly depthMeters: number;
   readonly digSpeed: number;
   readonly digPower: number;
@@ -79,7 +82,7 @@ export interface RunResult {
 const TIME_EPSILON = 1e-7;
 const MAX_DECISIONS = 100_000;
 function depthTrace(state: GameState) {
-  return { depthMeters: state.permanent.depthMeters, digSpeed: state.runEarnedScore.gte(getScoreCap(state)) ? 0 : getDigSpeed(state),
+  return { originResearchRanks: state.originResearchRanks, depthMeters: state.permanent.depthMeters, digSpeed: state.runEarnedScore.gte(getScoreCap(state)) ? 0 : getDigSpeed(state),
     digPower: getDigPower(state), stratum: STRATA[getStratum(state.permanent.depthMeters)]!.name, digResearchRanks: state.permanent.digResearchRanks };
 }
 
@@ -133,6 +136,13 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
   };
   const invest = () => {
     // 研究は訪問時の手動操作だけ。ONでもオフライン進行中には実行しない。
+    if (scenario.originResearch && state.scoreCapStage === 4) {
+      for (const id of ORIGIN_RESEARCH_IDS) for (let rank = 0; rank < 3; rank += 1) {
+        const next = purchaseOriginResearch(state, id);
+        if (next === state) break;
+        state = next; record('research-purchase');
+      }
+    }
     if (scenario.research && state.scoreCapStage >= 2) {
       const order = scenario.research === 'geology-first' ? ['geology', 'resonance'] as const : ['resonance', 'geology'] as const;
       for (const id of order) {

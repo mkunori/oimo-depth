@@ -50,6 +50,35 @@ function renderGame() {
 }
 
 describe('research UI', () => {
+  it('reveals origin devices/research only after confirmation, keeps discovery after prestige, and previews ROOT only at 1e18', () => {
+    let view = renderGame();
+    expect(view.container.innerHTML).not.toMatch(/根源採掘機|芋核炉|根源収穫学|芋核共鳴|originMiner|imoReactor|ROOT REBIRTH/);
+    view.unmount();
+    seedGame(advanceGame(performRootConnection(createRootConnectionReadyState(true)), Number.MAX_VALUE));
+    view = renderGame();
+    expect(view.container.innerHTML).not.toMatch(/根源採掘機|芋核炉|根源収穫学|芋核共鳴|originMiner|imoReactor|ROOT REBIRTH/);
+    fireEvent.click(screen.getByRole('button', { name: '地底核心の解析' }));
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.scoreCapStage).toBe(3);
+    fireEvent.click(screen.getByRole('button', { name: '地底核心の解析' }));
+    fireEvent.click(screen.getByRole('button', { name: '無料で地底核心を解析' }));
+    const discovered = parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState;
+    expect(screen.getByLabelText('SCORE上限').textContent).toBe('1E18');
+    expect(screen.getByRole('article', { name: '根源採掘機' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /芋核共鳴を強化/ })).toBeTruthy();
+    expect(view.container.innerHTML).not.toMatch(/ROOT REBIRTH/);
+    fireEvent.click(screen.getByRole('button', { name: '転生する' }));
+    fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
+    expect(screen.getByRole('article', { name: '芋核炉' })).toBeTruthy();
+    expect((screen.getByRole('button', { name: '芋核炉を購入' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: /根源収穫学を強化/ }) as HTMLButtonElement).disabled).toBe(true);
+    view.unmount();
+    seedGame({ ...discovered, runEarnedScore: gn(1e18), imo: gn(1e18) }); renderGame();
+    expect(screen.getByText(/ROOT REBIRTH準備完了（次Issueで実装）/)).toBeTruthy();
+    expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
+    expect(screen.getByRole('button', { name: '転生する' })).toBeTruthy();
+  });
+
   it('hides undiscovered strata/rewards/research, reveals only reached content, and preserves paid digging upgrades on prestige', () => {
     let view = renderGame();
     expect(screen.getByLabelText('DEPTH').textContent).toBe('0');

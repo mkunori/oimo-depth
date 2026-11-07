@@ -10,6 +10,7 @@ describe('createInitialState', () => {
     const state = createInitialState();
 
     expect(state).toEqual({
+      originResearchRanks: { harvest: 0, link: 0 },
       postDeepResearchSkillLock: false,
       automation: createDefaultAutomation(),
       productionRemainder: { score: gn(0), imo: gn(0) },
@@ -18,8 +19,8 @@ describe('createInitialState', () => {
       runStartingImo: gn(0),
       scoreCapStage: 0,
       researchRanks: { geology: 0, resonance: 0 },
-      equipmentCounts: { worker: 0, cart: 0, harvester: 0, deepDrill: 0, refinery: 0, veinExtractor: 0, concentrator: 0, rootRelay: 0, coreChamber: 0 },
-      permanent: { depthMeters: 0, depthRemainder: 0, digResearchRanks: { basic: 0, vein: 0 }, rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { automation: 0, breakthrough: 0, harvest: 0, discount: 0, startingImo: 0 } },
+      equipmentCounts: { worker: 0, cart: 0, harvester: 0, deepDrill: 0, refinery: 0, veinExtractor: 0, concentrator: 0, rootRelay: 0, coreChamber: 0, originMiner: 0, imoReactor: 0 },
+      permanent: { depthMeters: 0, depthRemainder: 0, digResearchRanks: { basic: 0, vein: 0 }, originAnalysisUnlocked: false, rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { automation: 0, breakthrough: 0, harvest: 0, discount: 0, startingImo: 0 } },
     });
     expect(getProductionPerSecond(state)).toBeAmount(1);
   });

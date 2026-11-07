@@ -20,10 +20,10 @@ describe('v7 amount migration', () => {
     expect(migrated.saveVersion).toBe(SAVE_VERSION);
     expect(migrated.savedAt).toBe(legacy.savedAt);
     for (const key of ['imo', 'runEarnedScore', 'runStartingImo'] as const) expect(migrated.gameState[key]).toBeAmount(legacy.gameState[key]);
-    expect(migrated.gameState.equipmentCounts).toEqual({ ...legacy.gameState.equipmentCounts, rootRelay: 0, coreChamber: 0 });
-    expect(migrated.gameState.permanent).toEqual({ ...legacy.gameState.permanent, depthMeters: 0, depthRemainder: 0, digResearchRanks: { basic: 0, vein: 0 }, deepResearchCount: 1, maxDiscoveredStage: 2, rootConnectionUnlocked: false });
+    expect(migrated.gameState.equipmentCounts).toEqual({ ...legacy.gameState.equipmentCounts, originMiner: 0, imoReactor: 0, rootRelay: 0, coreChamber: 0 });
+    expect(migrated.gameState.permanent).toEqual({ ...legacy.gameState.permanent, depthMeters: 0, depthRemainder: 0, digResearchRanks: { basic: 0, vein: 0 }, deepResearchCount: 1, maxDiscoveredStage: 2, originAnalysisUnlocked: false, rootConnectionUnlocked: false });
     expect(migrated.gameState.researchRanks).toEqual(legacy.gameState.researchRanks);
-    expect(migrated.gameState.automation).toEqual({ ...legacy.gameState.automation, equipment: { ...legacy.gameState.automation.equipment, rootRelay: true, coreChamber: true }, priority: [...legacy.gameState.automation.priority, "rootRelay", "coreChamber"] });
+    expect(migrated.gameState.automation).toEqual({ ...legacy.gameState.automation, equipment: { ...legacy.gameState.automation.equipment, originMiner: true, imoReactor: true, rootRelay: true, coreChamber: true }, priority: [...legacy.gameState.automation.priority, "rootRelay", "coreChamber", "originMiner", "imoReactor"] });
     const raw = JSON.parse(serializeSave(migrated));
     expect(raw.saveVersion).toBe(SAVE_VERSION);
     expect(raw.savedAt).toBeTypeOf('number');
@@ -65,7 +65,7 @@ describe('v7 amount migration', () => {
     expect(migrated.gameState.imo).toBeAmount(old.gameState.imo);
     expect(migrated.gameState.runEarnedScore).toBeAmount(old.gameState.runEarnedScore);
     expect(migrated.savedAt).toBe(old.savedAt);
-    expect(migrated.gameState.equipmentCounts).toEqual({ ...old.gameState.equipmentCounts, rootRelay: 0, coreChamber: 0 });
+    expect(migrated.gameState.equipmentCounts).toEqual({ ...old.gameState.equipmentCounts, originMiner: 0, imoReactor: 0, rootRelay: 0, coreChamber: 0 });
     expect(parseSave(serializeSave(migrated))).toEqual(migrated);
   });
 

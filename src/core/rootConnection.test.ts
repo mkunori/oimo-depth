@@ -86,12 +86,12 @@ describe('root connection and equipment links', () => {
     const current = createRootConnectionReadyState(true);
     const old = JSON.parse(serializeSave(createSave(current, 1234)));
     old.saveVersion = 8; delete old.gameState.permanent.rootConnectionUnlocked; delete old.gameState.permanent.maxDiscoveredStage;
-    for (const id of ['rootRelay', 'coreChamber']) { delete old.gameState.equipmentCounts[id]; delete old.gameState.automation.equipment[id]; }
+    for (const id of ['rootRelay', 'coreChamber', 'originMiner', 'imoReactor']) { delete old.gameState.equipmentCounts[id]; delete old.gameState.automation.equipment[id]; }
     old.gameState.automation.equipment.cart = false;
-    old.gameState.automation.priority = old.gameState.automation.priority.filter((id: string) => !['rootRelay', 'coreChamber'].includes(id)).reverse();
+    old.gameState.automation.priority = old.gameState.automation.priority.filter((id: string) => !['rootRelay', 'coreChamber', 'originMiner', 'imoReactor'].includes(id)).reverse();
     const migrated = parseSave(JSON.stringify(old));
     expect(migrated.saveVersion).toBe(SAVE_VERSION); expect(migrated.savedAt).toBe(1234);
-    expect(migrated.gameState).toEqual({ ...current, permanent: { ...current.permanent, depthMeters: 0, depthRemainder: 0 }, automation: { ...current.automation, equipment: { ...current.automation.equipment, cart: false }, priority: [...old.gameState.automation.priority, 'rootRelay', 'coreChamber'] } });
+    expect(migrated.gameState).toEqual({ ...current, permanent: { ...current.permanent, depthMeters: 0, depthRemainder: 0 }, automation: { ...current.automation, equipment: { ...current.automation.equipment, cart: false }, priority: [...old.gameState.automation.priority, 'rootRelay', 'coreChamber', 'originMiner', 'imoReactor'] } });
     const stage3 = performRootConnection(migrated.gameState);
     expect(parseSave(serializeSave(createSave(stage3, 0))).gameState).toEqual(stage3);
     const legacy = JSON.parse(readFileSync(new URL('../test/fixtures/save-v6.json', import.meta.url), 'utf8'));
