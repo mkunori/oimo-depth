@@ -23,7 +23,7 @@ export function RootConnectionControl({ state, isPaused, onConnect }: Props) {
     {confirming && <dialog ref={dialog} className="prestige-dialog" aria-labelledby="root-connection-title" onCancel={() => setConfirming(false)}>
       <h2 id="root-connection-title">根脈接続解析：リセットなし / SCORE 1E12→1E15</h2>
       <p>SCORE・所持芋・設備・全スキル・研究ランク・ポイント・自動購入設定を保持し、無料で上限だけを拡張します。深層記憶の解析回数や当周回のスキル再購入制限は変わりません。</p>
-      <p>通常転生では上限1E6へ戻り、設備と研究はリセットします。発見履歴と接続権は残り、再到達時に無料で再突破できます。1E15より先の突破・上位転生は未実装です。</p>
+      <p>通常転生では上限1E6へ戻り、設備と研究はリセットします。発見履歴と接続権は残り、再到達時に無料で再突破できます。SCORE 1E15到達後は次の無料解析を選べます。</p>
       {error && <p role="alert">接続解析できませんでした。最新のSCOREとセーブ状態を確認してください。</p>}
       <div className="confirmation-actions">
         <button type="button" className="secondary-button" autoFocus onClick={() => setConfirming(false)}>キャンセル</button>

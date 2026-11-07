@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { SCENARIOS } from '../src/simulation/scenarios';
 import { runSuite } from '../src/simulation/suite';
 import { buildArtifacts } from './balance-report';
+import { equivalentOriginArtifact } from '../src/simulation/reportComparison';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
@@ -32,7 +33,7 @@ for (let index = 0; index < args.length; index += 1) {
 if (!Number.isFinite(maxDays) || maxDays <= 0 || maxDays > 365) throw new RangeError('max-days must be >0 and <=365.');
 if (new Set(selected).size !== selected.length || selected.some((id) => !SCENARIOS.some((scenario) => scenario.id === id))) throw new RangeError('Unknown or duplicate scenario.');
 const scenarios = selected.length > 0 ? selected.map((id) => SCENARIOS.find((scenario) => scenario.id === id)!) : SCENARIOS;
-const modelFiles = ['src/core/numbers.ts', 'src/core/state.ts', 'src/core/game.ts', 'src/core/skills.ts', 'src/core/prestige.ts', 'src/core/save.ts',
+const modelFiles = ['src/core/origin.ts', 'src/data/originResearch.ts', 'src/core/numbers.ts', 'src/core/state.ts', 'src/core/game.ts', 'src/core/skills.ts', 'src/core/prestige.ts', 'src/core/save.ts',
   'src/core/breakthrough.ts', 'src/core/research.ts', 'src/core/rootConnection.ts', 'src/core/excavation.ts', 'src/core/digResearch.ts', 'src/data/depth.ts', 'src/data/research.ts', 'src/data/scoreCaps.ts', 'src/data/automation.ts', 'src/data/balance.ts', 'src/data/equipment.ts', 'src/data/skills.ts'];
 const hash = createHash('sha256');
 for (const name of modelFiles) hash.update(name + '\n' + (await readFile(path.join(root, name), 'utf8')).replaceAll('\r\n', '\n') + '\n');
@@ -43,8 +44,14 @@ for (const [name, content] of Object.entries(artifacts)) {
   const destination = path.join(out, name);
   if (check) {
     const existing = await readFile(destination, 'utf8').catch(() => null);
-    if (existing?.replaceAll('\r\n', '\n') !== content) {
+    const normalized = existing?.replaceAll('\r\n', '\n') ?? null;
+    if (normalized !== content && (normalized === null || !equivalentOriginArtifact(name, normalized, content))) {
       process.stderr.write(`Stale simulation artifact: ${name}. Run npm run simulate.\n`);
+      if (existing !== null) {
+        const expected = existing.replaceAll('\r\n', '\n').split('\n'), actual = content.split('\n');
+        const line = actual.findIndex((value, index) => value !== expected[index]);
+        process.stderr.write(`First difference at line ${line + 1}:\nexpected: ${expected[line]}\nactual:   ${actual[line]}\n`);
+      }
       process.exitCode = 1;
     }
   } else await writeFile(destination, content, 'utf8');

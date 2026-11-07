@@ -37,6 +37,14 @@ export function EquipmentIcon({ id }: { readonly id: EquipmentId }) {
         <path d="M13 9h22M15 9v29q9 7 18 0V9M11 41h26M12 4h24v5H12zM15 20h18M15 33h18M24 20v-5" />
         <ellipse cx="24" cy="27" rx="5" ry="7" />
       </>}
+      {id === 'originMiner' && <>
+        <path d="M6 40h36M11 40V16l13-9 13 9v24M17 18h14M24 18v18M19 25l10 5-10 6M6 25l5 6M37 31l5-6" />
+        <circle cx="24" cy="7" r="3" />
+      </>}
+      {id === 'imoReactor' && <>
+        <path d="M9 40h30M14 40V13h20v27M10 13h28M18 13V6h12v7M14 32h20M19 40v4M29 40v4" />
+        <path d="M24 17l-6 9 6 4 6-4zM4 20l4 4-4 4M44 20l-4 4 4 4" />
+      </>}
     </svg>
   );
 }

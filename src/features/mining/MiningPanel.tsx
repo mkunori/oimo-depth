@@ -4,6 +4,7 @@ import { getEquipmentAvailability, getEquipmentPrice } from '../../core/game';
 import { getScoreCap } from '../../data/scoreCaps';
 import { canBreakthrough } from '../../core/breakthrough';
 import { BreakthroughControl } from '../prestige/BreakthroughControl';
+import { OriginAnalysisControl } from '../prestige/OriginAnalysisControl';
 import { RootConnectionControl } from '../prestige/RootConnectionControl';
 import type { GameState } from '../../core/state';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../../data/equipment';
@@ -17,12 +18,13 @@ interface MiningPanelProps {
   readonly isCapped: boolean;
   readonly isPaused: boolean;
   readonly onBreakthrough: () => boolean;
+  readonly onOriginAnalysis: () => boolean;
   readonly onRootConnection: () => boolean;
   readonly onDigResearch: (id: DigResearchId) => boolean;
   readonly depthNotice: string | null;
 }
 
-export function MiningPanel({ state, production, isCapped, isPaused, onBreakthrough, onRootConnection, onDigResearch, depthNotice }: MiningPanelProps) {
+export function MiningPanel({ state, production, isCapped, isPaused, onBreakthrough, onRootConnection, onOriginAnalysis, onDigResearch, depthNotice }: MiningPanelProps) {
   const scoreCap = getScoreCap(state);
   const affordable = EQUIPMENT_IDS.find(
     (id) => getEquipmentAvailability(id, state).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent).lte(state.imo),
@@ -31,9 +33,10 @@ export function MiningPanel({ state, production, isCapped, isPaused, onBreakthro
     ? canBreakthrough(state) ? '限界突破でこの周回を続けるか、転生で2ptを獲得して次の周回へ進めます。'
       : state.scoreCapStage === 1 ? 'SCORE 1E9到達。地層研究の深層解析で、転生せずに上限1E12へ進めます。'
         : state.scoreCapStage === 2 ? 'SCORE 1E12到達。根脈接続解析で、転生せずに上限1E15へ進めます。'
-          : state.scoreCapStage === 3 ? 'SCORE 1E15到達。さらに先の突破・上位転生は未実装です。通常転生は2ptで選べます。'
+          : state.scoreCapStage === 3 ? 'SCORE 1E15到達。地底核心の解析で、転生せずに上限1E18へ進めます。'
+            : state.scoreCapStage === 4 ? 'ROOT REBIRTH準備完了（次Issueで実装）。SCORE 1E18で収穫・購入・掘削は停止します。通常転生は2ptで選べます。'
         : '転生で2ptを獲得し、スキルを強化して限界突破を解禁しましょう。'
-    : getPrestigeReward(state) > 0 ? state.scoreCapStage === 3 ? '設備連携と研究強化で収穫を加速し、SCORE 1E15へ進みましょう。' : state.scoreCapStage === 2 ? '新設備と研究強化で収穫を加速し、SCORE 1E12へ進みましょう。' : state.scoreCapStage === 1 ? '上位設備を増やしてSCORE 1E9へ進みましょう。通常転生も2ptで選べます。' : '転生できます。SCORE 1,000,000以上なら2ptになります。' : affordable
+    : getPrestigeReward(state) > 0 ? state.scoreCapStage === 4 ? '設備・根脈リンク・任意研究を組み合わせてSCORE 1E18へ進みましょう。' : state.scoreCapStage === 3 ? '設備連携と研究強化で収穫を加速し、SCORE 1E15へ進みましょう。' : state.scoreCapStage === 2 ? '新設備と研究強化で収穫を加速し、SCORE 1E12へ進みましょう。' : state.scoreCapStage === 1 ? '上位設備を増やしてSCORE 1E9へ進みましょう。通常転生も2ptで選べます。' : '転生できます。SCORE 1,000,000以上なら2ptになります。' : affordable
       ? `${EQUIPMENT[affordable].name}を購入できます。設備を増やして、収穫を速くしましょう。`
       : `芋を貯めて、次の設備を購入しましょう。SCORE ${formatNumber(scoreCap)} が今回の目標です。`;
 
@@ -75,6 +78,7 @@ export function MiningPanel({ state, production, isCapped, isPaused, onBreakthro
       </aside>
       <BreakthroughControl state={state} isPaused={isPaused} onBreakthrough={onBreakthrough} />
       <RootConnectionControl state={state} isPaused={isPaused} onConnect={onRootConnection} />
+      <OriginAnalysisControl state={state} isPaused={isPaused} onAnalyze={onOriginAnalysis} />
     </section>
   );
 }

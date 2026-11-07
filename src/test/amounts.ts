@@ -15,6 +15,11 @@ export function stringifyTestSave(value: unknown): string {
     if (Array.isArray(item)) return item.map(convert);
     if (item !== null && typeof item === 'object') {
       const object = { ...item } as Record<string, unknown>;
+      if (version < 11 && 'policy' in object && 'priority' in object && object.equipment && typeof object.equipment === 'object') {
+        const equipment = { ...object.equipment } as Record<string, unknown>;
+        delete equipment.originMiner; delete equipment.imoReactor; object.equipment = equipment;
+        if (Array.isArray(object.priority)) object.priority = object.priority.filter((id) => id !== 'originMiner' && id !== 'imoReactor');
+      }
       if (version < 9 && 'policy' in object && 'priority' in object && object.equipment && typeof object.equipment === 'object') {
         const equipment = { ...object.equipment } as Record<string, unknown>;
         delete equipment.rootRelay; delete equipment.coreChamber; object.equipment = equipment;

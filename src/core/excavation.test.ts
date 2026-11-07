@@ -76,6 +76,8 @@ describe('permanent excavation', () => {
     const state = advanceGame(createInitialState(), 100);
     const old = JSON.parse(serializeSave(createSave(state, 1234)));
     old.saveVersion = 9;
+    for (const id of ['originMiner', 'imoReactor']) { delete old.gameState.equipmentCounts[id]; delete old.gameState.automation.equipment[id]; }
+    old.gameState.automation.priority = old.gameState.automation.priority.filter((id: string) => !['originMiner', 'imoReactor'].includes(id));
     delete old.gameState.permanent.depthMeters; delete old.gameState.permanent.depthRemainder; delete old.gameState.permanent.digResearchRanks;
     const migrated = parseSave(JSON.stringify(old));
     expect(migrated.saveVersion).toBe(SAVE_VERSION); expect(migrated.savedAt).toBe(1234);

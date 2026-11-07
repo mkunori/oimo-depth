@@ -69,7 +69,7 @@ export function Shop({ state, isCapped, isPaused, onPurchase, milestoneNotice, a
                     {!availability.unlocked && <span className="locked-label">未解禁</span>}
                     <span className="owned-count">所有 <output aria-label={`${definition.name}の所有数`} aria-live="off">{formatNumber(state.equipmentCounts[id])}</output> 台</span>
                   </div>
-                  <p className="equipment-effect">1台あたり +{formatNumber(getEquipmentProductionPerUnit(id, state.permanent, state.equipmentCounts[id], state.researchRanks))} 芋 / 秒</p>
+                  <p className="equipment-effect">1台あたり +{formatNumber(getEquipmentProductionPerUnit(id, state.permanent, state.equipmentCounts[id], state.researchRanks, state.originResearchRanks))} 芋 / 秒</p>
                   {definition.milestones.length > 0 && <p className="equipment-milestone">台数倍率 ×{formatMultiplier(milestone.multiplier)}<br />{milestone.next ? `次の目標 ${milestone.next.count}台 → ×${formatMultiplier(milestone.nextMultiplier!)}` : 'すべての台数ボーナスを達成'}</p>}
                   <p className="equipment-price">次の1台 <strong>{formatNumber(nextPrice)} 芋</strong></p>
                 </div>

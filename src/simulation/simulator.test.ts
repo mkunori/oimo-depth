@@ -15,6 +15,7 @@ import { runSuite } from './suite';
 import { BREAKTHROUGH_SCENARIOS, simulateBreakthroughJourney, simulateExpansion } from './expansion';
 import { EQUIPMENT_BASELINE } from './baseline';
 import { assertV6BalanceBaseline } from '../test/migrationBaseline';
+import { equivalentOriginArtifact } from './reportComparison';
 
 const idle: Scenario = { id: 'test', label: 'analytic baseline', visitSeconds: null,
   presence: 'online', equipment: 'none', skillPlan: 'save', prestigeAt: 'cap' };
@@ -23,6 +24,26 @@ let defaultSuite: ReturnType<typeof runSuite> | undefined;
 afterEach(() => vi.restoreAllMocks());
 
 describe('event-driven simulation', () => {
+  it('allows only bounded origin report rounding, while counts, model hash and old families remain exact', () => {
+    const data = { coreSha256: 'same-model', campaigns: [1], origins: [{ result: { state: {
+      runEarnedScore: 'gn1:1:1:17', imo: 'gn1:1:0:1.40625',
+      equipmentCounts: { originMiner: 2 }, permanent: { depthMeters: 100000, depthRemainder: 6.80167033806e-12 },
+    } } }] };
+    const changed = structuredClone(data);
+    changed.origins[0]!.result.state.imo = 'gn1:1:0:1.375';
+    changed.origins[0]!.result.state.permanent.depthRemainder = 6.8034466949e-12;
+    const matches = () => equivalentOriginArtifact('results.json', JSON.stringify(data), JSON.stringify(changed));
+    expect(matches()).toBe(true);
+    changed.origins[0]!.result.state.equipmentCounts.originMiner = 3; expect(matches()).toBe(false);
+    changed.origins[0]!.result.state.equipmentCounts.originMiner = 2;
+    changed.coreSha256 = 'changed-model'; expect(matches()).toBe(false); changed.coreSha256 = data.coreSha256;
+    changed.campaigns[0] = 2; expect(matches()).toBe(false); changed.campaigns[0] = 1;
+    changed.origins[0]!.result.state.imo = 'gn1:1:0:1000000000'; expect(matches()).toBe(false);
+    const csv = '"scenario","score","imo","originMiner"\n"a","gn1:1:1:17","gn1:1:0:1.40625","2"\n';
+    expect(equivalentOriginArtifact('origin-timeline.csv', csv, csv.replace('1.40625', '1.375'))).toBe(true);
+    expect(equivalentOriginArtifact('origin-timeline.csv', csv, csv.replace('"2"', '"3"'))).toBe(false);
+    expect(equivalentOriginArtifact('root-connection.csv', csv, csv)).toBe(false);
+  });
   it('matches the analytic one-imo/second baseline at both milestones', () => {
     const run = simulateRun(createInitialState(), idle, 2_000_000);
     expect(run.completed).toBe(true);
@@ -111,6 +132,20 @@ describe('event-driven simulation', () => {
     expect(first.campaigns).toHaveLength(15);
     expect(first.research).toHaveLength(18);
     expect(first.rootConnections).toHaveLength(13);
+    expect(first.origins).toHaveLength(10);
+    for (const trial of first.origins.filter((trial) => trial.policy === 'research')) {
+      expect(trial.result.completed).toBe(true);
+      expect(trial.initialState.runEarnedScore).toBeAmount(1e15);
+      expect(trial.result.state.runEarnedScore).toBeAmount(1e18);
+      expect(trial.result.state.permanent.depthMeters).toBeGreaterThan(trial.initialState.permanent.depthMeters);
+      expect(trial.result.trace.some((point) => point.kind === 'research-purchase')).toBe(true);
+      if (trial.scenario.visitSeconds! >= 21600) {
+        expect(trial.result.elapsedSeconds / 86400).toBeGreaterThanOrEqual(2);
+        expect(trial.result.elapsedSeconds / 86400).toBeLessThanOrEqual(7);
+        expect(trial.result.state.equipmentCounts.originMiner).toBeGreaterThan(0);
+        expect(trial.result.state.equipmentCounts.imoReactor).toBeGreaterThan(0);
+      }
+    }
     expect(first.depth.campaigns).toHaveLength(6);
     expect(first.depth.late).toHaveLength(6);
     for (const trial of first.depth.campaigns) {

@@ -103,19 +103,19 @@ describe('automated equipment buying', () => {
     expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
     const efficient = { ...automated(), imo: gn(100), runEarnedScore: gn(10_000),
       equipmentCounts: { ...createInitialState().equipmentCounts, worker: 9, cart: 4 },
-      automation: { ...automated().automation, equipment: { rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: true, cart: true, harvester: false, deepDrill: false, refinery: false } } };
+      automation: { ...automated().automation, equipment: { originMiner: false, imoReactor: false, rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: true, cart: true, harvester: false, deepDrill: false, refinery: false } } };
     expect(advanceWithAutomation(efficient, 0, true).events[0]?.id).toBe('worker');
   });
 
   it('honors explicit priority with fallback and equipment switches', () => {
     const initial = automated('priority');
     const state = { ...initial, imo: gn(100), runEarnedScore: gn(100),
-      automation: { ...initial.automation, priority: ['harvester', 'cart', 'worker', 'refinery', 'deepDrill', 'veinExtractor', 'concentrator', 'rootRelay', 'coreChamber'] as const } };
+      automation: { ...initial.automation, priority: ['harvester', 'cart', 'worker', 'refinery', 'deepDrill', 'veinExtractor', 'concentrator', 'rootRelay', 'coreChamber', 'originMiner', 'imoReactor'] as const } };
     const progress = advanceWithAutomation(state, 0, true);
     expect(progress.events[0]?.id).toBe('cart');
     expect(progress.state.equipmentCounts.harvester).toBe(0);
     const onlyWorker = { ...state, automation: { ...state.automation,
-      equipment: { rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: true, cart: false, harvester: false, deepDrill: false, refinery: false } } };
+      equipment: { originMiner: false, imoReactor: false, rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: true, cart: false, harvester: false, deepDrill: false, refinery: false } } };
     expect(advanceGame(onlyWorker, 100).equipmentCounts.cart).toBe(0);
     const none = { ...onlyWorker, automation: { ...onlyWorker.automation, equipment: { ...onlyWorker.automation.equipment, worker: false } } };
     expect(advanceGame(none, 100).equipmentCounts).toEqual(none.equipmentCounts);
@@ -125,7 +125,7 @@ describe('automated equipment buying', () => {
     const initial = automated();
     const state = { ...initial, runEarnedScore: gn(100_000), imo: getEquipmentPrice('worker', owned, initial.permanent),
       equipmentCounts: { ...initial.equipmentCounts, worker: owned },
-      automation: { ...initial.automation, equipment: { rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: true, cart: false, harvester: false, deepDrill: false, refinery: false } } };
+      automation: { ...initial.automation, equipment: { originMiner: false, imoReactor: false, rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: true, cart: false, harvester: false, deepDrill: false, refinery: false } } };
     const progress = advanceGame(state, 0);
     expect(progress).toEqual(purchaseEquipment(state, 'worker', 1));
     expect(progress.equipmentCounts.worker).toBe(owned + 1);
@@ -135,7 +135,7 @@ describe('automated equipment buying', () => {
   it('stops before a simultaneous cap/purchase event and never breaks through by itself', () => {
     const initial = automated();
     const state = { ...initial, imo: gn(9), runEarnedScore: gn(999_999),
-      automation: { ...initial.automation, equipment: { rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: true, cart: false, harvester: false, deepDrill: false, refinery: false } } };
+      automation: { ...initial.automation, equipment: { originMiner: false, imoReactor: false, rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: true, cart: false, harvester: false, deepDrill: false, refinery: false } } };
     const progress = advanceWithAutomation(state, 86_400);
     expect(progress.state.runEarnedScore).toBeAmount(1e6);
     expect(progress.state.imo).toBeAmount(10);
@@ -158,7 +158,7 @@ describe('automated equipment buying', () => {
 
   it('ignores locked upper equipment and supports stage1 without a new cap', () => {
     const base = automated('priority');
-    const upperOnly = { ...base.automation, equipment: { rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: false, cart: false, harvester: false, deepDrill: true, refinery: true } };
+    const upperOnly = { ...base.automation, equipment: { originMiner: false, imoReactor: false, rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: false, cart: false, harvester: false, deepDrill: true, refinery: true } };
     expect(advanceGame({ ...base, automation: upperOnly }, 1e6).equipmentCounts.deepDrill).toBe(0);
     const capable = purchaseSkill(prestigeGame(createBreakthroughReadyState()), 'automation');
     const expanded = performBreakthrough(advanceGame(capable, 1e6));
@@ -188,7 +188,7 @@ describe('automated equipment buying', () => {
     const capable = purchaseSkill(prestigeGame(createBreakthroughReadyState()), 'automation');
     const expanded = performBreakthrough(advanceGame(capable, 1e6));
     let initial = configureAutomation(expanded, { ...expanded.automation, enabled: true,
-      equipment: { rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: false, cart: false, harvester: false, deepDrill: false, refinery: true } });
+      equipment: { originMiner: false, imoReactor: false, rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: false, cart: false, harvester: false, deepDrill: false, refinery: true } });
     initial = { ...initial, runEarnedScore: gn(20_000_000), equipmentCounts: { ...initial.equipmentCounts, worker: 11 } };
     const price = getEquipmentPrice('refinery', 0, initial.permanent);
     initial = { ...initial, imo: price.subtract(getProductionPerSecond(initial).multiply(86_400)) };
@@ -221,7 +221,7 @@ describe('automation save validation', () => {
 
   it.each([
     null, {}, { ...createDefaultAutomation(), enabled: 'true' }, { ...createDefaultAutomation(), policy: 'unknown' },
-    { ...createDefaultAutomation(), equipment: { rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: true } }, { ...createDefaultAutomation(), priority: ['worker'] },
+    { ...createDefaultAutomation(), equipment: { originMiner: false, imoReactor: false, rootRelay: false, coreChamber: false, veinExtractor: false, concentrator: false, worker: true } }, { ...createDefaultAutomation(), priority: ['worker'] },
     { ...createDefaultAutomation(), priority: ['worker', 'worker', 'harvester', 'deepDrill', 'refinery'] },
     { ...createDefaultAutomation(), priority: ['worker', 'cart', 'harvester', 'deepDrill', 'unknown'] },
   ])('rejects malformed settings without migration fallback %#', (settings) => {

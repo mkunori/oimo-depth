@@ -10,6 +10,8 @@ import { GameSession } from './GameSession';
 import { SAVE_STORAGE_KEY } from './SaveRepository';
 import type { SaveStorage } from './SaveRepository';
 import { createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from '../../test/progress';
+import { performOriginAnalysis } from '../../core/origin';
+import { performRootConnection } from '../../core/rootConnection';
 import { performDeepResearch, purchaseResearch } from '../../core/research';
 
 describe('research session transactions', () => {
@@ -35,16 +37,17 @@ describe('research session transactions', () => {
     expect(next.resetResearch()).toBe(false);
   });
 
-  it.each(['breakthrough', 'root', 'dig', 'upgrade', 'refund'] as const)('retains the prior state/raw save when %s cannot be written', (action) => {
+  it.each(['breakthrough', 'root', 'origin', 'origin-upgrade', 'dig', 'upgrade', 'refund'] as const)('retains the prior state/raw save when %s cannot be written', (action) => {
     const game = setup();
     const ready = createResearchReadyState();
     const empty = createInitialState();
     const initial = action === 'dig' ? { ...empty, imo: gn(1e5), runEarnedScore: gn(1e5), permanent: { ...empty.permanent, depthMeters: 100 } }
-      : action === 'root' ? createRootConnectionReadyState() : action === 'breakthrough' ? ready : action === 'upgrade' ? performDeepResearch(ready) : purchaseResearch(performDeepResearch(ready), 'geology');
-    game.storage.value = serializeSave(createSave(initial, START)); game.session.start();
+      : action === 'origin' || action === 'origin-upgrade' ? advanceGame(performRootConnection(createRootConnectionReadyState()), Number.MAX_VALUE) : action === 'root' ? createRootConnectionReadyState() : action === 'breakthrough' ? ready : action === 'upgrade' ? performDeepResearch(ready) : purchaseResearch(performDeepResearch(ready), 'geology');
+    const prepared = action === 'origin-upgrade' ? { ...performOriginAnalysis(initial), imo: gn(1e17), runEarnedScore: gn(1e17) } : initial;
+    game.storage.value = serializeSave(createSave(prepared, START)); game.session.start();
     const state = game.session.getSnapshot().gameState; const raw = game.storage.value;
     game.storage.failWrites = true;
-    const succeeded = action === 'dig' ? game.session.buyDigResearch('basic') : action === 'root' ? game.session.rootConnection() : action === 'breakthrough' ? game.session.deepResearch() : action === 'upgrade' ? game.session.buyResearch('geology') : game.session.resetResearch();
+    const succeeded = action === 'origin' ? game.session.originAnalysis() : action === 'origin-upgrade' ? game.session.buyOriginResearch('harvest') : action === 'dig' ? game.session.buyDigResearch('basic') : action === 'root' ? game.session.rootConnection() : action === 'breakthrough' ? game.session.deepResearch() : action === 'upgrade' ? game.session.buyResearch('geology') : game.session.resetResearch();
     expect(succeeded).toBe(false);
     expect(game.session.getSnapshot().gameState).toBe(state);
     expect(game.storage.value).toBe(raw);

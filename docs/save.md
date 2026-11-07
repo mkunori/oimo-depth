@@ -1,4 +1,4 @@
-# 保存・オフライン進行（v10）
+# 保存・オフライン進行（v11）
 
 ## 保存形式と検証
 
@@ -6,7 +6,7 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 ```json
 {
-  "saveVersion": 10,
+  "saveVersion": 11,
   "savedAt": 1700000000000,
   "gameState": {
     "imo": "gn1:0:0:0",
@@ -15,12 +15,14 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
     "productionRemainder": { "score": "gn1:0:0:0", "imo": "gn1:0:0:0" },
     "postDeepResearchSkillLock": false,
     "scoreCapStage": 0,
+    "originResearchRanks": { "harvest": 0, "link": 0 },
     "researchRanks": { "geology": 0, "resonance": 0 },
-    "equipmentCounts": { "worker": 0, "cart": 0, "harvester": 0, "deepDrill": 0, "refinery": 0, "veinExtractor": 0, "concentrator": 0, "rootRelay": 0, "coreChamber": 0 },
+    "equipmentCounts": { "worker": 0, "cart": 0, "harvester": 0, "deepDrill": 0, "refinery": 0, "veinExtractor": 0, "concentrator": 0, "rootRelay": 0, "coreChamber": 0, "originMiner": 0, "imoReactor": 0 },
     "permanent": {
       "depthMeters": 0,
       "depthRemainder": 0,
       "digResearchRanks": { "basic": 0, "vein": 0 },
+      "originAnalysisUnlocked": false,
       "rootConnectionUnlocked": false,
       "maxDiscoveredStage": 0,
       "deepResearchUnlocked": false,
@@ -32,8 +34,8 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
     "automation": {
       "enabled": false,
       "policy": "efficient",
-      "equipment": { "worker": true, "cart": true, "harvester": true, "deepDrill": true, "refinery": true, "veinExtractor": true, "concentrator": true, "rootRelay": true, "coreChamber": true },
-      "priority": ["worker", "cart", "harvester", "deepDrill", "refinery", "veinExtractor", "concentrator", "rootRelay", "coreChamber"]
+      "equipment": { "worker": true, "cart": true, "harvester": true, "deepDrill": true, "refinery": true, "veinExtractor": true, "concentrator": true, "rootRelay": true, "coreChamber": true, "originMiner": true, "imoReactor": true },
+      "priority": ["worker", "cart", "harvester", "deepDrill", "refinery", "veinExtractor", "concentrator", "rootRelay", "coreChamber", "originMiner", "imoReactor"]
     }
   }
 }
@@ -41,7 +43,7 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 `src/core/save.ts` が外部テキストを `unknown` として検証します。残高・累計・設備の制約と次の価格の有限性はコアで検証します。欠落・負数・NaN/Infinity・小数の設備数・上限超過・未対応バージョンは拒否します。保存時刻は非負整数で JavaScript Date の範囲内です。未知の追加フィールドは採用せず、既知の値をコピーします。
 
-v7以降の金額は `GameNumber.toString()` の正規形文字列だけを受理します。通常の数値JSONや `"1e6"`、非正規な成分、NaN/Infinity・負金額は拒否します。価格はGameNumberで検証し、旧形式v1〜v6だけは従来通り次価格が安全整数を超える所有状態も拒否します。v10でも所有数・ランク・段階・回数・時刻はnumberで、安全整数と権限・上限・残高整合性を維持します。
+v7以降の金額は `GameNumber.toString()` の正規形文字列だけを受理します。通常の数値JSONや `"1e6"`、非正規な成分、NaN/Infinity・負金額は拒否します。価格はGameNumberで検証し、旧形式v1〜v6だけは従来通り次価格が安全整数を超える所有状態も拒否します。v11でも所有数・ランク・段階・回数・時刻はnumberで、安全整数と権限・上限・残高整合性を維持します。
 
 v1〜v6の既存値は従来の補完と検証後に巨大数へ変換します。v5/v6の `automationRemainder` は符号を保持して `productionRemainder` へ移し、v1〜v4はゼロを補います。端数は符号付き巨大数文字列で、絶対値が `現上限 × 32 × Number.EPSILON` を超えるものを拒否します。負の補償を含めたSCOREも0〜上限内に制限します。省略時はゼロですが、明示されたnull・欠落成分・不正値は拒否します。詳細・許容誤差・旧結果との比較は [巨大数移行](number-migration.md)。
 
@@ -60,6 +62,14 @@ v9は全9設備、新接続権 `rootConnectionUnlocked`、恒久の `maxDiscover
 ## 恒久DEPTHの移行（v10）
 
 v10は恒久の `depthMeters` / `depthRemainder` / `digResearchRanks` を必須保存します。v1〜v9は資産・権限・深層記憶・設定・日時を維持し、深度0・端数0・研究0を補います。昔の到達深度は推定せず、保存時刻以降の最大24hのSCORE稼働時間だけを新式で掘ります。初期化以外の通常転生・突破では保持します。深度は有限numberの0〜1e12m、端数と研究解禁/rankの整合性を検証します。図鑑・報酬・発見済み表示は恒久深度から導出します。[DEPTH仕様](depth.md) を参照してください。
+
+## 第4突破と根源研究の移行（v11）
+
+v11は全11設備、恒久の `originAnalysisUnlocked`、周回の `originResearchRanks: { harvest, link }` と段階4を追加します。v1〜v10の既存資産・履歴・DEPTH・掘削研究・設定・時刻は保持し、新設備0・新研究0・解析権falseを補完します。旧5/7/9設備の個別フラグと優先順を厳密に検証した後で、新IDを個別ON・順列末尾に追加します。全体ON/OFFは変えません。
+
+解析権は最大発見段階4と一致し、根脈接続権は最大発見段階3以上と一致する必要があります。段階4には解析権・心得・深層解析履歴とSCORE 1e15以上が必要で、段階3以下の新設備所有・新研究ランクを拒否します。通常転生では上限段階0・周回研究0へ戻し、全ての発見・解析権・DEPTH・恒久研究を保持します。新研究の支出も研究返金の残高検証へ含めます。旧v1〜v6の安全整数価格検証は当時存在した設備に対して維持し、当時未導入の根源設備の初期価格は検査対象外とします。
+
+金額の正規形・巨大数の有効桁・補償端数の制約と、保存失敗/競合時の原子的停止は従来どおりです。新解析・新研究・返金も書込成功後にだけ公開します。[根源領域](origin.md) を参照してください。
 
 ## 時間の精算
 

@@ -30,7 +30,7 @@ export const COVERAGE = [
   { feature: '自動転生・自動突破・掘削優先購入', status: 'not-modeled', detail: '購入は引き続き芋効率。研究/転生/突破は確認時の手動操作' },
   { feature: '第2限界突破・地層研究', status: 'modeled', detail: '正規の1e9到達→無料深層解析→1e12、新設備2種と手動研究2種、1分/6h/12h・手動/自動の18比較' },
   { feature: '第3限界突破・設備連携', status: 'modeled', detail: '深層記憶後の正規1e12→1e15。1分/6h/12h・自動ON/OFF・新設備あり/なし12比較＋手動貯蓄1比較' },
-  { feature: '1e15より先の限界突破', status: 'not-modeled', detail: '1e18・上位転生・装備は未実装' },
+  { feature: '第4限界突破・根源領域', status: 'modeled', detail: '初期から正規の1e15→1e18へ継続。1分/6h/12h×自動ON/OFFと6hの追加購入なし・新研究なし、計10比較。DEPTHと各段階の停止待ちも記録' },
   { feature: '上位転生・装備モード・消費可能SCORE', status: 'not-modeled', detail: '#7/#8 の閾値・費用・倍率が未確定。仕様とコアの追加後に到達時間・構成差を検証する' },
   { feature: 'クリック補助・任意ブースト', status: 'not-modeled', detail: '機能・数値とも未実装' },
 ] as const;

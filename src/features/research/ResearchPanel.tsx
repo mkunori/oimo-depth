@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatNumber } from '../../components/formatNumber';
-import { getDeepResearch, getDeepResearchReset, getResearchPurchase } from '../../core/research';
+import { getOriginResearchSpent, ORIGIN_RESEARCH, ORIGIN_RESEARCH_IDS } from '../../data/originResearch';
+import type { OriginResearchId } from '../../data/originResearch';
+import { getOriginResearchPurchase, getDeepResearch, getDeepResearchReset, getResearchPurchase } from '../../core/research';
 import type { DeepMemoryChoice } from '../../core/research';
 import type { GameState } from '../../core/state';
 import { getResearchSpent, RESEARCH, RESEARCH_IDS } from '../../data/research';
@@ -12,11 +14,12 @@ interface Props {
   readonly state: GameState;
   readonly isPaused: boolean;
   readonly onBreakthrough: (choice: DeepMemoryChoice) => boolean;
+  readonly onOriginPurchase: (id: OriginResearchId) => boolean;
   readonly onPurchase: (id: ResearchId) => boolean;
   readonly onReset: () => boolean;
 }
 
-export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onReset }: Props) {
+export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onOriginPurchase, onReset }: Props) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState(false);
   const [choice, setChoice] = useState<DeepMemoryChoice>('discount');
@@ -52,8 +55,19 @@ export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onR
         </article>;
       })}
     </div>
-    <button type="button" className="secondary-button" disabled={isPaused || state.scoreCapStage < 2 || state.runEarnedScore.gte(getScoreCap(state)) || getResearchSpent(state.researchRanks).equals(0)} onClick={onReset}>研究強化を振り直す（{formatNumber(getResearchSpent(state.researchRanks))} 芋を全額返却）</button>
-    <p>強化は段階2以降。現在の上限到達前なら無料で振り直せます。{state.scoreCapStage >= 3 ? '1E15で収穫・購入は停止します。さらに先の突破・上位転生は未実装です。' : '1E12で収穫・購入は停止します。到達後は採掘欄から第3限界突破を選べます。'}</p>
+    {state.permanent.maxDiscoveredStage >= 4 && <div className="research-nodes" aria-label="根源研究">
+      {ORIGIN_RESEARCH_IDS.map((id) => {
+        const definition = ORIGIN_RESEARCH[id], purchase = getOriginResearchPurchase(state, id);
+        return <article className="research-node" key={id} aria-labelledby={`origin-research-${id}`}>
+          <h3 id={`origin-research-${id}`}>{definition.name} <span>ランク {purchase.rank} / {definition.costs.length}</span></h3>
+          <p>{definition.description}</p>
+          <button type="button" className="secondary-button" disabled={isPaused || !purchase.canPurchase} aria-describedby={`origin-research-${id}-reason`} onClick={() => onOriginPurchase(id)}>{definition.name}を強化{purchase.cost !== null ? `（${formatNumber(purchase.cost)} 芋）` : ''}</button>
+          <p id={`origin-research-${id}-reason`}>{purchase.reason ?? '所持芋のみ消費します。累計SCOREは減りません。'}</p>
+        </article>;
+      })}
+    </div>}
+    <button type="button" className="secondary-button" disabled={isPaused || state.scoreCapStage < 2 || state.runEarnedScore.gte(getScoreCap(state)) || getResearchSpent(state.researchRanks).add(getOriginResearchSpent(state.originResearchRanks)).equals(0)} onClick={onReset}>研究強化を振り直す（{formatNumber(getResearchSpent(state.researchRanks).add(getOriginResearchSpent(state.originResearchRanks)))} 芋を全額返却）</button>
+    <p>強化は段階2以降。現在の上限到達前なら無料で振り直せます。根源研究は段階4で強化できます。現在のSCORE上限で収穫・購入・掘削は停止します。到達後は採掘欄から次の操作を選べます。</p>
     {confirming && <dialog ref={dialog} className="prestige-dialog" aria-labelledby="research-dialog-title" onCancel={() => setConfirming(false)}>
       <h2 id="research-dialog-title">研究による突破：深層記憶 / SCORE 1E9→1E12</h2>
       <p>深層解析を無料で実行します。SCORE・所持芋・周回開始時の支給額・設備・研究ランク・機能解禁権・自動購入設定を保持し、同じ周回で生産を再開します。</p>
