@@ -4,6 +4,10 @@ import type { PermanentProgress } from './state';
 export function assertRootProgress(permanent: PermanentProgress): void {
   const { rootRebirthCount: count, unspentRootCrystals: balance, totalRootCrystalsEarned: earned,
     totalRootCrystalsSpent: spent, rootUpgradeRanks: ranks, equipmentSystemUnlocked: unlocked } = permanent;
+  // The common pre-ROOT state has an exact, fully validated zero ledger. Avoid
+  // allocating/scanning arrays on every fractional production tick in this case.
+  if (count === 0 && balance === 0 && earned === 0 && spent === 0 && unlocked === false
+    && ranks?.blessing === 0 && ranks.memory === 0 && ranks.adaptation === 0) return;
   if ([count, balance, earned, spent].some((value) => !Number.isSafeInteger(value) || value < 0)
     || earned !== count || balance > earned || spent !== earned - balance || typeof unlocked !== 'boolean'
     || unlocked !== (count > 0) || (count > 0 && (permanent.maxDiscoveredStage !== 4 || permanent.deepResearchCount < count))
@@ -13,9 +17,14 @@ export function assertRootProgress(permanent: PermanentProgress): void {
   if (spent !== paid) throw new RangeError('ROOT crystal ledger does not match upgrades.');
 }
 
-/** Shared pure effects: no imports from game/skills/excavation (avoids cycles). */
+const NO_ROOT_BONUSES = Object.freeze({ production: 1, startingImo: 0, lateAndDig: 1, priceMultiplier: 1 });
+
+/** Like researchMultiplier, evaluate already validated progress. Core actions
+ * and save loading validate the ledger at their state boundary; recalculating
+ * an effect must not revalidate the same ledger for each equipment component.
+ * No imports from game/skills/excavation (avoids cycles). */
 export function getRootBonuses(permanent: PermanentProgress) {
-  assertRootProgress(permanent);
+  if (permanent.rootRebirthCount === 0) return NO_ROOT_BONUSES;
   const values = { production: permanent.rootRebirthCount > 0 ? ROOT_FIRST_PRODUCTION_MULTIPLIER : 1, startingImo: 0, lateAndDig: 1, priceMultiplier: 1 };
   for (const id of ROOT_UPGRADE_IDS) {
     const effect = ROOT_UPGRADES[id].effect, value = effect.values[permanent.rootUpgradeRanks[id]]!;

@@ -85,7 +85,7 @@ describe('research UI', () => {
     expect(screen.getByRole('button', { name: /根源の記憶を強化/ })).toBeTruthy();
   });
 
-  it('reveals origin devices/research only after confirmation, keeps discovery after prestige, and previews ROOT only at 1e18', () => {
+  it('reveals origin devices/research after confirmation, keeps discovery after prestige, and enables ROOT only at 1e18', () => {
     let view = renderGame();
     expect(view.container.innerHTML).not.toMatch(/根源採掘機|芋核炉|根源収穫学|芋核共鳴|originMiner|imoReactor|ROOT REBIRTH/);
     view.unmount();

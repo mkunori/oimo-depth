@@ -89,13 +89,14 @@ export function assertGameState(state: GameState) {
 }
 export function getProductionPerSecond(state: GameState): GameNumber {
   const bonuses = assertGameState(state);
-  const key = `${EQUIPMENT_IDS.map((id) => state.equipmentCounts[id]).join(',')}:${bonuses.productionMultiplier}:${getRootBonuses(state.permanent).lateAndDig}:${state.researchRanks.geology}:${state.researchRanks.resonance}:${state.originResearchRanks.harvest}:${state.originResearchRanks.link}`;
+  const root = getRootBonuses(state.permanent);
+  const key = `${EQUIPMENT_IDS.map((id) => state.equipmentCounts[id]).join(',')}:${bonuses.productionMultiplier}:${root.lateAndDig}:${state.researchRanks.geology}:${state.researchRanks.resonance}:${state.originResearchRanks.harvest}:${state.originResearchRanks.link}`;
   const cached = productionCache.get(key);
   if (cached) return cached;
   const value = EQUIPMENT_IDS.reduce((sum, id) => sum.add(getDefinition(id).productionPerUnit.multiply(state.equipmentCounts[id])
     .multiply(getEquipmentMilestones(id, state.equipmentCounts[id]).multiplier)
     .multiply(researchMultiplier(state.researchRanks, id === 'veinExtractor' || id === 'concentrator'))
-    .multiply(getDefinition(id).unlockAtScoreCap.gte(1e12) ? getRootBonuses(state.permanent).lateAndDig : 1)),
+    .multiply(getDefinition(id).unlockAtScoreCap.gte(1e12) ? root.lateAndDig : 1)),
   INITIAL_BALANCE.baseProduction.multiply(researchMultiplier(state.researchRanks)))
     .add(getRootLink(state.equipmentCounts).baseProduction.multiply(researchMultiplier(state.researchRanks))
       .multiply(ORIGIN_RESEARCH.link.multiplier ** state.originResearchRanks.link))
