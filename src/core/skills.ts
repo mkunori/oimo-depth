@@ -1,6 +1,7 @@
 import { SKILLS, SKILL_IDS } from '../data/skills';
 import type { SkillId } from '../data/skills';
 import type { PermanentProgress } from './state';
+import { gn } from './numbers';
 
 export function assertPermanentProgress(permanent: PermanentProgress): void {
   if (typeof permanent.deepResearchUnlocked !== 'boolean'
@@ -30,13 +31,13 @@ export function assertPermanentProgress(permanent: PermanentProgress): void {
 
 export function getSkillBonuses(permanent: PermanentProgress) {
   assertPermanentProgress(permanent);
-  const bonuses = { productionMultiplier: 1, equipmentPriceMultiplier: 1, equipmentDiscountPercent: 0, startingImo: 0 };
+  const bonuses = { productionMultiplier: 1, equipmentPriceMultiplier: 1, equipmentDiscountPercent: 0, startingImo: gn(0) };
   for (const id of SKILL_IDS) {
     const effect = SKILLS[id].effect;
     const amount = permanent.skillRanks[id] * effect.perRank;
     if (effect.type === 'harvest') bonuses.productionMultiplier += amount;
     if (effect.type === 'discount') bonuses.equipmentDiscountPercent += amount;
-    if (effect.type === 'startingImo') bonuses.startingImo += amount;
+    if (effect.type === 'startingImo') bonuses.startingImo = bonuses.startingImo.add(amount);
   }
   bonuses.equipmentPriceMultiplier = 1 - bonuses.equipmentDiscountPercent / 100;
   return bonuses;

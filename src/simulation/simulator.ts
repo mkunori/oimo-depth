@@ -1,4 +1,5 @@
-import { advanceWithAutomation, getEquipmentAvailability, getEquipmentPrice, getNextAutomaticPurchaseSeconds, getProductionPerSecond } from '../core/game';
+import { GameNumber, gn } from '../core/numbers';
+import { getAmountSeconds, advanceWithAutomation, getEquipmentAvailability, getEquipmentPrice, getNextAutomaticPurchaseSeconds, getProductionPerSecond } from '../core/game';
 import type { AutomaticProgress } from '../core/game';
 import { AUTOMATION_POLICIES } from '../data/automation';
 import type { AutomationPolicy } from '../data/automation';
@@ -41,12 +42,12 @@ export interface TracePoint {
   readonly run: number;
   readonly kind: 'start' | 'decision' | 'cap-reached' | 'end' | 'prestige' | 'automatic-purchase' | 'research-purchase';
   readonly researchRanks: GameState['researchRanks'];
-  readonly score: number;
-  readonly imo: number;
-  readonly production: number;
-  readonly actualProduction: number;
+  readonly score: GameNumber;
+  readonly imo: GameNumber;
+  readonly production: GameNumber;
+  readonly actualProduction: GameNumber;
   readonly prestigeCount: number;
-  readonly scoreCap: number;
+  readonly scoreCap: GameNumber;
   readonly equipmentCounts: GameState['equipmentCounts'];
 }
 
@@ -106,15 +107,15 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
   let purchases = 0;
   let purchaseDecisions = 0;
   let automaticPurchases = 0;
-  let score100k: Milestone | null = initial.runEarnedScore >= PRESTIGE_BALANCE.unlockScore ? { productionSeconds: 0, observedSeconds: 0 } : null;
-  let score1m: Milestone | null = initial.runEarnedScore >= INITIAL_BALANCE.scoreCap ? { productionSeconds: 0, observedSeconds: 0 } : null;
+  let score100k: Milestone | null = initial.runEarnedScore.gte(PRESTIGE_BALANCE.unlockScore) ? { productionSeconds: 0, observedSeconds: 0 } : null;
+  let score1m: Milestone | null = initial.runEarnedScore.gte(INITIAL_BALANCE.scoreCap) ? { productionSeconds: 0, observedSeconds: 0 } : null;
   const trace: TracePoint[] = [];
 
   const record = (kind: TracePoint['kind']) => {
     const production = getProductionPerSecond(state);
     trace.push({ elapsedSeconds: elapsed, run: 1, kind, score: state.runEarnedScore, imo: state.imo, production,
-      actualProduction: state.runEarnedScore >= scoreCap ? 0 : production,
-      prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: state.equipmentCounts, researchRanks: state.researchRanks });
+      actualProduction: state.runEarnedScore.gte(scoreCap) ? gn(0) : production,
+      prestigeCount: state.permanent.prestigeCount, scoreCap: scoreCap, equipmentCounts: state.equipmentCounts, researchRanks: state.researchRanks });
   };
   const invest = () => {
     // 研究は訪問時の手動操作だけ。ONでもオフライン進行中には実行しない。
@@ -152,23 +153,23 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
       const production = getProductionPerSecond(event.state);
       trace.push({ elapsedSeconds: elapsed + event.seconds, run: 1, kind: 'automatic-purchase', score: event.state.runEarnedScore,
         imo: event.state.imo, production, actualProduction: production, prestigeCount: event.state.permanent.prestigeCount,
-        scoreCap, equipmentCounts: event.state.equipmentCounts, researchRanks: event.state.researchRanks });
+        scoreCap: scoreCap, equipmentCounts: event.state.equipmentCounts, researchRanks: event.state.researchRanks });
     }
     const transitions = [{ seconds: 0, state: before }, ...progress.events, { seconds: applied, state }];
-    const crossing = (threshold: number): Milestone | null => {
-      if (before.runEarnedScore >= threshold || state.runEarnedScore < threshold) return null;
-      const index = transitions.findIndex((point) => point.state.runEarnedScore >= threshold);
+    const crossing = (threshold: GameNumber): Milestone | null => {
+      if (before.runEarnedScore.gte(threshold) || state.runEarnedScore.lt(threshold)) return null;
+      const index = transitions.findIndex((point) => point.state.runEarnedScore.gte(threshold));
       const previous = transitions[index - 1]!;
-      return { productionSeconds: credited + previous.seconds + (threshold - previous.state.runEarnedScore) / getProductionPerSecond(previous.state), observedSeconds: elapsed + seconds };
+      return { productionSeconds: credited + previous.seconds + (getAmountSeconds(threshold.subtract(previous.state.runEarnedScore), getProductionPerSecond(previous.state), applied) ?? applied), observedSeconds: elapsed + seconds };
     };
     if (isObservation) {
       score100k ??= crossing(PRESTIGE_BALANCE.unlockScore);
       score1m ??= crossing(INITIAL_BALANCE.scoreCap);
     }
-    if (before.runEarnedScore < scoreCap && progress.capAtSeconds !== null) {
+    if (before.runEarnedScore.lt(scoreCap) && progress.capAtSeconds !== null) {
       trace.push({ elapsedSeconds: elapsed + progress.capAtSeconds, run: 1, kind: 'cap-reached',
-        score: state.runEarnedScore, imo: state.imo, production: getProductionPerSecond(state), actualProduction: 0,
-        prestigeCount: state.permanent.prestigeCount, scoreCap, equipmentCounts: state.equipmentCounts, researchRanks: state.researchRanks });
+        score: state.runEarnedScore, imo: state.imo, production: getProductionPerSecond(state), actualProduction: gn(0),
+        prestigeCount: state.permanent.prestigeCount, scoreCap: scoreCap, equipmentCounts: state.equipmentCounts, researchRanks: state.researchRanks });
     }
     idle += progress.capAtSeconds === null ? 0 : Math.max(0, applied - progress.capAtSeconds);
     credited += applied;
@@ -178,18 +179,18 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
   };
 
   record('start');
-  if (state.runEarnedScore < target) invest();
+  if (state.runEarnedScore.lt(target)) invest();
   record('decision');
-  for (let decision = 0; state.runEarnedScore < target && elapsed < maxSeconds; decision += 1) {
+  for (let decision = 0; state.runEarnedScore.lt(target) && elapsed < maxSeconds; decision += 1) {
     if (decision >= MAX_DECISIONS) throw new RangeError('Decision limit reached; increase visit interval or shorten horizon.');
     const rate = getProductionPerSecond(state);
     let delta: number;
     if (scenario.visitSeconds !== null) delta = scenario.visitSeconds;
     else {
       const milestones = [target, PRESTIGE_BALANCE.unlockScore, INITIAL_BALANCE.scoreCap]
-        .filter((score) => score > state.runEarnedScore).map((score) => (score - state.runEarnedScore) / rate);
+        .filter((score) => score.gt(state.runEarnedScore)).map((score) => getAmountSeconds(score.subtract(state.runEarnedScore), rate) ?? Infinity);
       const affordability = scenario.equipment === 'none' || state.automation.enabled ? [] : equipmentIds.map((id) =>
-        (getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) - state.imo) / rate);
+        getAmountSeconds(getEquipmentPrice(id, state.equipmentCounts[id], state.permanent).subtract(state.imo), rate) ?? Infinity);
       // わずかな時間を進め、価格直前の浮動小数点端数でゼロ時間ループにならないようにする。
       delta = Math.max(TIME_EPSILON, Math.min(...milestones, ...affordability, getNextAutomaticPurchaseSeconds(state) ?? Infinity) + TIME_EPSILON);
     }
@@ -200,11 +201,11 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
       break;
     }
     advance(delta, true);
-    if (state.runEarnedScore < target) invest();
+    if (state.runEarnedScore.lt(target)) invest();
     record('decision');
   }
   record('end');
-  return { completed: state.runEarnedScore >= target && elapsed === observed, elapsedSeconds: elapsed, lastObservationSeconds: observed,
+  return { completed: state.runEarnedScore.gte(target) && elapsed === observed, elapsedSeconds: elapsed, lastObservationSeconds: observed,
     creditedSeconds: credited, discardedOfflineSeconds: discarded, idleAtCapSeconds: idle,
     purchases, purchaseDecisions, automaticPurchases, score100k, score1m, state, trace };
 }

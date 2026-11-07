@@ -1,3 +1,5 @@
+import { testAmount as gn, stringifyTestSave } from '../test/amounts';
+
 import { describe, expect, it } from 'vitest';
 import { advanceGame, advanceWithAutomation, configureAutomation, getEquipmentPrice, getProductionPerSecond, getPurchaseQuote, MAX_AUTOMATIC_PURCHASES, purchaseEquipment } from './game';
 import { createInitialState } from './state';
@@ -37,14 +39,14 @@ describe('automated equipment buying', () => {
     for (const step of [0.25, 0.37, 1, 60, 21_600]) {
       let state = initial;
       let seconds = 0;
-      while (seconds < 86_400 && state.runEarnedScore < getScoreCap(state)) {
+      while (seconds < 86_400 && state.runEarnedScore.lt(getScoreCap(state))) {
         const delta = Math.min(step, 86_400 - seconds);
         state = advanceGame(state, delta); seconds += delta;
       }
       state = advanceGame(state, 86_400 - seconds);
       expect(state.equipmentCounts).toEqual(whole.equipmentCounts);
-      expect(state.imo).toBeCloseTo(whole.imo, 3);
-      expect(state.runEarnedScore).toBeCloseTo(whole.runEarnedScore, 3);
+      expect(state.imo).toBeCloseToAmount(whole.imo, 3);
+      expect(state.runEarnedScore).toBeCloseToAmount(whole.runEarnedScore, 3);
       expect(state.permanent).toEqual(initial.permanent);
     }
     expect(whole.scoreCapStage).toBe(0);
@@ -57,13 +59,13 @@ describe('automated equipment buying', () => {
     for (let step = 0; step < 1234; step += 1) split = advanceGame(split, 0.125);
     const whole = advanceGame(initial, 154.25);
     expect(split.equipmentCounts).toEqual(whole.equipmentCounts);
-    expect(split.runEarnedScore).toBeCloseTo(whole.runEarnedScore, 6);
-    expect(split.imo).toBeCloseTo(whole.imo, 6);
+    expect(split.runEarnedScore).toBeCloseToAmount(whole.runEarnedScore, 6);
+    expect(split.imo).toBeCloseToAmount(whole.imo, 6);
     const progress = advanceWithAutomation(initial, 154.25, true);
-    const spent = progress.events.reduce((sum, event) => sum + getEquipmentPrice(event.id, event.state.equipmentCounts[event.id] - 1, initial.permanent), 0);
-    expect(whole.runEarnedScore - whole.imo).toBeCloseTo(spent, 6);
+    const spent = progress.events.reduce((sum, event) => sum.add(getEquipmentPrice(event.id, event.state.equipmentCounts[event.id] - 1, initial.permanent)), gn(0));
+    expect(whole.runEarnedScore.subtract(whole.imo)).toBeCloseToAmount(spent, 6);
     const restored = parseSave(serializeSave(createSave(split, 0))).gameState;
-    expect(restored.automationRemainder).toEqual(split.automationRemainder);
+    expect(restored.productionRemainder).toEqual(split.productionRemainder);
     expect(advanceGame(restored, 60)).toEqual(advanceGame(split, 60));
   });
 
@@ -77,26 +79,26 @@ describe('automated equipment buying', () => {
     expect(settleOffline(createSave(initial, 0), 86_400_000).save.gameState).toEqual(once);
     for (const step of [0.25, 60, 43_200]) {
       let state = initial; let seconds = 0;
-      while (seconds < 86_400 && state.runEarnedScore < 1e9) {
+      while (seconds < 86_400 && state.runEarnedScore.lt(1e9)) {
         const delta = Math.min(step, 86_400 - seconds); state = advanceGame(state, delta); seconds += delta;
       }
       state = advanceGame(state, 86_400 - seconds);
       expect(state.equipmentCounts).toEqual(once.equipmentCounts);
-      expect(state.runEarnedScore).toBeCloseTo(once.runEarnedScore, 3);
-      expect(state.imo).toBeCloseTo(once.imo, 3);
+      expect(state.runEarnedScore).toBeCloseToAmount(once.runEarnedScore, 3);
+      expect(state.imo).toBeCloseToAmount(once.imo, 3);
     }
     expect(once.permanent).toBe(initial.permanent);
     expect(once.scoreCapStage).toBe(1);
-    expect(initial.runEarnedScore).toBe(1e6);
-  }, 15_000); // 数十万回の更新を含む数値回帰。共有CIのCPU速度を合否条件にしない。
+    expect(initial.runEarnedScore).toBeAmount(1e6);
+  }, 30_000); // 数十万回の更新を含む数値回帰。共有CIのCPU速度を合否条件にしない。
 
   it('balances owned counts, includes milestone marginal gains, and uses stable tie order', () => {
-    const base = { ...automated('balanced'), imo: 10_000, runEarnedScore: 10_000 };
+    const base = { ...automated('balanced'), imo: gn(10_000), runEarnedScore: gn(10_000) };
     const balanced = advanceWithAutomation(base, 0, true);
     expect(balanced.events.slice(0, 3).map((event) => event.id)).toEqual(['worker', 'cart', 'harvester']);
     const counts = Object.values(balanced.state.equipmentCounts).slice(0, 3);
     expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(1);
-    const efficient = { ...automated(), imo: 100, runEarnedScore: 10_000,
+    const efficient = { ...automated(), imo: gn(100), runEarnedScore: gn(10_000),
       equipmentCounts: { ...createInitialState().equipmentCounts, worker: 9, cart: 4 },
       automation: { ...automated().automation, equipment: { veinExtractor: false, concentrator: false, worker: true, cart: true, harvester: false, deepDrill: false, refinery: false } } };
     expect(advanceWithAutomation(efficient, 0, true).events[0]?.id).toBe('worker');
@@ -104,7 +106,7 @@ describe('automated equipment buying', () => {
 
   it('honors explicit priority with fallback and equipment switches', () => {
     const initial = automated('priority');
-    const state = { ...initial, imo: 100, runEarnedScore: 100,
+    const state = { ...initial, imo: gn(100), runEarnedScore: gn(100),
       automation: { ...initial.automation, priority: ['harvester', 'cart', 'worker', 'refinery', 'deepDrill', 'veinExtractor', 'concentrator'] as const } };
     const progress = advanceWithAutomation(state, 0, true);
     expect(progress.events[0]?.id).toBe('cart');
@@ -118,34 +120,35 @@ describe('automated equipment buying', () => {
 
   it.each([9, 24, 49])('uses the same cost and multiplier as manual purchasing around %s', (owned) => {
     const initial = automated();
-    const state = { ...initial, runEarnedScore: 100_000, imo: getEquipmentPrice('worker', owned, initial.permanent),
+    const state = { ...initial, runEarnedScore: gn(100_000), imo: getEquipmentPrice('worker', owned, initial.permanent),
       equipmentCounts: { ...initial.equipmentCounts, worker: owned },
       automation: { ...initial.automation, equipment: { veinExtractor: false, concentrator: false, worker: true, cart: false, harvester: false, deepDrill: false, refinery: false } } };
     const progress = advanceGame(state, 0);
     expect(progress).toEqual(purchaseEquipment(state, 'worker', 1));
     expect(progress.equipmentCounts.worker).toBe(owned + 1);
-    expect(progress.imo).toBe(0);
+    expect(progress.imo).toBeAmount(0);
   });
 
   it('stops before a simultaneous cap/purchase event and never breaks through by itself', () => {
     const initial = automated();
-    const state = { ...initial, imo: 9, runEarnedScore: 999_999,
+    const state = { ...initial, imo: gn(9), runEarnedScore: gn(999_999),
       automation: { ...initial.automation, equipment: { veinExtractor: false, concentrator: false, worker: true, cart: false, harvester: false, deepDrill: false, refinery: false } } };
     const progress = advanceWithAutomation(state, 86_400);
-    expect(progress.state.runEarnedScore).toBe(1e6);
-    expect(progress.state.imo).toBe(10);
+    expect(progress.state.runEarnedScore).toBeAmount(1e6);
+    expect(progress.state.imo).toBeAmount(10);
     expect(progress.purchaseCount).toBe(0);
     expect(getPurchaseQuote(progress.state, 'worker', 'MAX').quantity).toBe(0);
     expect(advanceGame(progress.state, 86_400)).toBe(progress.state);
   });
 
-  it('normalizes the first price boundary without violating the balance/SCORE constraint', () => {
+  it('does not grant an epsilon credit before the first price boundary', () => {
     const state = automated();
-    const almost = (10 - 4 * Number.EPSILON * 10) / getProductionPerSecond(state);
-    const progressed = advanceGame(state, almost);
-    expect(progressed.equipmentCounts.worker).toBe(1);
-    expect(progressed.imo).toBe(0);
-    expect(progressed.imo).toBeLessThanOrEqual(progressed.runEarnedScore);
+    const almost = gn((10 - 4 * Number.EPSILON * 10)).divide(getProductionPerSecond(state));
+    const progressed = advanceGame(state, almost.toFiniteNumber());
+    expect(progressed.equipmentCounts.worker).toBe(0);
+    expect(progressed.imo).toBeLessThanAmount(10);
+    expect(advanceGame(progressed, 1e-12).equipmentCounts.worker).toBe(1);
+    expect(progressed.imo).toBeLessThanOrEqualAmount(progressed.runEarnedScore);
     expect(() => createSave(progressed, 0)).not.toThrow();
     expect(() => advanceGame(progressed, 1)).not.toThrow();
   });
@@ -156,14 +159,14 @@ describe('automated equipment buying', () => {
     expect(advanceGame({ ...base, automation: upperOnly }, 1e6).equipmentCounts.deepDrill).toBe(0);
     const capable = purchaseSkill(prestigeGame(createBreakthroughReadyState()), 'automation');
     const expanded = performBreakthrough(advanceGame(capable, 1e6));
-    const state = { ...configureAutomation(expanded, { ...upperOnly, policy: 'efficient' }), imo: 50_000_000, runEarnedScore: 50_000_000 };
+    const state = { ...configureAutomation(expanded, { ...upperOnly, policy: 'efficient' }), imo: gn(50_000_000), runEarnedScore: gn(50_000_000) };
     const progress = advanceWithAutomation(state, 86_400);
     expect(progress.state.equipmentCounts.deepDrill).toBeGreaterThan(0);
     expect(progress.state.equipmentCounts.refinery).toBeGreaterThan(0);
     expect(progress.state.scoreCapStage).toBe(1);
-    expect(progress.state.runEarnedScore).toBeLessThanOrEqual(1e9);
+    expect(progress.state.runEarnedScore).toBeLessThanOrEqualAmount(1e9);
     expect(progress.purchaseCount).toBeLessThan(MAX_AUTOMATIC_PURCHASES);
-    expect(getProductionPerSecond(progress.state)).toBeGreaterThan(getProductionPerSecond(state));
+    expect(getProductionPerSecond(progress.state)).toBeGreaterThanAmount(getProductionPerSecond(state));
   });
 
   it('caps a 48h absence at 24h, reports purchases and does not settle twice', () => {
@@ -183,30 +186,30 @@ describe('automated equipment buying', () => {
     const expanded = performBreakthrough(advanceGame(capable, 1e6));
     let initial = configureAutomation(expanded, { ...expanded.automation, enabled: true,
       equipment: { veinExtractor: false, concentrator: false, worker: false, cart: false, harvester: false, deepDrill: false, refinery: true } });
-    initial = { ...initial, runEarnedScore: 20_000_000, equipmentCounts: { ...initial.equipmentCounts, worker: 11 } };
+    initial = { ...initial, runEarnedScore: gn(20_000_000), equipmentCounts: { ...initial.equipmentCounts, worker: 11 } };
     const price = getEquipmentPrice('refinery', 0, initial.permanent);
-    initial = { ...initial, imo: price - getProductionPerSecond(initial) * 86_400 };
+    initial = { ...initial, imo: price.subtract(getProductionPerSecond(initial).multiply(86_400)) };
     const whole = advanceGame(initial, 86_400);
     let split = initial;
     const steps = Math.floor(86_400 / 0.37);
     for (let index = 0; index < steps; index += 1) split = advanceGame(split, 0.37);
     split = advanceGame(split, 86_400 - steps * 0.37);
     expect(split.equipmentCounts).toEqual(whole.equipmentCounts);
-    expect(split.imo).toBeCloseTo(whole.imo, 3);
-    expect(split.runEarnedScore).toBeCloseTo(whole.runEarnedScore, 3);
-  }, 15_000);
+    expect(split.imo).toBeCloseToAmount(whole.imo, 3);
+    expect(split.runEarnedScore).toBeCloseToAmount(whole.runEarnedScore, 3);
+  }, 30_000);
 });
 
 describe('automation save validation', () => {
   it.each([1, 2, 3, 4])('preserves legacy v%s state and defaults automation OFF', (version) => {
-    const state = { ...createBreakthroughReadyState(), imo: 123.5 };
+    const state = { ...createBreakthroughReadyState(), imo: gn(123.5) };
     const { automation: _settings, ...legacy } = state;
     const { automation: _skill, ...ranks } = legacy.permanent.skillRanks;
     const saved = { ...legacy, ...(version < 4 ? { scoreCapStage: 0,
       permanent: { ...legacy.permanent, unspentPoints: 3, skillRanks: { ...ranks, breakthrough: 0 } } } : { permanent: { ...legacy.permanent, skillRanks: ranks } }) };
-    const migrated = parseSave(JSON.stringify({ saveVersion: version, savedAt: 1234, gameState: saved }));
+    const migrated = parseSave(stringifyTestSave({ saveVersion: version, savedAt: 1234, gameState: saved }));
     expect(migrated.saveVersion).toBe(SAVE_VERSION);
-    expect(migrated.gameState.imo).toBe(123.5);
+    expect(migrated.gameState.imo).toBeAmount(123.5);
     expect(migrated.gameState.equipmentCounts).toEqual(state.equipmentCounts);
     expect(migrated.gameState.automation).toEqual(createDefaultAutomation());
     expect(migrated.gameState.permanent.skillRanks.automation).toBe(0);
@@ -220,17 +223,17 @@ describe('automation save validation', () => {
     { ...createDefaultAutomation(), priority: ['worker', 'cart', 'harvester', 'deepDrill', 'unknown'] },
   ])('rejects malformed settings without migration fallback %#', (settings) => {
     expect(() => readAutomation(settings)).toThrow();
-    expect(() => parseSave(JSON.stringify({ saveVersion: 5, savedAt: 0, gameState: { ...automated(), automation: settings } }))).toThrow();
+    expect(() => parseSave(stringifyTestSave({ saveVersion: 5, savedAt: 0, gameState: { ...automated(), automation: settings } }))).toThrow();
   });
 
   it('rejects active automation without permission and a missing v5 rank', () => {
     expect(() => createSave({ ...createInitialState(), automation: { ...createDefaultAutomation(), enabled: true } }, 0)).toThrow();
     const state = automated();
     const { automation: _rank, ...ranks } = state.permanent.skillRanks;
-    expect(() => parseSave(JSON.stringify({ saveVersion: 5, savedAt: 0, gameState: { ...state, permanent: { ...state.permanent, skillRanks: ranks } } }))).toThrow();
+    expect(() => parseSave(stringifyTestSave({ saveVersion: 5, savedAt: 0, gameState: { ...state, permanent: { ...state.permanent, skillRanks: ranks } } }))).toThrow();
   });
 
-  it.each([null, { score: 1, imo: 0 }, { score: 0, imo: Infinity }, { score: '0', imo: 0 }])('rejects malformed numeric carry %#', (automationRemainder) => {
-    expect(() => parseSave(JSON.stringify({ saveVersion: 5, savedAt: 0, gameState: { ...automated(), automationRemainder } }))).toThrow();
+  it.each([null, { score: gn(1), imo: gn(0) }, { score: gn(0), imo: gn(Infinity) }, { score: '0', imo: gn(0) }])('rejects malformed numeric carry %#', (automationRemainder) => {
+    expect(() => parseSave(stringifyTestSave({ saveVersion: 5, savedAt: 0, gameState: { ...automated(), automationRemainder } }))).toThrow();
   });
 });

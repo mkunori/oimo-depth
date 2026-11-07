@@ -1,95 +1,83 @@
 import { INITIAL_BALANCE } from '../data/balance';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../data/equipment';
 import type { EquipmentDefinition, EquipmentId } from '../data/equipment';
-import type { GameState } from './state';
+import type { GameState, PermanentProgress } from './state';
 import { createInitialPermanent } from './state';
-import type { PermanentProgress } from './state';
 import { getSkillBonuses } from './skills';
 import { getScoreCap, SCORE_CAP_STAGES } from '../data/scoreCaps';
 import { readAutomation } from '../data/automation';
 import type { AutomationSettings } from '../data/automation';
 import { createEmptyResearch, getResearchSpent, RESEARCH, RESEARCH_IDS, researchMultiplier } from '../data/research';
 import type { ResearchRanks } from '../data/research';
+import { GameNumber, gn, nonNegativeGameNumber, toElapsedSeconds } from './numbers';
 
 export type PurchaseMode = 1 | 10 | 'MAX';
-
-export interface PurchaseQuote {
-  readonly quantity: number;
-  readonly totalCost: number;
-}
-
-function assertNonNegativeFinite(value: number, name: string): void {
-  if (!Number.isFinite(value) || value < 0) {
-    throw new RangeError(`${name} must be a finite non-negative number.`);
-  }
-}
+export interface PurchaseQuote { readonly quantity: number; readonly totalCost: GameNumber }
+export const MAX_AUTOMATIC_PURCHASES = 1_024;
+export const MAX_BULK_PURCHASES = 50_000;
+export class AutomationLimitError extends Error {}
+export class NumericProgressError extends AutomationLimitError {}
+const priceCache = new Map<string, GameNumber>();
+const productionCache = new Map<string, GameNumber>();
+const targetCache = new Map<string, EquipmentId | undefined>();
 
 function assertCount(value: number): void {
-  if (!Number.isSafeInteger(value) || value < 0) {
-    throw new RangeError('Equipment count must be a non-negative safe integer.');
-  }
+  if (!Number.isSafeInteger(value) || value < 0) throw new RangeError('Equipment count must be a non-negative safe integer.');
 }
-
 function getDefinition(id: EquipmentId): EquipmentDefinition {
-  if (!Object.hasOwn(EQUIPMENT, id)) {
-    throw new RangeError(`Unknown equipment: ${id}`);
-  }
+  if (!Object.hasOwn(EQUIPMENT, id)) throw new RangeError(`Unknown equipment: ${id}`);
   return EQUIPMENT[id];
 }
-
-function assertState(state: GameState): void {
-  const scoreCap = getScoreCap(state);
-  assertNonNegativeFinite(state.imo, 'imo');
-  assertNonNegativeFinite(state.runEarnedScore, 'runEarnedScore');
+export function assertGameState(state: GameState) {
+  const cap = getScoreCap(state);
+  for (const value of [state.imo, state.runEarnedScore, state.runStartingImo]) {
+    if (!(value instanceof GameNumber)) throw new RangeError('Game amounts must be GameNumber.');
+    nonNegativeGameNumber(value);
+  }
   const bonuses = getSkillBonuses(state.permanent);
   if (!state.researchRanks || RESEARCH_IDS.some((id) => !Number.isSafeInteger(state.researchRanks[id])
     || state.researchRanks[id] < 0 || state.researchRanks[id] > RESEARCH[id].costs.length)
     || (state.scoreCapStage < 2 && RESEARCH_IDS.some((id) => state.researchRanks[id] !== 0))
-    || (state.scoreCapStage === 2 && !state.permanent.deepResearchUnlocked)
-    || state.imo + getResearchSpent(state.researchRanks) > state.runEarnedScore + state.runStartingImo + 0.001) throw new RangeError('Invalid research progress.');
+    || (state.scoreCapStage === 2 && !state.permanent.deepResearchUnlocked)) throw new RangeError('Invalid research progress.');
   readAutomation(state.automation);
   if (state.automation.enabled && state.permanent.skillRanks.automation === 0) throw new RangeError('Automation skill is required.');
-  assertNonNegativeFinite(state.runStartingImo, 'runStartingImo');
-  if (state.automationRemainder !== undefined) {
-    const tolerance = 32 * Number.EPSILON * Math.max(1, scoreCap, state.runEarnedScore, state.imo);
-    if (typeof state.automationRemainder !== 'object' || state.automationRemainder === null
-      || !Number.isFinite(state.automationRemainder.score) || !Number.isFinite(state.automationRemainder.imo)
-      || Math.abs(state.automationRemainder.score) > tolerance || Math.abs(state.automationRemainder.imo) > tolerance) throw new RangeError('Invalid automation remainder.');
+  const carry = state.productionRemainder;
+  if (carry !== undefined) {
+    if (carry === null || typeof carry !== 'object') throw new RangeError('Invalid production remainder.');
+    const bound = cap.max(1).multiply(32 * Number.EPSILON);
+    for (const value of [carry.score, carry.imo]) {
+      if (!(value instanceof GameNumber) || value.abs().gt(bound)) throw new RangeError('Invalid production remainder.');
+    }
+    if (state.runEarnedScore.subtract(carry.score).lt(0) || state.runEarnedScore.subtract(carry.score).gt(cap)) throw new RangeError('Compensated SCORE exceeds the run range.');
   }
-  if (!Number.isSafeInteger(state.runStartingImo) || state.runStartingImo > bonuses.startingImo
-    || state.imo > state.runEarnedScore + state.runStartingImo
-    || state.runEarnedScore > scoreCap
+  if (!state.runStartingImo.floor().equals(state.runStartingImo) || state.runStartingImo.gt(bonuses.startingImo)
+    || state.imo.gt(state.runEarnedScore.add(state.runStartingImo)) || state.runEarnedScore.gt(cap)
+    || state.imo.add(getResearchSpent(state.researchRanks)).gt(state.runEarnedScore.add(state.runStartingImo).add(0.001))
     || state.permanent.skillRanks.breakthrough < SCORE_CAP_STAGES[state.scoreCapStage].requiredSkillRank
-    || (state.scoreCapStage > 0 && state.runEarnedScore < SCORE_CAP_STAGES[state.scoreCapStage - 1]!.cap)) {
-    throw new RangeError('Invalid run balance, starting grant, or SCORE.');
-  }
+    || (state.scoreCapStage > 0 && state.runEarnedScore.lt(SCORE_CAP_STAGES[state.scoreCapStage - 1]!.cap))) throw new RangeError('Invalid run balance or SCORE.');
   for (const id of EQUIPMENT_IDS) {
     assertCount(state.equipmentCounts[id]);
-    if (!getEquipmentAvailability(id, state).unlocked && state.equipmentCounts[id] !== 0) {
-      throw new RangeError('Locked equipment cannot be owned in this cap stage.');
-    }
+    if (!getEquipmentAvailability(id, state).unlocked && state.equipmentCounts[id] !== 0) throw new RangeError('Locked equipment cannot be owned.');
   }
+  return bonuses;
 }
-
-/** 単位時間の生産能力。上限到達後も能力自体は変わらず、収穫だけが止まる。 */
-export function getProductionPerSecond(state: GameState): number {
-  assertState(state);
-  const production = EQUIPMENT_IDS.reduce<number>(
-    (total, id) => total + state.equipmentCounts[id] * EQUIPMENT[id].productionPerUnit * getEquipmentMilestones(id, state.equipmentCounts[id]).multiplier
-      * researchMultiplier(state.researchRanks, id === 'veinExtractor' || id === 'concentrator'),
-    INITIAL_BALANCE.baseProduction * researchMultiplier(state.researchRanks),
-  ) * getSkillBonuses(state.permanent).productionMultiplier;
-  assertNonNegativeFinite(production, 'production');
-  return production;
+export function getProductionPerSecond(state: GameState): GameNumber {
+  const bonuses = assertGameState(state);
+  const key = `${EQUIPMENT_IDS.map((id) => state.equipmentCounts[id]).join(',')}:${bonuses.productionMultiplier}:${state.researchRanks.geology}:${state.researchRanks.resonance}`;
+  const cached = productionCache.get(key);
+  if (cached) return cached;
+  const value = EQUIPMENT_IDS.reduce((sum, id) => sum.add(getDefinition(id).productionPerUnit.multiply(state.equipmentCounts[id])
+    .multiply(getEquipmentMilestones(id, state.equipmentCounts[id]).multiplier)
+    .multiply(researchMultiplier(state.researchRanks, id === 'veinExtractor' || id === 'concentrator'))),
+  INITIAL_BALANCE.baseProduction.multiply(researchMultiplier(state.researchRanks))).multiply(bonuses.productionMultiplier);
+  if (productionCache.size < 4_096) productionCache.set(key, value);
+  return value;
 }
-
-/** 1台あたりの加算生産量。倍率を含めてUIへ返す。 */
-export function getEquipmentProductionPerUnit(id: EquipmentId, permanent: PermanentProgress = createInitialPermanent(), ownedCount = 0, research: ResearchRanks = createEmptyResearch()): number {
-  return getDefinition(id).productionPerUnit * getSkillBonuses(permanent).productionMultiplier * getEquipmentMilestones(id, ownedCount).multiplier
-    * researchMultiplier(research, id === 'veinExtractor' || id === 'concentrator');
+export function getEquipmentProductionPerUnit(id: EquipmentId, permanent: PermanentProgress = createInitialPermanent(), ownedCount = 0, research: ResearchRanks = createEmptyResearch()): GameNumber {
+  return getDefinition(id).productionPerUnit.multiply(getSkillBonuses(permanent).productionMultiplier)
+    .multiply(getEquipmentMilestones(id, ownedCount).multiplier)
+    .multiply(researchMultiplier(research, id === 'veinExtractor' || id === 'concentrator'));
 }
-
-/** その設備の全所有台数へ、達成済みの倍率を乗算して適用する。基礎生産は対象外。 */
 export function getEquipmentMilestones(id: EquipmentId, ownedCount: number) {
   assertCount(ownedCount);
   const milestones = getDefinition(id).milestones;
@@ -98,128 +86,78 @@ export function getEquipmentMilestones(id: EquipmentId, ownedCount: number) {
   const next = milestones.find((milestone) => ownedCount < milestone.count) ?? null;
   return { achieved, multiplier, next, nextMultiplier: next ? multiplier * next.multiplier : null };
 }
-
-/** 次の1台により既存台数へ乗るボーナスも含めた、生産量の増分。 */
-export function getEquipmentPurchaseGain(id: EquipmentId, ownedCount: number, permanent: PermanentProgress, research: ResearchRanks = createEmptyResearch()): number {
+export function getEquipmentPurchaseGain(id: EquipmentId, ownedCount: number, permanent: PermanentProgress, research: ResearchRanks = createEmptyResearch()): GameNumber {
   assertCount(ownedCount + 1);
-  return (ownedCount + 1) * getEquipmentProductionPerUnit(id, permanent, ownedCount + 1, research)
-    - ownedCount * getEquipmentProductionPerUnit(id, permanent, ownedCount, research);
+  return getEquipmentProductionPerUnit(id, permanent, ownedCount + 1, research).multiply(ownedCount + 1)
+    .subtract(getEquipmentProductionPerUnit(id, permanent, ownedCount, research).multiply(ownedCount));
 }
-
 export function getEquipmentAvailability(id: EquipmentId, state: Pick<GameState, 'scoreCapStage'> = { scoreCapStage: 0 }) {
   const requiredScoreCap = getDefinition(id).unlockAtScoreCap;
-  return { unlocked: getScoreCap(state) >= requiredScoreCap, requiredScoreCap };
+  return { unlocked: getScoreCap(state).gte(requiredScoreCap), requiredScoreCap };
 }
-
-/** 割引適用後に1台ずつ切り上げる。恒久データ省略時はボーナスなしの価格。 */
-export function getEquipmentPrice(id: EquipmentId, ownedCount: number, permanent: PermanentProgress = createInitialPermanent()): number {
+export function getEquipmentPrice(id: EquipmentId, ownedCount: number, permanent: PermanentProgress = createInitialPermanent()): GameNumber {
   assertCount(ownedCount);
+  assertCount(ownedCount + 1);
   const definition = getDefinition(id);
-  const price = Math.ceil(definition.basePrice * definition.priceMultiplier ** ownedCount * getSkillBonuses(permanent).equipmentPriceMultiplier);
-  if (!Number.isSafeInteger(price) || price <= 0) {
-    throw new RangeError('Equipment price exceeds the supported number range.');
-  }
-  return price;
+  const discount = getSkillBonuses(permanent).equipmentPriceMultiplier;
+  const key = `${id}:${ownedCount}:${discount}`;
+  const cached = priceCache.get(key);
+  if (cached) return cached;
+  const value = definition.basePrice.multiply(definition.priceMultiplier.pow(ownedCount)).multiply(discount).ceil();
+  if (priceCache.size < 8_192) priceCache.set(key, value);
+  return value;
 }
 
-/** 実時間には触れず、経過秒数から収穫を計算する。入力は変更しない。 */
-function advanceProduction(state: GameState, elapsedSeconds: number): GameState {
-  assertNonNegativeFinite(elapsedSeconds, 'elapsedSeconds');
-  const production = getProductionPerSecond(state);
-  const remaining = getScoreCap(state) - state.runEarnedScore;
-  if (elapsedSeconds === 0 || remaining === 0) {
-    return state;
-  }
-
-  if (state.automation.enabled || state.automationRemainder !== undefined) {
-    // Kahan補償加算: 250ms更新を何十万回繰り返しても、毎回捨てた端数を次回に戻す。
-    const carry = state.automationRemainder ?? { score: 0, imo: 0 };
-    const fullRemaining = remaining + carry.score;
-    const capped = elapsedSeconds >= fullRemaining / production;
-    const earned = capped ? fullRemaining : production * elapsedSeconds;
-    const score = compensatedAdd(state.runEarnedScore, carry.score, earned);
-    const imo = compensatedAdd(state.imo, carry.imo, earned);
-    const runEarnedScore = capped ? getScoreCap(state) : Math.min(getScoreCap(state), score.value);
-    return { ...state, runEarnedScore, imo: Math.max(0, Math.min(runEarnedScore + state.runStartingImo, imo.value)),
-      automationRemainder: { score: capped ? 0 : score.remainder, imo: imo.remainder } };
-  }
-
-  // 大きな有限時間でも production * elapsedSeconds を先に計算して溢れさせない。
-  const earned = elapsedSeconds >= remaining / production
-    ? remaining
-    : production * elapsedSeconds;
-  const runEarnedScore = Math.min(getScoreCap(state), state.runEarnedScore + earned);
-  const actualEarned = runEarnedScore - state.runEarnedScore;
-
-  return {
-    ...state,
-    imo: Math.min(runEarnedScore + state.runStartingImo, state.imo + actualEarned),
-    runEarnedScore,
-  };
+function compensatedAdd(value: GameNumber, debt: GameNumber, increment: GameNumber) {
+  const adjusted = increment.subtract(debt);
+  const next = value.add(adjusted);
+  return { value: next, debt: next.subtract(value).subtract(adjusted) };
+}
+function advanceProduction(state: GameState, seconds: number, rate: GameNumber): GameState {
+  if (seconds === 0 || state.runEarnedScore.gte(getScoreCap(state))) return state;
+  const cap = getScoreCap(state);
+  const debt = state.productionRemainder ?? { score: gn(0), imo: gn(0) };
+  const remaining = cap.subtract(state.runEarnedScore).add(debt.score).max(0);
+  const income = rate.multiply(seconds).min(remaining);
+  const capped = income.gte(remaining);
+  const score = compensatedAdd(state.runEarnedScore, debt.score, income);
+  const balance = compensatedAdd(state.imo, debt.imo, income);
+  const runEarnedScore = capped ? cap : score.value.min(cap);
+  const imo = balance.value.max(0).min(runEarnedScore.add(state.runStartingImo));
+  const productionRemainder = { score: capped ? gn(0) : score.debt, imo: balance.debt.add(imo.subtract(balance.value)) };
+  // Tiny additions remain bounded debt until they become representable; they never grant affordability credit.
+  return { ...state, runEarnedScore, imo, productionRemainder };
 }
 
-function compensatedAdd(value: number, remainder: number, increment: number) {
-  const adjusted = increment - remainder;
-  const next = value + adjusted;
-  return { value: next, remainder: (next - value) - adjusted };
-}
-
-/** 指定モードの上限まで、現在の残高で実際に買える数量と支出を返す。 */
-export function getPurchaseQuote(
-  state: GameState,
-  id: EquipmentId,
-  mode: PurchaseMode,
-): PurchaseQuote {
-  assertState(state);
-  getDefinition(id);
-  if (mode !== 1 && mode !== 10 && mode !== 'MAX') {
-    throw new RangeError('Purchase mode must be 1, 10, or MAX.');
-  }
-  if (state.runEarnedScore >= getScoreCap(state) || !getEquipmentAvailability(id, state).unlocked) return { quantity: 0, totalCost: 0 };
-
-  const limit = mode === 'MAX' ? Number.MAX_SAFE_INTEGER : mode;
-  let quantity = 0;
-  let totalCost = 0;
+/** Pure budget quote also supports future prices beyond the current SCORE cap. */
+export function quoteEquipmentPurchase(id: EquipmentId, owned: number, budget: GameNumber, permanent: PermanentProgress, limit = MAX_BULK_PURCHASES): PurchaseQuote {
+  assertCount(owned); nonNegativeGameNumber(budget);
+  if (!Number.isSafeInteger(limit) || limit < 0 || limit > MAX_BULK_PURCHASES) throw new RangeError('Invalid bulk purchase limit.');
+  let totalCost = gn(0), quantity = 0;
   while (quantity < limit) {
-    const ownedCount = state.equipmentCounts[id] + quantity;
-    const price = getEquipmentPrice(id, ownedCount, state.permanent);
-    if (price > state.imo - totalCost) {
-      break;
-    }
-    // 次の所有数も安全な整数であることを購入前に保証する。
-    assertCount(ownedCount + 1);
-    totalCost += price;
-    quantity += 1;
+    const cost = totalCost.add(getEquipmentPrice(id, owned + quantity, permanent));
+    const order = cost.compare(budget);
+    if (order > 0) break;
+    if (!Number.isSafeInteger(owned + quantity + 2)) throw new NumericProgressError('Ownership would leave no safe next count.');
+    if (cost.equals(totalCost)) throw new NumericProgressError('Purchase cost does not advance at the supported precision.');
+    totalCost = cost; quantity += 1;
   }
+  if (quantity === MAX_BULK_PURCHASES && getEquipmentPrice(id, owned + quantity, permanent).lte(budget.subtract(totalCost))) throw new NumericProgressError('Bulk purchase processing limit reached.');
   return { quantity, totalCost };
 }
-
-export function getAffordableQuantity(state: GameState, id: EquipmentId): number {
-  return getPurchaseQuote(state, id, 'MAX').quantity;
+export function getPurchaseQuote(state: GameState, id: EquipmentId, mode: PurchaseMode): PurchaseQuote {
+  assertGameState(state); getDefinition(id);
+  if (mode !== 1 && mode !== 10 && mode !== 'MAX') throw new RangeError('Invalid purchase mode.');
+  if (state.runEarnedScore.gte(getScoreCap(state)) || !getEquipmentAvailability(id, state).unlocked) return { quantity: 0, totalCost: gn(0) };
+  const result = quoteEquipmentPurchase(id, state.equipmentCounts[id], state.imo, state.permanent, mode === 'MAX' ? MAX_BULK_PURCHASES : mode);
+  if (mode === 'MAX' && result.quantity === MAX_BULK_PURCHASES) throw new NumericProgressError('Bulk purchase processing limit reached.');
+  return result;
 }
-
-export function purchaseEquipment(
-  state: GameState,
-  id: EquipmentId,
-  mode: PurchaseMode,
-): GameState {
+export function getAffordableQuantity(state: GameState, id: EquipmentId): number { return getPurchaseQuote(state, id, 'MAX').quantity; }
+export function purchaseEquipment(state: GameState, id: EquipmentId, mode: PurchaseMode): GameState {
   const { quantity, totalCost } = getPurchaseQuote(state, id, mode);
-  if (quantity === 0) {
-    return state;
-  }
-  return {
-    ...state,
-    imo: state.imo - totalCost,
-    equipmentCounts: {
-      ...state.equipmentCounts,
-      [id]: state.equipmentCounts[id] + quantity,
-    },
-  };
+  return quantity === 0 ? state : { ...state, imo: state.imo.subtract(totalCost), equipmentCounts: { ...state.equipmentCounts, [id]: state.equipmentCounts[id] + quantity } };
 }
-
-export const MAX_AUTOMATIC_PURCHASES = 1_024;
-export class AutomationLimitError extends Error {}
-
 export interface AutomaticProgress {
   readonly state: GameState;
   readonly purchased: Readonly<Record<EquipmentId, number>>;
@@ -227,85 +165,91 @@ export interface AutomaticProgress {
   readonly capAtSeconds: number | null;
   readonly events: readonly { readonly seconds: number; readonly id: EquipmentId; readonly state: GameState }[];
 }
-
-/** 方針は残高の小分け観測に依存させない。指定優先だけは即時フォールバックする。 */
 function nextAutomaticEquipment(state: GameState): EquipmentId | undefined {
   const settings = state.automation;
+  const key = settings.policy === 'priority' ? '' : `${state.scoreCapStage}:${settings.policy}:${EQUIPMENT_IDS.map((id) => `${state.equipmentCounts[id]}:${Number(settings.equipment[id])}`).join(',')}:${state.permanent.skillRanks.harvest}:${state.permanent.skillRanks.discount}:${state.researchRanks.geology}:${state.researchRanks.resonance}`;
+  if (settings.policy !== 'priority' && targetCache.has(key)) return targetCache.get(key);
   const ids = EQUIPMENT_IDS.filter((id) => settings.equipment[id] && getEquipmentAvailability(id, state).unlocked);
-  if (settings.policy === 'balanced') return ids.sort((a, b) => state.equipmentCounts[a] - state.equipmentCounts[b])[0];
   const price = (id: EquipmentId) => getEquipmentPrice(id, state.equipmentCounts[id], state.permanent);
-  if (settings.policy === 'efficient') return ids.sort((a, b) => price(a) / getEquipmentPurchaseGain(a, state.equipmentCounts[a], state.permanent, state.researchRanks)
-    - price(b) / getEquipmentPurchaseGain(b, state.equipmentCounts[b], state.permanent, state.researchRanks))[0];
+  if (settings.policy !== 'priority') {
+    const id = settings.policy === 'balanced' ? ids.sort((a, b) => state.equipmentCounts[a] - state.equipmentCounts[b])[0]
+      : ids.sort((a, b) => price(a).divide(getEquipmentPurchaseGain(a, state.equipmentCounts[a], state.permanent, state.researchRanks))
+        .compare(price(b).divide(getEquipmentPurchaseGain(b, state.equipmentCounts[b], state.permanent, state.researchRanks))))[0];
+    if (targetCache.size < 4_096) targetCache.set(key, id);
+    return id;
+  }
   const ordered = settings.priority.filter((id) => ids.includes(id));
-  return ordered.find((id) => price(id) <= state.imo) ?? ordered.sort((a, b) => price(a) - price(b))[0];
+  return ordered.find((id) => price(id).lte(state.imo)) ?? ordered.sort((a, b) => price(a).compare(price(b)))[0];
 }
-
-/** 常時操作シミュレーターが価格式や購入方針を複製せず次の境界を確認する。 */
+/** Only finite, bounded duration conversions leave the amount layer. */
+export function getAmountSeconds(amount: GameNumber, rate: GameNumber, horizon = Number.MAX_VALUE): number | null {
+  const result = toElapsedSeconds(amount.max(0), rate, horizon);
+  if (result.kind === 'below-resolution') throw new NumericProgressError('Positive event time is below the supported resolution.');
+  return result.kind === 'within-horizon' ? result.seconds : null;
+}
 export function getNextAutomaticPurchaseSeconds(state: GameState): number | null {
   const rate = getProductionPerSecond(state);
-  if (!state.automation.enabled || state.runEarnedScore >= getScoreCap(state)) return null;
+  if (!state.automation.enabled || state.runEarnedScore.gte(getScoreCap(state))) return null;
   const id = nextAutomaticEquipment(state);
-  return id === undefined ? null : Math.max(0, (getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) - state.imo) / rate);
+  if (id === undefined) return null;
+  const gap = getEquipmentPrice(id, state.equipmentCounts[id], state.permanent).subtract(state.imo).max(0);
+  return gap.isZero() ? 0 : getAmountSeconds(gap.add(state.productionRemainder?.imo.max(0) ?? 0), rate);
 }
-
-/** 購入イベント駆動。上限到達を購入より先に処理し、残り時間を捏造しない。 */
 export function advanceWithAutomation(initial: GameState, elapsedSeconds: number, trace = false): AutomaticProgress {
-  assertNonNegativeFinite(elapsedSeconds, 'elapsedSeconds');
-  getProductionPerSecond(initial);
-  let state = initial;
-  let remainingSeconds = elapsedSeconds;
-  let elapsed = 0;
-  let purchaseCount = 0;
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds < 0) throw new RangeError('Elapsed seconds must be finite and non-negative.');
+  let rate = getProductionPerSecond(initial);
+  let state = initial, remainingSeconds = elapsedSeconds, elapsed = 0, purchaseCount = 0;
   const purchased = Object.fromEntries(EQUIPMENT_IDS.map((id) => [id, 0])) as Record<EquipmentId, number>;
   const events: { seconds: number; id: EquipmentId; state: GameState }[] = [];
   const result = (capAtSeconds: number | null): AutomaticProgress => ({ state, purchased, purchaseCount, capAtSeconds, events });
-  while (true) {
-    if (state.runEarnedScore >= getScoreCap(state)) return result(elapsed);
-    const rate = getProductionPerSecond(state);
-    const toCap = (getScoreCap(state) - state.runEarnedScore) / rate;
+  for (let step = 0; step < MAX_AUTOMATIC_PURCHASES * 8; step += 1) {
+    if (state.runEarnedScore.gte(getScoreCap(state))) return result(elapsed);
+    const capGap = getScoreCap(state).subtract(state.runEarnedScore).add(state.productionRemainder?.score ?? 0).max(0);
     const id = state.automation.enabled ? nextAutomaticEquipment(state) : undefined;
     if (id === undefined) {
-      state = advanceProduction(state, remainingSeconds);
-      return result(toCap <= remainingSeconds ? elapsed + toCap : null);
+      state = advanceProduction(state, remainingSeconds, rate);
+      return result(state.runEarnedScore.gte(getScoreCap(state)) ? elapsed + (getAmountSeconds(capGap, rate, remainingSeconds) ?? remainingSeconds) : null);
     }
     const price = getEquipmentPrice(id, state.equipmentCounts[id], state.permanent);
-    const gap = price - state.imo;
-    const tolerance = 8 * Number.EPSILON * Math.max(1, state.runEarnedScore, price);
-    if (gap > 0 && gap <= tolerance && gap < getScoreCap(state) - state.runEarnedScore) {
-      // 表現精度内の価格境界を正規化。差分を持ち越し、次の収穫から相殺する。
-      const score = Math.max(state.runEarnedScore, price - state.runStartingImo);
-      state = { ...state, imo: price, runEarnedScore: score, automationRemainder: {
-        score: (state.automationRemainder?.score ?? 0) + (score - state.runEarnedScore),
-        imo: (state.automationRemainder?.imo ?? 0) + gap } };
-      if (state.runEarnedScore >= getScoreCap(state)) return result(elapsed);
-    }
-    if (price <= state.imo) {
+    const canBuy = price.lte(state.imo);
+    if (canBuy) {
       if (purchaseCount >= MAX_AUTOMATIC_PURCHASES) throw new AutomationLimitError('Automatic purchase limit reached.');
-      state = purchaseEquipment(state, id, 1);
-      purchased[id] += 1;
-      purchaseCount += 1;
+      const next = purchaseEquipment(state, id, 1);
+      if (next === state) throw new NumericProgressError('Automatic purchase made no progress.');
+      state = next; purchased[id] += 1; purchaseCount += 1;
+      rate = getProductionPerSecond(state);
       if (trace) events.push({ seconds: elapsed, id, state });
       continue;
     }
     if (remainingSeconds === 0) return result(null);
-    // SCORE差分の桁落ちで価格直前に止まらない、最大数ULP相当の時間余裕。
-    const roundingSeconds = 8 * Number.EPSILON * Math.max(1, state.runEarnedScore, price) / rate;
-    const toPurchase = (price - state.imo) / rate + roundingSeconds;
-    const delta = Math.min(toCap, toPurchase, remainingSeconds);
-    state = advanceProduction(state, delta);
-    remainingSeconds = Math.max(0, remainingSeconds - delta);
-    elapsed += delta;
-    if (delta === toCap) return result(elapsed);
+    const gap = price.subtract(state.imo).max(0).add(state.productionRemainder?.imo.max(0) ?? 0);
+    const incomeBudget = rate.multiply(remainingSeconds);
+    if (gap.gt(incomeBudget) && capGap.gt(incomeBudget)) {
+      state = advanceProduction(state, remainingSeconds, rate);
+      elapsed += remainingSeconds;
+      remainingSeconds = 0;
+      // Compensation can land exactly on the represented price at the final instant.
+      // Always recheck the actual balance; do not infer eligibility from the pre-addition estimate.
+      if (state.runEarnedScore.gte(getScoreCap(state))) return result(elapsed);
+      if (state.imo.gte(price)) continue;
+      return result(null);
+    }
+    const toCap = getAmountSeconds(capGap, rate, remainingSeconds);
+    const toPurchase = getAmountSeconds(gap, rate, remainingSeconds);
+    const delta = Math.min(toCap ?? remainingSeconds, toPurchase ?? remainingSeconds, remainingSeconds);
+    if (delta <= 0) throw new NumericProgressError('Positive event requires a representable time step.');
+    const next = advanceProduction(state, delta, rate);
+    remainingSeconds = Math.max(0, remainingSeconds - delta); elapsed += delta;
+    if (next.runEarnedScore.equals(state.runEarnedScore) && next.imo.equals(state.imo)
+      && next.productionRemainder?.score.equals(state.productionRemainder?.score ?? 0)
+      && next.productionRemainder?.imo.equals(state.productionRemainder?.imo ?? 0)) throw new NumericProgressError('Production made no representable progress.');
+    state = next;
   }
+  throw new AutomationLimitError('Automatic event limit reached.');
 }
-
-export function advanceGame(state: GameState, elapsedSeconds: number): GameState {
-  return advanceWithAutomation(state, elapsedSeconds).state;
-}
-
+export function advanceGame(state: GameState, elapsedSeconds: number): GameState { return advanceWithAutomation(state, elapsedSeconds).state; }
 export function configureAutomation(state: GameState, settings: AutomationSettings): GameState {
   getProductionPerSecond(state);
   const automation = readAutomation(settings);
-  if (state.permanent.skillRanks.automation === 0) return state;
-  return { ...state, automation };
+  return state.permanent.skillRanks.automation === 0 ? state : { ...state, automation };
 }

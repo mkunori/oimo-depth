@@ -29,7 +29,7 @@ export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 
   const breakthroughJourneys = BREAKTHROUGH_SCENARIOS.map((scenario) => simulateBreakthroughJourney(scenario, maxSeconds));
   const breakthroughSeed = breakthroughJourneys[0]?.beforeBreakthrough;
   return {
-    formatVersion: 1,
+    formatVersion: 2,
     parameters: { balance: INITIAL_BALANCE, equipment: EQUIPMENT, prestige: PRESTIGE_BALANCE,
       skills: SKILLS, research: RESEARCH, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
     runCount, maxSeconds, skillPlans: SKILL_PLANS, coverage: COVERAGE, campaigns, benchmarks,

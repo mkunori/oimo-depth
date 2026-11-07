@@ -1,3 +1,5 @@
+import { testAmount as gn } from '../test/amounts';
+
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from './state';
 import { getProductionPerSecond } from './game';
@@ -9,15 +11,16 @@ describe('createInitialState', () => {
 
     expect(state).toEqual({
       automation: createDefaultAutomation(),
-      imo: 0,
-      runEarnedScore: 0,
-      runStartingImo: 0,
+      productionRemainder: { score: gn(0), imo: gn(0) },
+      imo: gn(0),
+      runEarnedScore: gn(0),
+      runStartingImo: gn(0),
       scoreCapStage: 0,
       researchRanks: { geology: 0, resonance: 0 },
       equipmentCounts: { worker: 0, cart: 0, harvester: 0, deepDrill: 0, refinery: 0, veinExtractor: 0, concentrator: 0 },
       permanent: { deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { automation: 0, breakthrough: 0, harvest: 0, discount: 0, startingImo: 0 } },
     });
-    expect(getProductionPerSecond(state)).toBe(1);
+    expect(getProductionPerSecond(state)).toBeAmount(1);
   });
 
   it('does not share equipment counts between new games', () => {

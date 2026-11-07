@@ -6,6 +6,7 @@ import { createDefaultAutomation } from '../data/automation';
 import type { AutomationSettings } from '../data/automation';
 import { createEmptyResearch } from '../data/research';
 import type { ResearchRanks } from '../data/research';
+import { GameNumber, gn } from './numbers';
 
 /** 転生で引き継ぐデータ。将来の恒久データはこの境界に追加する。 */
 export interface PermanentProgress {
@@ -23,10 +24,10 @@ export function createInitialPermanent(): PermanentProgress {
 export interface RunState {
   readonly researchRanks: ResearchRanks;
   /** 設備購入で消費する芋の残高。 */
-  readonly imo: number;
+  readonly imo: GameNumber;
   /** 現周回の累計獲得量。購入では減らさず、収穫上限の判定に使う。 */
-  readonly runEarnedScore: number;
-  readonly runStartingImo: number;
+  readonly runEarnedScore: GameNumber;
+  readonly runStartingImo: GameNumber;
   readonly scoreCapStage: ScoreCapStage;
   readonly equipmentCounts: Readonly<Record<EquipmentId, number>>;
 }
@@ -34,19 +35,20 @@ export interface RunState {
 export interface GameState extends RunState {
   readonly permanent: PermanentProgress;
   readonly automation: AutomationSettings;
-  /** 自動精算の補償加算端数。設定ではなく周回の計算状態で、転生時に消える。 */
-  readonly automationRemainder?: { readonly score: number; readonly imo: number };
+  /** 全収穫の補償加算端数。設定ではなく周回の計算状態で、転生時にゼロへ戻る。 */
+  readonly productionRemainder?: { readonly score: GameNumber; readonly imo: GameNumber };
 }
 
 export function createInitialState(): GameState {
   return {
-    imo: 0,
-    runEarnedScore: 0,
-    runStartingImo: 0,
+    imo: gn(0),
+    runEarnedScore: gn(0),
+    runStartingImo: gn(0),
     scoreCapStage: 0,
     researchRanks: createEmptyResearch(),
     equipmentCounts: createEmptyEquipmentCounts(),
     permanent: createInitialPermanent(),
     automation: createDefaultAutomation(),
+    productionRemainder: { score: gn(0), imo: gn(0) },
   };
 }

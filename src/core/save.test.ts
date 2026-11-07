@@ -1,3 +1,5 @@
+import { testAmount as gn, stringifyTestSave } from '../test/amounts';
+
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from './state';
 import { advanceGame, purchaseEquipment } from './game';
@@ -28,13 +30,13 @@ describe('save format', () => {
 
   it.each([
     null,
-    { imo: '1', runEarnedScore: 1, equipmentCounts: { worker: 0, cart: 0, harvester: 0 } },
-    { ...owned, imo: -1 },
-    { ...owned, imo: NaN },
-    { ...owned, imo: Infinity },
-    { ...owned, imo: 101 },
-    { ...owned, runEarnedScore: 1_000_001 },
-    { ...owned, runEarnedScore: -1 },
+    { imo: '1', runEarnedScore: gn(1), equipmentCounts: { worker: 0, cart: 0, harvester: 0 } },
+    { ...owned, imo: gn(-1) },
+    { ...owned, imo: gn(NaN) },
+    { ...owned, imo: gn(Infinity) },
+    { ...owned, imo: gn(101) },
+    { ...owned, runEarnedScore: gn(1_000_001) },
+    { ...owned, runEarnedScore: gn(-1) },
     { ...owned, equipmentCounts: null },
     { ...owned, equipmentCounts: {} },
     { ...owned, equipmentCounts: { worker: -1, cart: 0, harvester: 0 } },
@@ -42,11 +44,11 @@ describe('save format', () => {
     { ...owned, equipmentCounts: { worker: 1_000, cart: 0, harvester: 0 } },
     { ...owned, equipmentCounts: { worker: Number.MAX_SAFE_INTEGER, cart: 0, harvester: 0 } },
   ])('rejects malformed game state %#', (gameState) => {
-    expect(() => parseSave(JSON.stringify({ saveVersion: SAVE_VERSION, savedAt: SAVED_AT, gameState }))).toThrow();
+    expect(() => parseSave(stringifyTestSave({ saveVersion: SAVE_VERSION, savedAt: SAVED_AT, gameState }))).toThrow();
   });
 
   it('copies only known properties rather than adopting arbitrary imported fields', () => {
-    const restored = parseSave(JSON.stringify({
+    const restored = parseSave(stringifyTestSave({
       saveVersion: SAVE_VERSION, savedAt: SAVED_AT,
       gameState: { ...owned, extra: 'ignored', equipmentCounts: { ...owned.equipmentCounts, other: 9 } },
     }));
@@ -58,26 +60,26 @@ describe('offline settlement', () => {
   it('adds an hour at the saved production rate without buying equipment', () => {
     const result = settleOffline(createSave(owned, SAVED_AT), SAVED_AT + 3_600_000);
 
-    expect(result.save.gameState).toEqual({ ...owned, imo: 7_290, runEarnedScore: 7_300 });
-    expect(result.report).toEqual({ elapsedSeconds: 3_600, appliedSeconds: 3_600, earnedImo: 7_200, reachedScore: 7_300, clockReversed: false, automaticPurchases: 0 });
+    expect(result.save.gameState).toEqual({ ...owned, imo: gn(7_290), runEarnedScore: gn(7_300) });
+    expect(result.report).toEqual({ elapsedSeconds: 3_600, appliedSeconds: 3_600, earnedImo: gn(7_200), reachedScore: gn(7_300), clockReversed: false, automaticPurchases: 0 });
   });
 
   it('limits a 48 hour absence to 24 hours', () => {
     const result = settleOffline(createSave(createInitialState(), SAVED_AT), SAVED_AT + 48 * 3_600_000);
 
-    expect(result.save.gameState.imo).toBe(86_400);
+    expect(result.save.gameState.imo).toBeAmount(86_400);
     expect(result.report.elapsedSeconds).toBe(172_800);
     expect(result.report.appliedSeconds).toBe(OFFLINE_LIMIT_SECONDS);
-    expect(result.report.earnedImo).toBe(86_400);
+    expect(result.report.earnedImo).toBeAmount(86_400);
   });
 
   it('clips to SCORE cap and preserves the amount previously spent', () => {
-    const state = { ...owned, imo: 5, runEarnedScore: 999_999 };
+    const state = { ...owned, imo: gn(5), runEarnedScore: gn(999_999) };
     const result = settleOffline(createSave(state, SAVED_AT), SAVED_AT + 48 * 3_600_000);
 
-    expect(result.save.gameState.imo).toBe(6);
-    expect(result.save.gameState.runEarnedScore).toBe(1_000_000);
-    expect(result.report.earnedImo).toBe(1);
+    expect(result.save.gameState.imo).toBeAmount(6);
+    expect(result.save.gameState.runEarnedScore).toBeAmount(1_000_000);
+    expect(result.report.earnedImo).toBeAmount(1);
   });
 
   it('is deterministic and consumes elapsed time in the returned save', () => {
@@ -86,29 +88,29 @@ describe('offline settlement', () => {
     const first = settleOffline(save, now);
 
     expect(settleOffline(save, now)).toEqual(first);
-    expect(settleOffline(first.save, now).report.earnedImo).toBe(0);
+    expect(settleOffline(first.save, now).report.earnedImo).toBeAmount(0);
     expect(save.gameState).toEqual(owned);
     expect(save.savedAt).toBe(SAVED_AT);
   });
 
   it('does not credit negative elapsed time or move the save timestamp backward', () => {
     const result = settleOffline(createSave(owned, SAVED_AT), SAVED_AT - 60_000);
-    expect(result.report.earnedImo).toBe(0);
+    expect(result.report.earnedImo).toBeAmount(0);
     expect(result.report.clockReversed).toBe(true);
     expect(result.save.savedAt).toBe(SAVED_AT);
-    expect(settleOffline(result.save, SAVED_AT).report.earnedImo).toBe(0);
+    expect(settleOffline(result.save, SAVED_AT).report.earnedImo).toBeAmount(0);
   });
 });
 
 describe('permanent growth saves and migration', () => {
   it('migrates an actual v1 save while preserving all run values and its timestamp', () => {
-    const legacy = { saveVersion: 1, savedAt: SAVED_AT, gameState: { imo: 90.5, runEarnedScore: 100.5, equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } };
-    const migrated = parseSave(JSON.stringify(legacy));
+    const legacy = { saveVersion: 1, savedAt: SAVED_AT, gameState: { imo: gn(90.5), runEarnedScore: gn(100.5), equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } };
+    const migrated = parseSave(stringifyTestSave(legacy));
     expect(migrated.saveVersion).toBe(SAVE_VERSION);
     expect(migrated.savedAt).toBe(SAVED_AT);
     expect(migrated.gameState).toEqual({ ...createInitialState(), ...legacy.gameState, equipmentCounts: { ...createInitialState().equipmentCounts, ...legacy.gameState.equipmentCounts } });
     expect(parseSave(serializeSave(migrated))).toEqual(migrated);
-    expect(settleOffline(migrated, SAVED_AT + 1_000).save.gameState.imo).toBe(92.5);
+    expect(settleOffline(migrated, SAVED_AT + 1_000).save.gameState.imo).toBeAmount(92.5);
   });
 
   it('preserves skill effects, points, count, and starting grant across round trip and offline harvest', () => {
@@ -120,10 +122,10 @@ describe('permanent growth saves and migration', () => {
     expect(restored.gameState).toEqual(game);
     expect(restored.gameState.permanent.skillRanks).not.toBe(game.permanent.skillRanks);
     const offline = settleOffline(restored, SAVED_AT + 3_600_000);
-    expect(offline.save.gameState.imo).toBe(5_450);
-    expect(offline.save.gameState.runEarnedScore).toBe(5_400);
+    expect(offline.save.gameState.imo).toBeAmount(5_450);
+    expect(offline.save.gameState.runEarnedScore).toBeAmount(5_400);
     expect(offline.save.gameState.permanent).toEqual(game.permanent);
-    expect(offline.report.earnedImo).toBe(5_400);
+    expect(offline.report.earnedImo).toBeAmount(5_400);
   });
 
   it.each([
@@ -131,14 +133,14 @@ describe('permanent growth saves and migration', () => {
     { permanent: {} },
     { permanent: { ...createInitialState().permanent, unspentPoints: 1 } },
     { permanent: { ...createInitialState().permanent, skillRanks: {} } },
-    { runStartingImo: -1 },
-    { runStartingImo: 50 },
-    { runStartingImo: Infinity },
+    { runStartingImo: gn(-1) },
+    { runStartingImo: gn(50) },
+    { runStartingImo: gn(Infinity) },
   ])('rejects incomplete or impossible v2 growth state %#', (patch) => {
-    expect(() => parseSave(JSON.stringify({ saveVersion: 2, savedAt: SAVED_AT, gameState: { ...createInitialState(), ...patch } }))).toThrow();
+    expect(() => parseSave(stringifyTestSave({ saveVersion: 2, savedAt: SAVED_AT, gameState: { ...createInitialState(), ...patch } }))).toThrow();
   });
 
   it('does not reinterpret a malformed v2 save as a legacy save', () => {
-    expect(() => parseSave(JSON.stringify({ saveVersion: 2, savedAt: SAVED_AT, gameState: { imo: 0, runEarnedScore: 0, equipmentCounts: { worker: 0, cart: 0, harvester: 0 } } }))).toThrow();
+    expect(() => parseSave(stringifyTestSave({ saveVersion: 2, savedAt: SAVED_AT, gameState: { imo: gn(0), runEarnedScore: gn(0), equipmentCounts: { worker: 0, cart: 0, harvester: 0 } } }))).toThrow();
   });
 });

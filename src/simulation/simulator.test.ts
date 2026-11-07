@@ -1,3 +1,5 @@
+import { testAmount as gn, stringifyTestSave } from '../test/amounts';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { advanceGame, getProductionPerSecond } from '../core/game';
 import { prestigeGame, purchaseSkill } from '../core/prestige';
@@ -11,6 +13,7 @@ import type { Scenario } from './simulator';
 import { runSuite } from './suite';
 import { BREAKTHROUGH_SCENARIOS, simulateBreakthroughJourney, simulateExpansion } from './expansion';
 import { EQUIPMENT_BASELINE } from './baseline';
+import { assertV6BalanceBaseline } from '../test/migrationBaseline';
 
 const idle: Scenario = { id: 'test', label: 'analytic baseline', visitSeconds: null,
   presence: 'online', equipment: 'none', skillPlan: 'save', prestigeAt: 'cap' };
@@ -24,10 +27,10 @@ describe('event-driven simulation', () => {
     expect(run.elapsedSeconds).toBeCloseTo(1_000_000, 5);
     expect(run.score100k?.productionSeconds).toBeCloseTo(100_000, 6);
     expect(run.score1m?.productionSeconds).toBeCloseTo(1_000_000, 6);
-    expect(run.state.runEarnedScore).toBe(1_000_000);
-    expect(run.state.imo).toBe(1_000_000);
+    expect(run.state.runEarnedScore).toBeAmount(1_000_000);
+    expect(run.state.imo).toBeAmount(1_000_000);
     expect(run.purchases).toBe(0);
-    expect(run.trace.at(-1)?.actualProduction).toBe(0);
+    expect(run.trace.at(-1)?.actualProduction).toBeAmount(0);
   });
 
   it('distinguishes reaching SCORE from the next manual confirmation', () => {
@@ -35,13 +38,13 @@ describe('event-driven simulation', () => {
     expect(run.score100k?.productionSeconds).toBe(100_000);
     expect(run.score100k?.observedSeconds).toBe(100_200);
     expect(run.elapsedSeconds).toBe(100_200);
-    expect(run.state.runEarnedScore).toBe(100_200);
+    expect(run.state.runEarnedScore).toBeAmount(100_200);
   });
 
   it('does not invent an extra manual action at an online horizon boundary', () => {
-    const state = { ...createInitialState(), imo: 99_999, runEarnedScore: 99_999 };
+    const state = { ...createInitialState(), imo: gn(99_999), runEarnedScore: gn(99_999) };
     const run = simulateRun(state, { ...idle, visitSeconds: 60, prestigeAt: 'early' }, 30);
-    expect(run.state.runEarnedScore).toBe(100_029);
+    expect(run.state.runEarnedScore).toBeAmount(100_029);
     expect(run.completed).toBe(false);
     expect(run.score100k).toBeNull();
     expect(run.lastObservationSeconds).toBe(0);
@@ -67,10 +70,10 @@ describe('event-driven simulation', () => {
   });
 
   it('records cap idle time while still waiting for the scheduled return', () => {
-    const state = { ...createInitialState(), imo: 9, runEarnedScore: 999_999 };
+    const state = { ...createInitialState(), imo: gn(9), runEarnedScore: gn(999_999) };
     const run = simulateRun(state, { ...idle, presence: 'offline', visitSeconds: 3_600 }, 3_600);
-    expect(run.state.imo).toBe(10);
-    expect(run.state.runEarnedScore).toBe(1_000_000);
+    expect(run.state.imo).toBeAmount(10);
+    expect(run.state.runEarnedScore).toBeAmount(1_000_000);
     expect(run.idleAtCapSeconds).toBe(3_599);
     expect(run.trace.find((point) => point.kind === 'cap-reached')?.elapsedSeconds).toBe(1);
     expect(run.score1m?.observedSeconds).toBe(3_600);
@@ -99,16 +102,17 @@ describe('event-driven simulation', () => {
     vi.spyOn(Date, 'now').mockImplementation(() => { throw new Error('ambient clock'); });
     vi.spyOn(Math, 'random').mockImplementation(() => { throw new Error('randomness'); });
     const first = runSuite();
+    assertV6BalanceBaseline(first);
     const second = runSuite();
     expect(first).toEqual(second);
     expect(first.campaigns).toHaveLength(15);
     expect(first.research).toHaveLength(18);
     for (const trial of first.research) {
       expect(trial.result.completed).toBe(true);
-      expect(trial.initialState.runEarnedScore).toBe(1e9);
+      expect(trial.initialState.runEarnedScore).toBeAmount(1e9);
       expect(trial.initialState.permanent.deepResearchUnlocked).toBe(true);
       expect(trial.initialState.permanent.skillRanks.automation > 0).toBe(trial.automated);
-      expect(trial.result.state.runEarnedScore).toBe(1e12);
+      expect(trial.result.state.runEarnedScore).toBeAmount(1e12);
       expect(trial.result.state.equipmentCounts.veinExtractor).toBeGreaterThan(0);
       expect(trial.result.state.equipmentCounts.concentrator).toBeGreaterThan(0);
       expect(trial.result.trace.filter((point) => point.kind === 'research-purchase').every((point) => point.elapsedSeconds % trial.scenario.visitSeconds! === 0)).toBe(true);
@@ -117,11 +121,11 @@ describe('event-driven simulation', () => {
     for (const campaign of first.campaigns) {
       expect(campaign.completedRuns).toBe(6);
       expect(campaign.state.permanent.prestigeCount).toBe(6);
-      expect(campaign.trace.every((point) => point.score <= 1_000_000 && point.scoreCap === 1_000_000 && point.imo >= 0)).toBe(true);
+      expect(campaign.trace.every((point) => point.score.lte(1_000_000) && point.scoreCap.equals(1_000_000) && point.imo.gte(0))).toBe(true);
       expect(campaign.trace.every((point) => point.equipmentCounts.deepDrill === 0 && point.equipmentCounts.refinery === 0)).toBe(true);
-      expect(campaign.runs.every((run) => getProductionPerSecond(run.result.state) > 0)).toBe(true);
+      expect(campaign.runs.every((run) => getProductionPerSecond(run.result.state).gt(0))).toBe(true);
     }
-  }, 15_000); // 全方策を2回生成して比較するため、共有CI向けに個別の実行時間を確保する。
+  }, 30_000); // 全方策を2回生成して比較するため、共有CI向けに個別の実行時間を確保する。
 
   it.each([0, -1, NaN, Infinity])('rejects invalid horizon %s', (seconds) => {
     expect(() => simulateRun(createInitialState(), idle, seconds)).toThrow(RangeError);
@@ -142,7 +146,7 @@ describe('event-driven simulation', () => {
 
 describe('simulation policy boundaries', () => {
   it('keeps input state immutable and makes only purchases the core permits', () => {
-    const state = { ...createInitialState(), imo: 1_000, runEarnedScore: 1_000 };
+    const state = { ...createInitialState(), imo: gn(1_000), runEarnedScore: gn(1_000) };
     Object.freeze(state.equipmentCounts);
     Object.freeze(state.permanent.skillRanks);
     Object.freeze(state.permanent);
@@ -151,11 +155,11 @@ describe('simulation policy boundaries', () => {
     for (const policy of ['payback', 'highest-tier'] as const) {
       const result = investEquipment(state, policy);
       expect(result.purchased).toBeGreaterThan(0);
-      expect(result.state.runEarnedScore).toBe(1_000);
-      expect(result.state.imo).toBeGreaterThanOrEqual(0);
-      expect(getProductionPerSecond(result.state)).toBeGreaterThan(1);
+      expect(result.state.runEarnedScore).toBeAmount(1_000);
+      expect(result.state.imo).toBeGreaterThanOrEqualAmount(0);
+      expect(getProductionPerSecond(result.state)).toBeGreaterThanAmount(1);
     }
-    expect(state.imo).toBe(1_000);
+    expect(state.imo).toBeAmount(1_000);
     expect(state.equipmentCounts.worker).toBe(0);
   });
 
@@ -172,10 +176,10 @@ describe('simulation policy boundaries', () => {
     const rows = projectFixedProduction(1_000);
     const first = rows[0]!;
     expect(first.seconds).toBe(999_000);
-    expect(first.requiredProduction * first.targetSeconds).toBe(999_000_000);
+    expect(first.requiredProduction.multiply(first.targetSeconds)).toBeAmount(999_000_000);
     expect(rows[1]?.seconds).toBe(first.seconds / 10);
     expect(rows).toHaveLength(12);
-    expect(rows.at(-1)?.to).toBe(1e15);
+    expect(rows.at(-1)?.to).toBeAmount(1e15);
     expect(() => projectFixedProduction(0)).toThrow(RangeError);
     expect(() => projectFixedProduction(Infinity)).toThrow(RangeError);
     expect(() => projectFixedProduction(1, -1)).toThrow(RangeError);
@@ -191,7 +195,7 @@ describe('equipment growth comparison', () => {
       expect(trial.result.completed).toBe(true);
       expect(trial.result.state.permanent).toEqual(trial.initialState.permanent);
       expect(trial.result.state.scoreCapStage).toBe(trial.stage);
-      expect(trial.result.trace.every((point) => point.score <= point.scoreCap)).toBe(true);
+      expect(trial.result.trace.every((point) => point.score.lte(point.scoreCap))).toBe(true);
       expect(trial.result.automaticPurchases > 0).toBe(trial.policy !== 'off');
       expect(trial.result.trace.some((point) => point.kind === 'automatic-purchase')).toBe(trial.policy !== 'off');
     }
@@ -199,7 +203,7 @@ describe('equipment growth comparison', () => {
       const inputs = suite.automation.trials.filter((trial) => trial.stage === stage);
       for (const trial of inputs) {
         expect(trial.initialState.equipmentCounts).toEqual(inputs[0]!.initialState.equipmentCounts);
-        expect(trial.initialState.imo).toBe(inputs[0]!.initialState.imo);
+        expect(trial.initialState.imo).toBeAmount(inputs[0]!.initialState.imo);
         expect(trial.initialState.permanent).toEqual(inputs[0]!.initialState.permanent);
       }
     }
@@ -236,27 +240,27 @@ describe('equipment growth comparison', () => {
     for (const journey of journeys) {
       expect(journey.completed).toBe(true);
       expect(journey.beforeBreakthrough?.scoreCapStage).toBe(0);
-      expect(journey.beforeBreakthrough?.runEarnedScore).toBe(1e6);
+      expect(journey.beforeBreakthrough?.runEarnedScore).toBeAmount(1e6);
       expect(journey.afterBreakthrough).toEqual({ ...journey.beforeBreakthrough, scoreCapStage: 1 });
       expect(journey.state.permanent).toEqual(journey.beforeBreakthrough?.permanent);
-      expect(journey.state.runEarnedScore).toBe(1e9);
+      expect(journey.state.runEarnedScore).toBeAmount(1e9);
       expect(journey.expansion!.state.equipmentCounts.deepDrill).toBeGreaterThan(0);
-      expect(journey.expansion!.trace.at(-1)?.actualProduction).toBe(0);
+      expect(journey.expansion!.trace.at(-1)?.actualProduction).toBeAmount(0);
     }
     expect(journeys[0]!.state.permanent.prestigeCount).toBe(5);
     expect(journeys[3]!.state.permanent.prestigeCount).toBe(10);
     expect(journeys[4]!.state.permanent.prestigeCount).toBe(8);
     const seed = journeys[0]!.beforeBreakthrough!;
-    const snapshot = JSON.stringify(seed);
+    const snapshot = stringifyTestSave(seed);
     const cases = simulateExpansion(seed);
     expect(cases).toHaveLength(9);
     for (const trial of cases) {
       expect(trial.assumed).toBe(false);
       expect(trial.actualSaveSupported).toBe(true);
       expect(trial.result.completed).toBe(true);
-      expect(trial.result.state.runEarnedScore).toBe(1e9);
+      expect(trial.result.state.runEarnedScore).toBeAmount(1e9);
       expect(trial.result.state.permanent).toEqual(seed.permanent);
-      expect(trial.result.trace.every((point) => point.score <= 1e9)).toBe(true);
+      expect(trial.result.trace.every((point) => point.score.lte(1e9))).toBe(true);
       if (trial.policy === 'expanded') {
         expect(trial.result.state.equipmentCounts.deepDrill).toBeGreaterThan(0);
         expect(trial.result.state.equipmentCounts.refinery).toBeGreaterThan(0);
@@ -268,9 +272,9 @@ describe('equipment growth comparison', () => {
     const existing = cases.find((trial) => trial.scenario.presence === 'online' && trial.policy === 'existing')!;
     const expanded = cases.find((trial) => trial.scenario.presence === 'online' && trial.policy === 'expanded')!;
     expect(expanded.result.elapsedSeconds).toBeLessThan(existing.result.elapsedSeconds);
-    expect(expanded.finalProduction / existing.finalProduction).toBeGreaterThan(3);
-    expect(expanded.finalProduction / existing.finalProduction).toBeLessThan(20);
-    expect(JSON.stringify(seed)).toBe(snapshot);
+    expect(expanded.finalProduction.divide(existing.finalProduction)).toBeGreaterThanAmount(3);
+    expect(expanded.finalProduction.divide(existing.finalProduction)).toBeLessThanAmount(20);
+    expect(stringifyTestSave(seed)).toBe(snapshot);
     expect(() => simulateExpansion(createInitialState())).toThrow(RangeError);
     const censored = simulateBreakthroughJourney(BREAKTHROUGH_SCENARIOS[1]!, 900);
     expect(censored.completed).toBe(false);

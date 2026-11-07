@@ -1,3 +1,4 @@
+import { GameNumber, gn } from '../core/numbers';
 export interface EquipmentMilestone {
   readonly count: number;
   readonly multiplier: number;
@@ -5,10 +6,10 @@ export interface EquipmentMilestone {
 
 export interface EquipmentDefinition {
   readonly name: string;
-  readonly basePrice: number;
-  readonly priceMultiplier: number;
-  readonly productionPerUnit: number;
-  readonly unlockAtScoreCap: number;
+  readonly basePrice: GameNumber;
+  readonly priceMultiplier: GameNumber;
+  readonly productionPerUnit: GameNumber;
+  readonly unlockAtScoreCap: GameNumber;
   readonly milestones: readonly EquipmentMilestone[];
 }
 
@@ -22,43 +23,43 @@ export const EQUIPMENT_MILESTONES: readonly EquipmentMilestone[] = Object.freeze
 export const EQUIPMENT = Object.freeze({
   worker: Object.freeze({
     name: '作業員',
-    basePrice: 10,
-    priceMultiplier: 1.15,
-    productionPerUnit: 1,
-    unlockAtScoreCap: 1_000_000,
+    basePrice: gn(10),
+    priceMultiplier: gn(1.15),
+    productionPerUnit: gn(1),
+    unlockAtScoreCap: gn(1_000_000),
     milestones: EQUIPMENT_MILESTONES,
   }),
   cart: Object.freeze({
     name: '運搬車',
-    basePrice: 100,
-    priceMultiplier: 1.2,
-    productionPerUnit: 10,
-    unlockAtScoreCap: 1_000_000,
+    basePrice: gn(100),
+    priceMultiplier: gn(1.2),
+    productionPerUnit: gn(10),
+    unlockAtScoreCap: gn(1_000_000),
     milestones: EQUIPMENT_MILESTONES,
   }),
   harvester: Object.freeze({
     name: '自動収穫機',
-    basePrice: 1_000,
-    priceMultiplier: 1.25,
-    productionPerUnit: 100,
-    unlockAtScoreCap: 1_000_000,
+    basePrice: gn(1_000),
+    priceMultiplier: gn(1.25),
+    productionPerUnit: gn(100),
+    unlockAtScoreCap: gn(1_000_000),
     milestones: EQUIPMENT_MILESTONES,
   }),
   deepDrill: Object.freeze({
-    name: '深層掘削機', basePrice: 2_000_000, priceMultiplier: 1.2, productionPerUnit: 1_500,
-    unlockAtScoreCap: 1_000_000_000, milestones: [],
+    name: '深層掘削機', basePrice: gn(2_000_000), priceMultiplier: gn(1.2), productionPerUnit: gn(1_500),
+    unlockAtScoreCap: gn(1_000_000_000), milestones: [],
   }),
   refinery: Object.freeze({
-    name: '芋精製プラント', basePrice: 20_000_000, priceMultiplier: 1.22, productionPerUnit: 15_000,
-    unlockAtScoreCap: 1_000_000_000, milestones: [],
+    name: '芋精製プラント', basePrice: gn(20_000_000), priceMultiplier: gn(1.22), productionPerUnit: gn(15_000),
+    unlockAtScoreCap: gn(1_000_000_000), milestones: [],
   }),
   veinExtractor: Object.freeze({
-    name: '地脈抽出機', basePrice: 100_000_000, priceMultiplier: 1.2, productionPerUnit: 500_000,
-    unlockAtScoreCap: 1_000_000_000_000, milestones: EQUIPMENT_MILESTONES,
+    name: '地脈抽出機', basePrice: gn(100_000_000), priceMultiplier: gn(1.2), productionPerUnit: gn(500_000),
+    unlockAtScoreCap: gn(1_000_000_000_000), milestones: EQUIPMENT_MILESTONES,
   }),
   concentrator: Object.freeze({
-    name: '芋濃縮炉', basePrice: 1_000_000_000, priceMultiplier: 1.25, productionPerUnit: 8_000_000,
-    unlockAtScoreCap: 1_000_000_000_000, milestones: [],
+    name: '芋濃縮炉', basePrice: gn(1_000_000_000), priceMultiplier: gn(1.25), productionPerUnit: gn(8_000_000),
+    unlockAtScoreCap: gn(1_000_000_000_000), milestones: [],
   }),
 } satisfies Record<string, EquipmentDefinition>);
 

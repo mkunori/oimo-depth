@@ -5,8 +5,9 @@ import type { SimulationSuite } from '../src/simulation/suite';
 import { EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS } from '../src/data/equipment';
 import { SCORE_CAP_STAGES } from '../src/data/scoreCaps';
 import { AUTOMATION_POLICIES } from '../src/data/automation';
+import { GameNumber, gn, encodeGameNumbers } from '../src/core/numbers';
 
-const number = (value: number) => new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 }).format(value);
+const number = (value: number | GameNumber) => value instanceof GameNumber ? value.format(12) : new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 }).format(value);
 const axisNumber = (value: number) => new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(value);
 const time = (seconds: number | null | undefined): string => {
   if (seconds === null || seconds === undefined) return '未到達 / 未観測';
@@ -17,12 +18,12 @@ const time = (seconds: number | null | undefined): string => {
   return `${number(seconds / 365 / 86_400)}年`;
 };
 
-function csv(rows: readonly (readonly (string | number | null)[])[]): string {
+function csv(rows: readonly (readonly (string | number | GameNumber | null)[])[]): string {
   return rows.map((row) => row.map((cell) => cell === null ? '' : `"${String(cell).replaceAll('"', '""')}"`).join(',')).join('\n') + '\n';
 }
 
 function json(value: unknown): string {
-  return JSON.stringify(value, (_key, item: unknown) => {
+  return JSON.stringify(encodeGameNumbers(value), (_key, item: unknown) => {
     if (typeof item !== 'number') return item;
     if (!Number.isFinite(item)) throw new RangeError('Report must not contain NaN or Infinity.');
     return Number.isInteger(item) ? item : Number(item.toPrecision(12));
@@ -30,6 +31,10 @@ function json(value: unknown): string {
 }
 
 function chart(id: string, options: Plot.PlotOptions, legend: readonly { label: string; color: string }[] = [], note = ''): string {
+  if (['score', 'expansion', 'breakthrough', 'automation', 'research'].includes(id)) {
+    const domain = options.y?.domain ? Array.from(options.y.domain, (value: unknown) => gn(value as number | GameNumber).log10().toFiniteNumber()) : undefined;
+    options = { ...options, y: { ...options.y, type: 'linear', domain, tickFormat: (value: number) => `10^${Number(value.toFixed(2))}` } };
+  }
   const document = new JSDOM('').window.document;
   const svg = Plot.plot({ document, className: `balance-${id}`, width: 1100, height: 440,
     marginTop: note ? 45 : 25, marginLeft: 85, marginBottom: 65, marginRight: legend.length > 0 ? 300 : 60,
@@ -54,6 +59,17 @@ function chart(id: string, options: Plot.PlotOptions, legend: readonly { label: 
   }
   svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   return svg.outerHTML + '\n';
+}
+
+/** Plot logarithmic coordinates; a 1e1000 amount must never become Infinity in SVG data. */
+function amountLineY(data: Plot.Data, options: Plot.LineYOptions) {
+  const field = options.y;
+  return field === 'score' || field === 'scoreCap'
+    ? Plot.lineY(data, { ...options, y: (point: Record<string, GameNumber>) => point[String(field)]!.log10().toFiniteNumber() })
+    : Plot.lineY(data, options);
+}
+function amountRuleY(data: readonly (number | GameNumber)[], options: Plot.RuleYOptions) {
+  return Plot.ruleY(data.map((value) => value instanceof GameNumber ? value.log10().toFiniteNumber() : value), options);
 }
 
 export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Record<string, string> {
@@ -149,10 +165,11 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '# 現行バランスのシミュレーション結果', '',
     `コア識別子（LF 正規化 SHA-256）: \`${coreSha256}\`。${suite.runCount}周回、打切り ${time(suite.maxSeconds)}。生成日時や乱数を含まない再現可能な結果です。`, '',
     'これは方策比較であり、最適解の探索やプレイヤー全体の平均ではありません。生産・価格・報酬・保存は実コアから計算しています。', '',
+    '結果形式v2・セーブv7。JSON/CSVの金額・速度は正規化したgn1文字列、台数・ランク・秒数はnumberです。図は巨大数のlog10座標を描画し、金額を直接numberへ変換しません。移行前後の固定比較は [巨大数移行](../../number-migration.md) を参照してください。', '',
     '## 現行パラメータ', '',
     `基礎生産 ${number(suite.parameters.balance.baseProduction)}/秒、上限 ${number(suite.parameters.balance.scoreCap)}、転生解禁 ${number(suite.parameters.prestige.unlockScore)}、報酬 ${suite.parameters.prestige.earlyReward}/${suite.parameters.prestige.capReward}pt、オフライン上限 ${time(suite.parameters.offlineLimitSeconds)}。`, '',
     '| 設備 | 基礎価格 | 台数価格倍率 | 1台あたり基礎生産 | 解禁する上限 | 台数/追加倍率（乗算） |', '| --- | ---: | ---: | ---: | ---: | --- |',
-    ...Object.values(suite.parameters.equipment).map((definition) => `| ${definition.name} | ${definition.basePrice} | ${definition.priceMultiplier} | ${definition.productionPerUnit}/秒 | ${definition.unlockAtScoreCap} | ${definition.milestones.map((milestone) => `${milestone.count}台/×${milestone.multiplier}`).join('、') || 'なし'} |`), '',
+    ...Object.values(suite.parameters.equipment).map((definition) => `| ${definition.name} | ${number(definition.basePrice)} | ${number(definition.priceMultiplier)} | ${number(definition.productionPerUnit)}/秒 | ${number(definition.unlockAtScoreCap)} | ${definition.milestones.map((milestone) => `${milestone.count}台/×${milestone.multiplier}`).join('、') || 'なし'} |`), '',
     '| スキル | 各ランク費用 | 最大ランク | 効果種別 / 1ランクあたり | 前提 |', '| --- | --- | ---: | --- | --- |',
     ...Object.values(suite.parameters.skills).map((definition) => `| ${definition.name} | ${definition.costs.join('/')}pt | ${definition.maxRank} | ${definition.effect.type} / ${definition.effect.perRank} | ${[...definition.prerequisites.map((required) => `${required.id} ${required.rank}`), ...(definition.minimumPrestigeCount ? [`転生${definition.minimumPrestigeCount}回`] : [])].join(', ') || 'なし'} |`), '',
     '## 初回到達と周回時間', '',
@@ -192,8 +209,8 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '| --- | ---: | ---: | ---: | ---: | ---: | ---: |');
   for (const campaign of suite.campaigns) {
     const first = campaign.runs[0]?.result;
-    const initialProduction = first?.trace[0]?.production ?? 1;
-    const growthTime = (factor: number) => first?.trace.find((point) => point.production >= initialProduction * factor)?.elapsedSeconds;
+    const initialProduction = first?.trace[0]?.production ?? gn(1);
+    const growthTime = (factor: number) => first?.trace.find((point) => point.production.gte(initialProduction.multiply(factor)))?.elapsedSeconds;
     let earned = 0;
     let timeTo6pt: number | null = null;
     for (const run of campaign.runs) {
@@ -221,7 +238,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
   lines.push('', '## 限界突破後の仮定による試算', '',
     suite.projectionReference ? `参照は \`${suite.projectionReference.scenarioId}\` の第${suite.projectionReference.run}周・上限到達時の生産能力 **${number(suite.projectionReference.production)} 芋/秒**。生産力を固定し、上限だけ広げたと仮定します。下記の倍率は実装済みスキルや設備ではありません。` : '完了した参照周回がないため試算しません。', '',
     '| 区間 | 仮定の生産倍率 | 所要時間 | 6時間到達に必要な生産量 | 参照生産量に対する必要倍率 |', '| --- | ---: | ---: | ---: | ---: |');
-  for (const row of suite.projections) lines.push(`| ${row.from.toExponential(0)} → ${row.to.toExponential(0)} | ×${row.multiplier} | ${time(row.seconds)} | ${number(row.requiredProduction)} /秒 | ×${number(row.requiredMultiplier)} |`);
+  for (const row of suite.projections) lines.push(`| ${row.from.format(1)} → ${row.to.format(1)} | ×${row.multiplier} | ${time(row.seconds)} | ${number(row.requiredProduction)} /秒 | ×${number(row.requiredMultiplier)} |`);
   lines.push('', '6時間は1日4回確認する場合の設計比較用の目標で、決定済みの新仕様ではありません。この固定生産試算では設備追加・追加購入・研究・解禁費用・将来の数値表現をモデル化していません。', '',
     '## 初期状態から突破権取得・同一周回で1e9到達（#20）', '',
     '突破優先は収穫3・割引1・限界突破の心得1の順で計10ptを支出します。心得は3pt・転生5回以上が条件です。早期方策も権利取得後は1e6へ進み、転生せず突破します。既存スキル買切り後の経路は計15ptを支出します。初期15方策とは別に、実際の取得・突破・保存・購入を測定します。', '',
@@ -272,22 +289,22 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
   files['prestige.svg'] = chart('prestige', {
     ariaLabel: '現行コアの確認方策別、経過時間と累計転生回数。SCORE上限は全期間1e6のまま。',
     x: { type: 'log', label: '実経過時間 (hours, log)', tickFormat: axisNumber, grid: true }, y: { label: '累計転生回数', domain: [0, suite.runCount], ticks: Math.min(suite.runCount + 1, 10), grid: true },
-    color: { domain, range }, marks: [Plot.lineY(points, { x: 'hours', y: 'prestigeCount', stroke: 'id', curve: 'step-after' })],
+    color: { domain, range }, marks: [amountLineY(points, { x: 'hours', y: 'prestigeCount', stroke: 'id', curve: 'step-after' })],
   }, legend, '初期15方策の SCORE 上限: 1e6（突破権を取得しない比較）');
-  const firstPoints = selected.flatMap((campaign) => campaign.runs[0]?.result.trace.filter((point) => point.elapsedSeconds > 0 && point.score > 0)
+  const firstPoints = selected.flatMap((campaign) => campaign.runs[0]?.result.trace.filter((point) => point.elapsedSeconds > 0 && point.score.gt(0))
     .map((point) => ({ ...point, id: campaign.scenario.id, minutes: point.elapsedSeconds / 60 })) ?? []);
   files['first-run.svg'] = chart('score', {
     ariaLabel: '初周のSCORE成長と固定上限。確認時点を結ぶ線で、復帰前の自動購入や転生はない。',
     x: { type: 'log', label: '初周の実経過時間 (minutes, log)', tickFormat: axisNumber, grid: true }, y: { type: 'log', label: 'SCORE (log)', domain: [1, suite.parameters.balance.scoreCap], grid: true },
-    color: { domain, range }, marks: [Plot.ruleY([suite.parameters.balance.scoreCap], { stroke: '#888', strokeDasharray: '4,4' }), Plot.lineY(firstPoints, { x: 'minutes', y: 'score', stroke: 'id' })],
+    color: { domain, range }, marks: [amountRuleY([suite.parameters.balance.scoreCap], { stroke: '#888', strokeDasharray: '4,4' }), amountLineY(firstPoints, { x: 'minutes', y: 'score', stroke: 'id' })],
   }, legend, '初周の確認値と上限到達推計。破線: 現行上限 1e6');
-  const projectionPoints = suite.projections.map((row) => ({ ...row, stage: `${row.from.toExponential(0)} → ${row.to.toExponential(0)}`, hours: row.seconds / 3_600, factor: `×${row.multiplier}` }));
+  const projectionPoints = suite.projections.map((row) => ({ ...row, stage: `${row.from.format(1)} → ${row.to.format(1)}`, hours: row.seconds / 3_600, factor: `×${row.multiplier}` }));
   files['projection.svg'] = chart('projection', {
     ariaLabel: '仮定の固定生産量で桁拡張した所要時間。現行の到達結果ではない。',
     x: { label: '将来の仮定区間', domain: [...new Set(projectionPoints.map((point) => point.stage))] },
     y: { type: 'log', label: '所要時間 (hours, log)', tickFormat: axisNumber, ticks: 8, grid: true },
     color: { domain: ['×1', '×10', '×100', '×1000'], range: colors.slice(0, 4) },
-    marks: [Plot.ruleY([6], { stroke: '#888', strokeDasharray: '4,4' }), Plot.dot(projectionPoints, { x: 'stage', y: 'hours', stroke: 'factor', r: 5 })],
+    marks: [amountRuleY([6], { stroke: '#888', strokeDasharray: '4,4' }), Plot.dot(projectionPoints, { x: 'stage', y: 'hours', stroke: 'factor', r: 5 })],
   }, ['×1', '×10', '×100', '×1000'].map((label, index) => ({ label: `仮定倍率 ${label}`, color: colors[index]! })),
   suite.projectionReference ? '固定生産の仮定による試算。破線: 設計比較用の6時間目標' : '完了した参照周回がないため、所要時間は未試算');
   const expansionTrials = suite.expansion.filter((trial) => trial.scenario.presence === 'online' || trial.policy === 'expanded');
@@ -298,7 +315,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     x: { type: 'log', label: '1e6からの追加時間 (hours, log)', tickFormat: axisNumber, grid: true },
     y: { type: 'log', label: 'SCORE (log)', domain: [1e6, SCORE_CAP_STAGES[1].cap], grid: true },
     color: { domain: expansionDomain, range: colors },
-    marks: [Plot.lineY(expansionPoints, { x: 'hours', y: 'score', stroke: 'id' })],
+    marks: [amountLineY(expansionPoints, { x: 'hours', y: 'score', stroke: 'id' })],
   }, expansionTrials.map((trial, index) => ({ label: `${trial.scenario.label} / ${trial.policy}`, color: colors[index]! })),
   '正規の初回突破。購入なし / 既存3種 / 追加2種ありを比較');
   const journeySelected = suite.breakthroughJourneys.slice(0, 3);
@@ -309,8 +326,8 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     x: { type: 'log', label: '開始からの実経過時間 (hours, log)', tickFormat: axisNumber, grid: true },
     y: { type: 'log', label: 'SCORE / 上限 (log)', domain: [1, 1e9], grid: true },
     color: { domain: journeyDomain, range: colors.slice(0, 3) },
-    marks: [Plot.lineY(journeyPoints.filter((point) => point.score > 0), { x: 'hours', y: 'score', stroke: 'id', z: 'series' }),
-      Plot.lineY(journeyPoints, { x: 'hours', y: 'scoreCap', stroke: 'id', strokeDasharray: '4,4', curve: 'step-after' })],
+    marks: [amountLineY(journeyPoints.filter((point) => point.score.gt(0)), { x: 'hours', y: 'score', stroke: 'id', z: 'series' }),
+      amountLineY(journeyPoints, { x: 'hours', y: 'scoreCap', stroke: 'id', strokeDasharray: '4,4', curve: 'step-after' })],
   }, journeySelected.map((journey, index) => ({ label: journey.scenario.label, color: colors[index]! })), '実コアで取得・突破・保存。破線: 現周回の上限');
   const automaticTrials = suite.automation.trials.filter((trial) => trial.stage === 1 && trial.scenario.visitSeconds === 21_600);
   const autoDomain = automaticTrials.map((trial) => trial.scenario.id);
@@ -320,7 +337,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     x: { type: 'log', label: '突破後の経過時間 (hours, log)', tickFormat: axisNumber, grid: true },
     y: { type: 'log', label: 'SCORE (log)', domain: [1e6, 1e9], grid: true },
     color: { domain: autoDomain, range: colors.slice(0, 4) },
-    marks: [Plot.lineY(autoPoints, { x: 'hours', y: 'score', stroke: 'id' })],
+    marks: [amountLineY(autoPoints, { x: 'hours', y: 'score', stroke: 'id' })],
   }, automaticTrials.map((trial, index) => ({ label: trial.policy === 'off' ? 'OFF / 復帰時だけ手動購入' : AUTOMATION_POLICIES[trial.policy as keyof typeof AUTOMATION_POLICIES], color: colors[index]! })), '上限1e9・6時間復帰。ONは購入イベント時刻も記録、上限後は停止');
   const researchTrials = suite.research.filter((trial) => trial.scenario.visitSeconds === 60 && trial.policy !== 'resonance-first');
   const researchPoints = researchTrials.flatMap((trial) => trial.result.trace.map((point) => ({ ...point, id: trial.scenario.id, minutes: point.elapsedSeconds / 60 })));
@@ -329,7 +346,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     x: { label: '1E9からの追加時間 (minutes)', grid: true },
     y: { type: 'log', label: 'SCORE (log)', domain: [1e9, 1e12], grid: true },
     color: { domain: researchTrials.map((trial) => trial.scenario.id), range: colors.slice(0, 4) },
-    marks: [Plot.lineY(researchPoints, { x: 'minutes', y: 'score', stroke: 'id' })],
+    marks: [amountLineY(researchPoints, { x: 'minutes', y: 'score', stroke: 'id' })],
   }, researchTrials.map((trial, index) => ({ label: `${trial.automated ? '自動' : '手動'} / ${trial.policy === 'equipment-only' ? '新設備のみ' : '新設備と研究'}`, color: colors[index]! })),
   '1分確認・正規の深層解析後。研究は確認時のみ手動購入、ON/OFFで取得経路は異なる');
   return files;

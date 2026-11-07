@@ -7,7 +7,7 @@ export function getBreakthrough(state: GameState) {
   const next = state.scoreCapStage === 0 ? SCORE_CAP_STAGES[1] : undefined;
   const reason = !next ? state.scoreCapStage === 1 ? '次は地層研究の深層解析でSCORE上限1E12へ突破できます。' : 'SCORE 上限1E12より先の限界突破は未実装です。'
     : state.permanent.skillRanks.breakthrough < next.requiredSkillRank ? '「限界突破の心得」を取得してください。転生とスキルで解禁できます。'
-      : state.runEarnedScore < getScoreCap(state) ? `今周回のSCORE ${getScoreCap(state).toLocaleString('ja-JP')} に到達すると突破できます。` : null;
+      : state.runEarnedScore.lt(getScoreCap(state)) ? `今周回のSCORE ${getScoreCap(state).format(7)} に到達すると突破できます。` : null;
   return { canBreakthrough: reason === null, nextCap: next?.cap ?? null, reason };
 }
 

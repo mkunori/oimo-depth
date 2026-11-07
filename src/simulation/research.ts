@@ -1,4 +1,5 @@
-import { configureAutomation, getProductionPerSecond } from '../core/game';
+import { gn } from '../core/numbers';
+import { getAmountSeconds, configureAutomation, getProductionPerSecond } from '../core/game';
 import { performDeepResearch } from '../core/research';
 import { createSave, parseSave, serializeSave } from '../core/save';
 import { BREAKTHROUGH_SCENARIOS, simulateBreakthroughJourney } from './expansion';
@@ -22,8 +23,8 @@ export function simulateResearch(maxSeconds: number) {
       const initialProduction = getProductionPerSecond(initialState);
       const finalProduction = getProductionPerSecond(result.state);
       return { scenario, policy, automated, initialState, result, initialProduction, finalProduction,
-        productionMultiplier: finalProduction / initialProduction,
-        capOnlySeconds: (1e12 - 1e9) / initialProduction,
+        productionMultiplier: finalProduction.divide(initialProduction),
+        capOnlySeconds: getAmountSeconds(gn(1e12).subtract(1e9), initialProduction)!,
         beforeResearchSeconds: journey.elapsedSeconds, totalSeconds: journey.elapsedSeconds + result.elapsedSeconds };
     });
   }));

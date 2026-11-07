@@ -1,3 +1,4 @@
+import { GameNumber } from '../core/numbers';
 import { configureAutomation, getEquipmentAvailability, getEquipmentPrice, getEquipmentPurchaseGain, purchaseEquipment } from '../core/game';
 import type { AutomationPolicy } from '../data/automation';
 import { purchaseSkill } from '../core/prestige';
@@ -32,9 +33,8 @@ export function investSkills(state: GameState, plan: SkillPlan, automation?: Aut
     ? configureAutomation(state, { ...state.automation, enabled: true, policy: automation }) : state;
 }
 
-function payback(state: GameState, id: EquipmentId): number {
-  return getEquipmentPrice(id, state.equipmentCounts[id], state.permanent)
-    / getEquipmentPurchaseGain(id, state.equipmentCounts[id], state.permanent, state.researchRanks);
+function payback(state: GameState, id: EquipmentId): GameNumber {
+  return getEquipmentPrice(id, state.equipmentCounts[id], state.permanent).divide(getEquipmentPurchaseGain(id, state.equipmentCounts[id], state.permanent, state.researchRanks));
 }
 
 /** 現在買える設備だけで選ぶ局所方策。将来を見通した最適化ではない。 */
@@ -42,9 +42,9 @@ export function investEquipment(state: GameState, policy: EquipmentPolicy, allow
   if (policy === 'none') return { state, purchased: 0 };
   let purchased = 0;
   while (true) {
-    const affordable = allowed.filter((id) => getEquipmentAvailability(id, state).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) <= state.imo);
+    const affordable = allowed.filter((id) => getEquipmentAvailability(id, state).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent).lte(state.imo));
     const id = policy === 'highest-tier' ? affordable.at(-1)
-      : affordable.sort((left, right) => payback(state, left) - payback(state, right))[0];
+      : affordable.sort((left, right) => payback(state, left).compare(payback(state, right)))[0];
     if (id === undefined) return { state, purchased };
     const next = purchaseEquipment(state, id, 1);
     if (next === state) return { state, purchased };
