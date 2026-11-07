@@ -59,7 +59,7 @@ export function MiningPanel({ state, production, isCapped, isPaused, onBreakthro
       </dl>
       <div className="score-block">
         <div className="score-heading">
-          <label htmlFor="score-progress">SCORE</label>
+          <label htmlFor="score-progress">{state.permanent.equipmentSystemUnlocked ? '累計SCORE' : 'SCORE'}</label>
           <span><output aria-label="現在SCORE" aria-live="off">{formatNumber(state.runEarnedScore)}</output> / <output aria-label="SCORE上限">{formatNumber(scoreCap)}</output></span>
         </div>
         <progress id="score-progress" value={progressRatio(state.runEarnedScore, scoreCap)} max={1} />

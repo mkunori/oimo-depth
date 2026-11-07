@@ -1,3 +1,4 @@
+import { discoverGear } from './gearProgress';
 import { getProductionPerSecond, NumericProgressError } from './game';
 import { getSkillBonuses } from './skills';
 import { createInitialState } from './state';
@@ -21,7 +22,7 @@ export function performRootRebirth(state: GameState): GameState {
   if (![count, earned, balance].every(Number.isSafeInteger)) throw new NumericProgressError('ROOT counters exceed the safe integer range.');
   const permanent = { ...before, rootRebirthCount: count, totalRootCrystalsEarned: earned, unspentRootCrystals: balance, equipmentSystemUnlocked: true };
   const startingImo = getSkillBonuses(permanent).startingImo;
-  return { ...createInitialState(), imo: startingImo, runStartingImo: startingImo, permanent, automation: state.automation };
+  return discoverGear({ ...createInitialState(), imo: startingImo, runStartingImo: startingImo, permanent, automation: state.automation });
 }
 
 export function getRootUpgradePurchase(state: GameState, id: RootUpgradeId) {

@@ -34,7 +34,7 @@ export function RootPanel({ state, isPaused, notice, onRebirth, onPurchase }: {
     {permanent.equipmentSystemUnlocked && <>
       <aside className="root-equipment-gate" aria-label="装備システム解禁">
         {permanent.rootRebirthCount === 1 && notice?.startsWith('初回ROOT') && <svg className="root-discovery" viewBox="0 0 80 56" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M40 4l15 16-15 16-15-16zM40 36v16M40 40l-15 9M40 44l15 9M25 20H9M55 20h16M22 9l-8-5M58 9l8-5" /></svg>}
-        <h3>装備システム解禁</h3><p>解禁権を恒久保持しています。装備の購入・モード・プリセットはIssue #33で実装予定です。</p>
+        <h3>装備システム解禁</h3><p>下の装備欄で利用可能SCOREを使い、恒久装備を解禁できます。全解禁装備の常時効果を重ねて適用します。</p>
       </aside>
       <h3>ROOT恒久強化</h3>
       <p>ROOT結晶は芋・SCORE・通常ポイントとは別です。初回1個は全体生産か設備割引・次回初期支給に使えます。購入の振り直しはありません。温存も選べます。</p>
@@ -68,7 +68,7 @@ export function RootPanel({ state, isPaused, notice, onRebirth, onPurchase }: {
 
 function RootResetScope({ equipmentKnown }: { readonly equipmentKnown: boolean }) {
   return <>
-    <p><strong>リセット:</strong> 現周回SCORE・所持芋・設備・SCORE上限段階（0へ）・周回研究4種・生産端数・当周回の強化スキル再購入制限。</p>
-    <p><strong>保持:</strong> 通常転生回数・通常ポイント・取得スキル・全突破/解析権・自動購入の解禁と全設定・DEPTHと端数・地層発見・恒久掘削研究・ROOT回数/結晶/恒久進行{equipmentKnown ? '・装備システム解禁権' : ''}。</p>
+    <p><strong>リセット:</strong> 現周回SCORE・利用可能SCORE・支出内訳・所持芋・設備・SCORE上限段階（0へ）・周回研究4種・生産端数・当周回の強化スキル再購入制限。</p>
+    <p><strong>保持:</strong> 通常転生回数・通常ポイント・取得スキル・全突破/解析権・自動購入の解禁と全設定・DEPTHと端数・地層発見・恒久掘削研究・ROOT回数/結晶/恒久進行{equipmentKnown ? '・恒久装備と装備の発見履歴・装備システム解禁権' : ''}。</p>
   </>;
 }

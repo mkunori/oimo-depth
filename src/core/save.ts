@@ -1,3 +1,6 @@
+import { createEmptyGear, GEAR_IDS } from '../data/gear';
+import type { GearFlags, GearId } from '../data/gear';
+import { discoverGear } from './gearProgress';
 import { createInitialRootProgress, ROOT_UPGRADE_IDS } from '../data/root';
 import type { RootUpgradeRanks } from '../data/root';
 import { createEmptyOriginResearch, ORIGIN_RESEARCH_IDS } from '../data/originResearch';
@@ -18,7 +21,7 @@ import { assertPermanentProgress } from './skills';
 import { createEmptyDigResearch, DIG_RESEARCH_IDS } from '../data/depth';
 import type { DigResearchRanks } from '../data/depth';
 
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -54,7 +57,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 = SAVE_VERSION, internal = false): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 = SAVE_VERSION, internal = false): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (state.imo === undefined || state.runEarnedScore === undefined) {
@@ -96,7 +99,10 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
       equipmentSystemUnlocked: savedPermanent.equipmentSystemUnlocked as boolean,
       rootUpgradeRanks: (() => { const root = record(savedPermanent.rootUpgradeRanks);
         return Object.fromEntries(ROOT_UPGRADE_IDS.map((id) => [id, root[id]])) as RootUpgradeRanks; })(),
-    }), prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks,
+    }),
+      gearUnlocked: version < 13 ? createEmptyGear() : (() => { const gear = record(savedPermanent.gearUnlocked); return Object.fromEntries(GEAR_IDS.map((id) => [id, gear[id]])) as GearFlags; })(),
+      gearDiscovered: version < 13 ? createEmptyGear() : (() => { const gear = record(savedPermanent.gearDiscovered); return Object.fromEntries(GEAR_IDS.map((id) => [id, gear[id]])) as GearFlags; })(),
+      prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks,
       depthMeters: version >= 10 ? savedPermanent.depthMeters as number : 0,
       depthRemainder: version >= 10 ? savedPermanent.depthRemainder as number : 0,
       digResearchRanks: version >= 10 ? (() => {
@@ -150,7 +156,9 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     if (!signed && result.sign < 0) throw new SaveDataError('金額に負の値は使えません。');
     return result;
   };
-  const result: GameState = {
+  let result: GameState = {
+    scoreSpentThisRun: version < 13 ? gn(0) : amount(state.scoreSpentThisRun),
+    gearPurchasedThisRun: version < 13 ? [] : (() => { if (!Array.isArray(state.gearPurchasedThisRun) || state.gearPurchasedThisRun.length > GEAR_IDS.length) throw new SaveDataError('装備の支出内訳が正しくありません。'); return [...state.gearPurchasedThisRun] as GearId[]; })(),
     postDeepResearchSkillLock: version >= 8 ? state.postDeepResearchSkillLock as boolean : false,
     imo: amount(state.imo), runEarnedScore: amount(state.runEarnedScore), equipmentCounts,
     runStartingImo: version === 1 ? gn(0) : amount(state.runStartingImo),
@@ -168,6 +176,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     })(),
     productionRemainder: carry ? { score: amount(carry.score, true), imo: amount(carry.imo, true) } : { score: gn(0), imo: gn(0) },
   };
+  if (version < 13) result = discoverGear(result);
   try {
     getProductionPerSecond(result);
     for (const id of EQUIPMENT_IDS) {
@@ -191,7 +200,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== 10 && data.saveVersion !== 11 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== 10 && data.saveVersion !== 11 && data.saveVersion !== 12 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   try { return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt)); }

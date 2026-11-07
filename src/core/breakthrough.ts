@@ -1,3 +1,4 @@
+import { discoverGear } from './gearProgress';
 import { getScoreCap, SCORE_CAP_STAGES } from '../data/scoreCaps';
 import { getProductionPerSecond } from './game';
 import type { GameState } from './state';
@@ -16,6 +17,6 @@ export function canBreakthrough(state: GameState): boolean { return getBreakthro
 /** スコアも残高も追加・リセットしない。同一周回の上限だけを変更する。 */
 export function performBreakthrough(state: GameState): GameState {
   if (!canBreakthrough(state)) return state;
-  if (state.permanent.maxDiscoveredStage >= 1) return { ...state, scoreCapStage: 1 };
-  return { ...state, scoreCapStage: 1, permanent: { ...state.permanent, maxDiscoveredStage: state.permanent.maxDiscoveredStage < 1 ? 1 : state.permanent.maxDiscoveredStage } };
+  if (state.permanent.maxDiscoveredStage >= 1) return discoverGear({ ...state, scoreCapStage: 1 });
+  return discoverGear({ ...state, scoreCapStage: 1, permanent: { ...state.permanent, maxDiscoveredStage: state.permanent.maxDiscoveredStage < 1 ? 1 : state.permanent.maxDiscoveredStage } });
 }

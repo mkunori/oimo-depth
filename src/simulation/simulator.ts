@@ -1,3 +1,6 @@
+import { unlockGear } from '../core/gear';
+import { getGearMultiplier, getSpendableScore } from '../core/gearProgress';
+import { GEAR_IDS } from '../data/gear';
 import { GameNumber, gn } from '../core/numbers';
 import { getAmountSeconds, advanceWithAutomation, getEquipmentAvailability, getEquipmentPrice, getNextAutomaticPurchaseSeconds, getProductionPerSecond } from '../core/game';
 import type { AutomaticProgress } from '../core/game';
@@ -33,6 +36,7 @@ export interface Scenario {
   readonly automation?: AutomationPolicy;
   readonly research?: 'geology-first' | 'resonance-first';
   readonly originResearch?: boolean;
+  readonly gear?: 'early' | 'cap';
   readonly digResearch?: boolean;
 }
 
@@ -44,6 +48,10 @@ export interface Milestone {
 }
 
 export interface TracePoint {
+  readonly scoreSpentThisRun: GameNumber;
+  readonly spendableScore: GameNumber;
+  readonly gearUnlocked: GameState['permanent']['gearUnlocked'];
+  readonly gearMultiplier: number;
   readonly originResearchRanks: GameState['originResearchRanks'];
   readonly depthMeters: number;
   readonly digSpeed: number;
@@ -52,7 +60,7 @@ export interface TracePoint {
   readonly digResearchRanks: GameState['permanent']['digResearchRanks'];
   readonly elapsedSeconds: number;
   readonly run: number;
-  readonly kind: 'start' | 'decision' | 'cap-reached' | 'end' | 'prestige' | 'automatic-purchase' | 'research-purchase';
+  readonly kind: 'start' | 'decision' | 'cap-reached' | 'end' | 'prestige' | 'automatic-purchase' | 'research-purchase' | 'gear-unlock';
   readonly researchRanks: GameState['researchRanks'];
   readonly score: GameNumber;
   readonly imo: GameNumber;
@@ -82,7 +90,7 @@ export interface RunResult {
 const TIME_EPSILON = 1e-7;
 const MAX_DECISIONS = 100_000;
 function depthTrace(state: GameState) {
-  return { originResearchRanks: state.originResearchRanks, depthMeters: state.permanent.depthMeters, digSpeed: state.runEarnedScore.gte(getScoreCap(state)) ? 0 : getDigSpeed(state),
+  return { scoreSpentThisRun: state.scoreSpentThisRun, spendableScore: getSpendableScore(state), gearUnlocked: state.permanent.gearUnlocked, gearMultiplier: getGearMultiplier(state.permanent), originResearchRanks: state.originResearchRanks, depthMeters: state.permanent.depthMeters, digSpeed: state.runEarnedScore.gte(getScoreCap(state)) ? 0 : getDigSpeed(state),
     digPower: getDigPower(state), stratum: STRATA[getStratum(state.permanent.depthMeters)]!.name, digResearchRanks: state.permanent.digResearchRanks };
 }
 
@@ -91,6 +99,7 @@ function positive(value: number, label: string): void {
 }
 
 export function validateScenario(scenario: Scenario): void {
+  if (scenario.gear !== undefined && (!['early', 'cap'].includes(scenario.gear) || scenario.visitSeconds === null)) throw new RangeError('Gear policy needs scheduled manual visits.');
   if (scenario.digResearch !== undefined && typeof scenario.digResearch !== 'boolean') throw new RangeError('Invalid dig research policy.');
   if (scenario.research !== undefined && scenario.research !== 'geology-first' && scenario.research !== 'resonance-first') throw new RangeError('Unknown research policy.');
   if (scenario.automation !== undefined && !Object.hasOwn(AUTOMATION_POLICIES, scenario.automation)) throw new RangeError('Unknown automation policy.');
@@ -134,7 +143,15 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
       actualProduction: state.runEarnedScore.gte(scoreCap) ? gn(0) : production,
       prestigeCount: state.permanent.prestigeCount, scoreCap: scoreCap, equipmentCounts: state.equipmentCounts, researchRanks: state.researchRanks });
   };
+  const investGear = () => {
+    if (!scenario.gear || !state.permanent.equipmentSystemUnlocked || (scenario.gear === 'cap' && state.runEarnedScore.lt(scoreCap))) return;
+    for (const id of GEAR_IDS) {
+      const next = unlockGear(state, id);
+      if (next !== state) { state = next; record('gear-unlock'); }
+    }
+  };
   const invest = () => {
+    investGear();
     // 研究は訪問時の手動操作だけ。ONでもオフライン進行中には実行しない。
     if (scenario.originResearch && state.scoreCapStage === 4) {
       for (const id of ORIGIN_RESEARCH_IDS) for (let rank = 0; rank < 3; rank += 1) {
@@ -232,6 +249,7 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
       break;
     }
     advance(delta, true);
+    investGear();
     if (state.runEarnedScore.lt(target)) invest();
     record('decision');
   }

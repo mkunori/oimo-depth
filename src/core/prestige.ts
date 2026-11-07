@@ -1,3 +1,4 @@
+import { discoverGear } from './gearProgress';
 import { getProductionPerSecond, NumericProgressError } from './game';
 import { createInitialState } from './state';
 import type { GameState } from './state';
@@ -22,7 +23,7 @@ export function prestigeGame(state: GameState): GameState {
     unspentPoints: state.permanent.unspentPoints + reward,
   };
   const startingImo = getSkillBonuses(permanent).startingImo;
-  return { ...createInitialState(), imo: startingImo, runStartingImo: startingImo, permanent, automation: state.automation };
+  return discoverGear({ ...createInitialState(), imo: startingImo, runStartingImo: startingImo, permanent, automation: state.automation });
 }
 
 export function purchaseSkill(state: GameState, id: SkillId): GameState {

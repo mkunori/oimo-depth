@@ -1,4 +1,4 @@
-# 保存・オフライン進行（v12）
+# 保存・オフライン進行（v13）
 
 ## 保存形式と検証
 
@@ -6,12 +6,14 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 ```json
 {
-  "saveVersion": 12,
+  "saveVersion": 13,
   "savedAt": 1700000000000,
   "gameState": {
     "imo": "gn1:0:0:0",
     "runEarnedScore": "gn1:0:0:0",
     "runStartingImo": "gn1:0:0:0",
+    "scoreSpentThisRun": "gn1:0:0:0",
+    "gearPurchasedThisRun": [],
     "productionRemainder": { "score": "gn1:0:0:0", "imo": "gn1:0:0:0" },
     "postDeepResearchSkillLock": false,
     "scoreCapStage": 0,
@@ -19,6 +21,8 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
     "researchRanks": { "geology": 0, "resonance": 0 },
     "equipmentCounts": { "worker": 0, "cart": 0, "harvester": 0, "deepDrill": 0, "refinery": 0, "veinExtractor": 0, "concentrator": 0, "rootRelay": 0, "coreChamber": 0, "originMiner": 0, "imoReactor": 0 },
     "permanent": {
+      "gearUnlocked": { "shovel": false, "lens": false, "drillBit": false, "compass": false, "rootCore": false },
+      "gearDiscovered": { "shovel": false, "lens": false, "drillBit": false, "compass": false, "rootCore": false },
       "rootRebirthCount": 0,
       "unspentRootCrystals": 0,
       "totalRootCrystalsEarned": 0,
@@ -49,7 +53,7 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 `src/core/save.ts` が外部テキストを `unknown` として検証します。残高・累計・設備の制約と次の価格の有限性はコアで検証します。欠落・負数・NaN/Infinity・小数の設備数・上限超過・未対応バージョンは拒否します。保存時刻は非負整数で JavaScript Date の範囲内です。未知の追加フィールドは採用せず、既知の値をコピーします。
 
-v7以降の金額は `GameNumber.toString()` の正規形文字列だけを受理します。通常の数値JSONや `"1e6"`、非正規な成分、NaN/Infinity・負金額は拒否します。価格はGameNumberで検証し、旧形式v1〜v6だけは従来通り次価格が安全整数を超える所有状態も拒否します。v12でも所有数・ランク・段階・回数・時刻はnumberで、安全整数と権限・上限・残高整合性を維持します。
+v7以降の金額は `GameNumber.toString()` の正規形文字列だけを受理します。通常の数値JSONや `"1e6"`、非正規な成分、NaN/Infinity・負金額は拒否します。価格はGameNumberで検証し、旧形式v1〜v6だけは従来通り次価格が安全整数を超える所有状態も拒否します。v13でも所有数・ランク・段階・回数・時刻はnumberで、安全整数と権限・上限・残高整合性を維持します。
 
 v1〜v6の既存値は従来の補完と検証後に巨大数へ変換します。v5/v6の `automationRemainder` は符号を保持して `productionRemainder` へ移し、v1〜v4はゼロを補います。端数は符号付き巨大数文字列で、絶対値が `現上限 × 32 × Number.EPSILON` を超えるものを拒否します。負の補償を含めたSCOREも0〜上限内に制限します。省略時はゼロですが、明示されたnull・欠落成分・不正値は拒否します。詳細・許容誤差・旧結果との比較は [巨大数移行](number-migration.md)。
 
@@ -82,6 +86,12 @@ v11は全11設備、恒久の `originAnalysisUnlocked`、周回の `originResear
 v1〜v11の既存値と時刻を保持し、ROOT回数・結晶累計/残高/使用・強化0・装備未解禁を補います。v12では全ROOT項目を必須にし、非負安全整数、取得費用の総和と結晶元帳、解禁権とROOT/解析/発見履歴を照合します。SCORE1e18到達だけでは自動でROOT済みにしません。
 
 ROOTでは周回だけをリセットし、通常回数/通常ポイントを付与しません。初期支給は通常スキル＋ROOT強化で再計算し、ロック中の支給上限もROOT支給を含めます。再周回で解析を永久ロックしないよう、解析履歴は `deepResearchCount - rootRebirthCount <= max(0, prestigeCount - 4)` とし、段階2以上は当ROOT周回で新たな解析を必要とします。旧版ではROOT回数0なので既存の制約を維持します。詳細は[ROOT仕様](root-rebirth.md)。
+
+## 恒久装備とSCORE支出の移行（v13）
+
+周回に巨大数の `scoreSpentThisRun` と最大5件のID内訳 `gearPurchasedThisRun`、恒久に `gearUnlocked` / `gearDiscovered` を保存します。利用可能SCOREは累計SCOREとの差分で導出し、別残高は保存しません。内訳IDは既知・重複なし・取得済み・当周回のROOT/段階条件内で、支出合計はID順に計算した価格合計と厳密一致する必要があります。負支出・累計超過・不正な発見/取得フラグ・先行ROOT条件を拒否します。
+
+v1〜v12の資産・ROOT・深層記憶・DEPTH・研究・自動設定・時刻を保持し、支出0・内訳空・全装備未購入を補います。旧ROOT済み保存は現在段階で証明できる発見だけを補完し、過去の未記録の発見は推測しません。通常転生/ROOTでは支出と内訳だけを初期化し、装備と発見を保持します。上限後の解禁も累計SCOREを変えません。詳細は[装備仕様](gear.md)。
 
 ## 時間の精算
 

@@ -12,6 +12,9 @@ import { SKILLS } from '../../data/skills';
 import type { SkillId } from '../../data/skills';
 import { getScoreCap } from '../../data/scoreCaps';
 import { performBreakthrough } from '../../core/breakthrough';
+import { unlockGear } from '../../core/gear';
+import { GEAR } from '../../data/gear';
+import type { GearId } from '../../data/gear';
 import { getRootRebirth, performRootRebirth, purchaseRootUpgrade } from '../../core/root';
 import { ROOT_UPGRADES } from '../../data/root';
 import type { RootUpgradeId } from '../../data/root';
@@ -221,6 +224,7 @@ export class GameSession {
     } catch (error) { this.fail(error); return false; }
   };
 
+  unlockGear = (id: GearId): boolean => this.researchAction((state) => unlockGear(state, id), `${GEAR[id].name}を恒久解禁しました。全解禁装備の常時効果が有効です。`);
   rootRebirth = (): boolean => {
     this.tick();
     if (this.hidden || this.snapshot.status !== 'ready') return false;
@@ -229,7 +233,7 @@ export class GameSession {
       if (!getRootRebirth(state).canRebirth) return false;
       const next = performRootRebirth(state);
       return this.commitProgress(next, state.permanent.rootRebirthCount === 0
-        ? '初回ROOTを実行しました。ROOT結晶1個・恒久収穫×3を獲得し、装備システムを解禁しました（Issue #33で実装予定）。通常ポイントは変わりません。'
+        ? '初回ROOTを実行しました。ROOT結晶1個・恒久収穫×3を獲得し、装備システムを解禁しました。装備欄で利用可能SCOREを使えます。通常ポイントは変わりません。'
         : 'ROOTを実行しました。ROOT結晶1個を獲得し、段階0から再開しました。通常ポイントは変わりません。');
     } catch (error) { this.fail(error); return false; }
   };

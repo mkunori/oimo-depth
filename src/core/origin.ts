@@ -1,3 +1,4 @@
+import { discoverGear } from './gearProgress';
 import { getProductionPerSecond } from './game';
 import type { GameState } from './state';
 
@@ -12,6 +13,6 @@ export function getOriginAnalysis(state: GameState) {
 /** No reset, no research/depth gate. Permission survives normal prestige. */
 export function performOriginAnalysis(state: GameState): GameState {
   if (!getOriginAnalysis(state).canAnalyze) return state;
-  return { ...state, scoreCapStage: 4,
-    permanent: { ...state.permanent, originAnalysisUnlocked: true, maxDiscoveredStage: 4 } };
+  return discoverGear({ ...state, scoreCapStage: 4,
+    permanent: { ...state.permanent, originAnalysisUnlocked: true, maxDiscoveredStage: 4 } });
 }

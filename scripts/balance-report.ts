@@ -43,7 +43,7 @@ function json(value: unknown): string {
 }
 
 function chart(id: string, options: Plot.PlotOptions, legend: readonly { label: string; color: string }[] = [], note = ''): string {
-  if (['score', 'expansion', 'breakthrough', 'automation', 'research', 'root', 'origin', 'root-cycle'].includes(id)) {
+  if (['score', 'expansion', 'breakthrough', 'automation', 'research', 'root', 'origin', 'root-cycle', 'gear'].includes(id)) {
     const domain = options.y?.domain ? Array.from(options.y.domain, (value: unknown) => gn(value as number | GameNumber).log10().toFiniteNumber()) : undefined;
     options = { ...options, y: { ...options.y, type: 'linear', domain, tickFormat: (value: number) => `10^${Number(value.toFixed(2))}` } };
   }
@@ -103,14 +103,28 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
   const compactOrigins = suite.origins.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
   const compactRootCycles = suite.rootCycles.map(({ trace: _trace, stages, ...trial }) => ({ ...trial,
     stages: stages.map(({ result: { trace: _stageTrace, ...result }, ...stage }) => ({ ...stage, result })) }));
+  const compactGear = suite.gear.map(({ trace: _trace, cycles, ...trial }) => ({ ...trial, cycles: cycles.map(({ stages, ...cycle }) => ({ ...cycle,
+    stages: stages.map(({ result: { trace: _stageTrace, ...result }, ...stage }) => ({ ...stage, result })) })) }));
   const compactDepth = {
     campaigns: suite.depth.campaigns.map(({ result: { trace: _trace, runs, ...result }, ...trial }) => ({ ...trial, result: { ...result,
       runs: runs.map(({ result: { trace: _runTrace, ...runResult }, ...run }) => ({ ...run, result: runResult })) } })),
     late: suite.depth.late.map(({ result: { trace: _trace, ...result }, resumed: { trace: _resumedTrace, ...resumed }, ...trial }) => ({ ...trial, result, resumed })),
   };
-  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, origins: _origins, rootCycles: _rootCycles, depth: _depth, ...metadata } = suite;
+  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, origins: _origins, rootCycles: _rootCycles, gear: _gear, depth: _depth, ...metadata } = suite;
   const files: Record<string, string> = {
-    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, origins: originReportValue(compactOrigins), rootCycles: originReportValue(compactRootCycles), depth: compactDepth }),
+    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, origins: originReportValue(compactOrigins), rootCycles: originReportValue(compactRootCycles), gear: originReportValue(compactGear), depth: compactDepth }),
+    'gear.csv': csv([
+      ['scenario', 'policy', 'cycle', 'completed', 'seconds', 'total_seconds', 'first_root_seconds', 'gear_multiplier', 'unlocked', 'spent_score', 'cumulative_score', 'spendable_score', 'production', 'depth_meters'],
+      ...suite.gear.flatMap((trial) => trial.cycles.map((cycle) => [trial.scenario.id, trial.policy, cycle.cycle, String(cycle.completed), cycle.elapsedSeconds,
+        trial.firstRootSeconds + cycle.startsAtSeconds + cycle.elapsedSeconds, trial.firstRootSeconds, cycle.multiplier, cycle.unlocked.join('/'), cycle.state.scoreSpentThisRun,
+        cycle.state.runEarnedScore, cycle.state.runEarnedScore.subtract(cycle.state.scoreSpentThisRun), cycle.production, cycle.state.permanent.depthMeters])),
+    ], true),
+    'gear-timeline.csv': csv([
+      ['scenario', 'cycle', 'event', 'seconds', 'score', 'imo', 'spent_score', 'spendable_score', 'production', 'gear_multiplier', 'unlocked', 'depth_meters'],
+      ...suite.gear.flatMap((trial) => trial.trace.map((point) => [trial.scenario.id, point.run, point.kind, point.elapsedSeconds, point.score, point.imo,
+        point.scoreSpentThisRun, point.spendableScore, point.production, point.gearMultiplier,
+        Object.entries(point.gearUnlocked).filter(([, value]) => value).map(([id]) => id).join('/'), point.depthMeters])),
+    ], true),
     'root-cycle.csv': csv([
       ['scenario', 'automated', 'choice', 'visit_seconds', 'completed', 'first_root_seconds', 'second_root_seconds', 'total_seconds', 'initial_production', 'final_production', 'first_depth_meters', 'second_depth_meters', 'normal_prestige_count', 'normal_points', 'root_count', 'root_crystals', 'idle_at_cap_seconds', 'stage0_seconds', 'stage1_seconds', 'stage2_seconds', 'stage3_seconds', 'stage4_seconds'],
       ...suite.rootCycles.map((trial) => [trial.scenario.id, String(trial.automated), trial.choice, trial.scenario.visitSeconds, String(trial.completed),
@@ -238,7 +252,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '# 現行バランスのシミュレーション結果', '',
     `コア識別子（LF 正規化 SHA-256）: \`${coreSha256}\`。${suite.runCount}周回、打切り ${time(suite.maxSeconds)}。生成日時や乱数を含まない再現可能な結果です。`, '',
     'これは方策比較であり、最適解の探索やプレイヤー全体の平均ではありません。生産・価格・報酬・保存は実コアから計算しています。', '',
-    '結果形式v2・セーブv12。JSON/CSVの芋金額・生産速度はgn1文字列、台数・ランク・秒数・DEPTH・掘削速度はnumberです。数値移行は [巨大数移行](../../number-migration.md)、深層解析は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md)、恒久深度は [DEPTH](../../depth.md)、第4突破は [根源領域](../../origin.md)、根源転生は [ROOT](../../root-rebirth.md) を参照してください。', '',
+    '結果形式v2・セーブv13。JSON/CSVの芋金額・SCORE支出・生産速度はgn1文字列、台数・ランク・秒数・DEPTH・掘削速度はnumberです。数値移行は [巨大数移行](../../number-migration.md)、深層解析は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md)、恒久深度は [DEPTH](../../depth.md)、第4突破は [根源領域](../../origin.md)、根源転生は [ROOT](../../root-rebirth.md)、恒久装備は [装備](../../gear.md) を参照してください。', '',
     '## 現行パラメータ', '',
     `基礎生産 ${number(suite.parameters.balance.baseProduction)}/秒、上限 ${number(suite.parameters.balance.scoreCap)}、転生解禁 ${number(suite.parameters.prestige.unlockScore)}、報酬 ${suite.parameters.prestige.earlyReward}/${suite.parameters.prestige.capReward}pt、オフライン上限 ${time(suite.parameters.offlineLimitSeconds)}。`, '',
     '| 設備 | 基礎価格 | 台数価格倍率 | 1台あたり基礎生産 | 解禁する上限 | 台数/追加倍率（乗算） |', '| --- | ---: | ---: | ---: | ---: | --- |',
@@ -360,6 +374,12 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '| --- | --- | --- | ---: | ---: | ---: | ---: |',
     ...suite.rootCycles.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.choice === 'blessing' ? '原初の恵み' : '根源の記憶'} | ${time(trial.firstRootSeconds)} | ${trial.completed ? time(trial.elapsedSeconds) : '打切り'} | ${time(trial.stages[0]?.result.elapsedSeconds)} | ${number(trial.state.permanent.depthMeters)} m |`), '',
     '初回ROOTで全収穫×3、結晶1個を手動で使用。維持した通常ポイントだけで収穫3/割引1を再取得し、通常転生を挟まず段階0〜4を再突破します。第2深層解析では収穫3を保持し割引を返還します。根源の記憶は設備割引が即時、初期芋は次のリセットから支給するため、最初のROOT直後に芋を捏造しません。詳細・保持検証は [ROOT](../../root-rebirth.md)。', '',
+    '## 恒久装備・ROOT1〜3周回', '',
+    '| 確認 | 購入 | 解禁方策 | ROOT後の周回 | 所要時間 | 有効装備数 | 装備倍率 | 支出SCORE |',
+    '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |',
+    ...suite.gear.flatMap((trial) => trial.cycles.map((cycle) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.policy === 'early' ? '確認時に随時' : '各上限で解禁'} | ${cycle.cycle} | ${time(cycle.elapsedSeconds)} | ${cycle.unlocked.length} | ×${number(cycle.multiplier)} | ${number(cycle.state.scoreSpentThisRun)} |`)), '',
+    '正規の初回ROOTから3周回を継続。初回結晶は原初の恵みに使い、以降の結晶は温存して装備効果を比較します。ROOT1で3装備、ROOT2でコンパス、ROOT3で根源コアを追加。解禁は各確認時だけ手動で、放置中の解禁を捏造しません。累計SCOREと所持芋は不変、利用可能SCOREだけが減ります。各上限後でも解禁でき、生産/掘削停止を維持します。', '',
+    '1分自動の随時解禁は3周回で3h58m / 3h41m / 3h30m、各上限でまとめる対照は3h59m / 3h42m / 3h40m。6h自動は各36h、12h手動は各84hで確認間隔に丸められます。提案価格・倍率を採用し、全5装備の倍率は1.337056875です。装備なしの旧ROOT経路も維持し、初回到達や旧経路の値は変更しません。詳細は [装備](../../gear.md)。', '',
     '## 検証範囲と未確定事項', '', '| 項目 | 区分 | 内容 |', '| --- | --- | --- |',
     ...suite.coverage.map((row) => `| ${row.feature} | ${row.status} | ${row.detail} |`), '',
     '## 図と機械可読データ', '',
@@ -372,6 +392,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '- [恒久DEPTHの比較](depth.svg) / [SCORE帯ごとの深度・待機CSV](depth.csv) / [進行時系列](depth-timeline.csv)',
     '- [第4突破の比較](origin.svg) / [初期状態から1E18までの時間・深度CSV](origin.csv) / [設備・研究・リンクの時系列](origin-timeline.csv)',
     '- [ROOT後の選択比較](root-cycle.svg) / [初回・2回目の経路CSV](root-cycle.csv) / [再突破の時系列](root-cycle-timeline.csv)',
+    '- [恒久装備の解禁時期比較](gear.svg) / [ROOT1〜3周回CSV](gear.csv) / [支出・倍率・解禁時刻](gear-timeline.csv)',
     '- [全結果 JSON](results.json) / [周回 CSV](runs.csv) / [時系列 CSV](timeline.csv) / [将来試算 CSV](projections.csv)', '',
     '再生成方法・方策の定義・後続 Issue の判断材料は [検証ガイド](../README.md) を参照してください。', '');
   files['report.md'] = lines.join('\n');
@@ -486,5 +507,15 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     color: { domain: cycleTrials.map((trial) => trial.scenario.id), range: colors.slice(0, 2) },
     marks: [amountLineY(cyclePoints, { x: 'hours', y: 'score', stroke: 'id' })],
   }, cycleTrials.map((trial, index) => ({ label: trial.choice === 'blessing' ? '原初の恵み / 全収穫' : '根源の記憶 / 設備割引', color: colors[index]! })), '実際の初回ROOT→通常転生なし→段階0〜4の再突破→2回目ROOT');
+  const gearTrials = suite.gear.filter((trial) => trial.scenario.visitSeconds === 60);
+  const gearPoints = gearTrials.flatMap((trial) => trial.trace.filter((point) => point.run === 3 && point.score.gt(0)).map((point) => ({ ...point,
+    id: trial.scenario.id, hours: (point.elapsedSeconds - trial.cycles[2]!.startsAtSeconds) / 3600 })));
+  files['gear.svg'] = chart('gear', {
+    ariaLabel: 'ROOT3回後、1分自動で装備の随時解禁と上限での解禁を比較。',
+    x: { label: 'ROOT3回後の経過時間 (hours)', grid: true },
+    y: { label: '累計SCORE (log)', domain: [1e6, 1e18], grid: true },
+    color: { domain: gearTrials.map((trial) => trial.scenario.id), range: colors.slice(0, 2) },
+    marks: [amountLineY(gearPoints, { x: 'hours', y: 'score', stroke: 'id', clip: true })],
+  }, gearTrials.map((trial, index) => ({ label: trial.policy === 'early' ? '確認時に随時解禁' : '各上限で解禁', color: colors[index]! })), '同じ初回ROOTから継続。累計SCOREを消費せず、全解禁装備の効果を保持');
   return files;
 }

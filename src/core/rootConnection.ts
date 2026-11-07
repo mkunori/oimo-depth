@@ -1,3 +1,4 @@
+import { discoverGear } from './gearProgress';
 import { getProductionPerSecond } from './game';
 import type { GameState } from './state';
 
@@ -12,6 +13,6 @@ export function getRootConnection(state: GameState) {
 /** No resource or skill reset: the discovery and permission survive normal prestige. */
 export function performRootConnection(state: GameState): GameState {
   if (!getRootConnection(state).canConnect) return state;
-  return { ...state, scoreCapStage: 3,
-    permanent: { ...state.permanent, rootConnectionUnlocked: true, maxDiscoveredStage: state.permanent.maxDiscoveredStage < 3 ? 3 : state.permanent.maxDiscoveredStage } };
+  return discoverGear({ ...state, scoreCapStage: 3,
+    permanent: { ...state.permanent, rootConnectionUnlocked: true, maxDiscoveredStage: state.permanent.maxDiscoveredStage < 3 ? 3 : state.permanent.maxDiscoveredStage } });
 }

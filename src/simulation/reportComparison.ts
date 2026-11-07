@@ -13,7 +13,8 @@ function sameOrigin(a: unknown, b: unknown, key = '', score = 1, depth = 1, carr
   if (a === b) return true;
   if (typeof a !== typeof b || a === null || b === null) return false;
   if (typeof a === 'string' && typeof b === 'string' && a.startsWith('gn1:') && b.startsWith('gn1:')) {
-    const absolute = key === 'imo' || carry ? Math.max(1, score * ROUNDING_ULPS) : 1;
+    if (key === 'scoreSpentThisRun' || key === 'spent_score') return false; // canonical receipt total is exact
+    const absolute = ['imo', 'spendableScore', 'spendable_score'].includes(key) || carry ? Math.max(1, score * ROUNDING_ULPS) : 1;
     return approximatelyEqual(a, b, absolute, 1e-12);
   }
   if (typeof a === 'number' && typeof b === 'number') {
@@ -36,11 +37,11 @@ function sameOrigin(a: unknown, b: unknown, key = '', score = 1, depth = 1, carr
 export function equivalentOriginArtifact(name: string, expected: string, actual: string): boolean {
   try {
     if (name === 'results.json') {
-      const { origins: a, rootCycles: rootsA, ...left } = JSON.parse(expected) as Row;
-      const { origins: b, rootCycles: rootsB, ...right } = JSON.parse(actual) as Row;
-      return a !== undefined && b !== undefined && JSON.stringify(left) === JSON.stringify(right) && sameOrigin(a, b) && sameOrigin(rootsA, rootsB);
+      const { origins: a, rootCycles: rootsA, gear: gearA, ...left } = JSON.parse(expected) as Row;
+      const { origins: b, rootCycles: rootsB, gear: gearB, ...right } = JSON.parse(actual) as Row;
+      return a !== undefined && b !== undefined && JSON.stringify(left) === JSON.stringify(right) && sameOrigin(a, b) && sameOrigin(rootsA, rootsB) && sameOrigin(gearA, gearB);
     }
-    if (!['origin.csv', 'origin-timeline.csv', 'root-cycle.csv', 'root-cycle-timeline.csv'].includes(name)) return false;
+    if (!['origin.csv', 'origin-timeline.csv', 'root-cycle.csv', 'root-cycle-timeline.csv', 'gear.csv', 'gear-timeline.csv'].includes(name)) return false;
     // These generated CSVs quote every cell and contain no embedded line breaks.
     const parse = (text: string) => text.trimEnd().split('\n').map((line) => JSON.parse(`[${line}]`) as string[]);
     const left = parse(expected), right = parse(actual);
