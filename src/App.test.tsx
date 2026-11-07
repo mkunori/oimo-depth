@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { testAmount as gn } from './test/amounts';
+
 import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -65,7 +67,7 @@ describe('research UI', () => {
     expect(screen.getByLabelText('SCORE上限').textContent).toBe('1E12');
     expect((screen.getByRole('button', { name: '研究による突破' }) as HTMLButtonElement).disabled).toBe(true);
     tickAfter(1);
-    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.imo).toBe(ready.imo);
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.imo).toBeAmount(ready.imo);
     expect(screen.getByLabelText('収穫速度').textContent).toBe('2.5');
   });
 
@@ -76,7 +78,7 @@ describe('research UI', () => {
     expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.researchRanks.geology).toBe(1);
     expect(screen.getByLabelText('収穫速度').textContent).toBe('5');
     fireEvent.click(screen.getByRole('button', { name: /研究強化を振り直す/ }));
-    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.imo).toBe(ready.imo);
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.imo).toBeAmount(ready.imo);
     fireEvent.click(screen.getByRole('button', { name: '地脈抽出機を1台購入' }));
     expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.equipmentCounts.veinExtractor).toBe(1);
     view.unmount();
@@ -98,7 +100,7 @@ describe('minimal mining game', () => {
     expect(screen.getByLabelText('収穫速度').textContent).toBe('1');
     const progress = screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement;
     expect(progress.value).toBe(0);
-    expect(progress.max).toBe(1_000_000);
+    expect(progress.max).toBe(1);
     expect(within(screen.getByRole('region', { name: '設備' })).getAllByRole('article')).toHaveLength(7);
     for (const button of within(screen.getByRole('region', { name: '設備' })).getAllByRole('button')) {
       expect((button as HTMLButtonElement).disabled).toBe(true);
@@ -214,7 +216,7 @@ describe('minimal mining game', () => {
     expect(screen.getByLabelText('現在SCORE').textContent).toBe('1,000,000');
     expect(screen.getByLabelText('所持芋').textContent).toBe('999,990');
     expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
-    expect((screen.getByRole('progressbar') as HTMLProgressElement).value).toBe(1_000_000);
+    expect((screen.getByRole('progressbar') as HTMLProgressElement).value).toBe(1);
     expect(screen.getByText('上限到達 — 収穫が停止しました')).toBeTruthy();
     expect(screen.getByText(/転生で2ptを獲得し/)).toBeTruthy();
     expect((screen.getByRole('button', { name: '転生する' }) as HTMLButtonElement).disabled).toBe(false);
@@ -398,7 +400,7 @@ function confirmPrestige(points: number) {
 
 describe('equipment growth UI', () => {
   it('announces 9->10 once and immediately updates the next goal and rate', () => {
-    seedGame({ ...createInitialState(), imo: 100, runEarnedScore: 1_000,
+    seedGame({ ...createInitialState(), imo: gn(100), runEarnedScore: gn(1_000),
       equipmentCounts: { ...createInitialState().equipmentCounts, worker: 9 } });
     renderGame();
     expect(screen.queryByText(/マイルストーン達成/)).toBeNull();
@@ -416,7 +418,7 @@ describe('equipment growth UI', () => {
 
   it('shows current/next cumulative multipliers around 25 and 50 units', () => {
     for (const [count, next, current] of [[24, 25, '1.1'], [49, 50, '1.265']] as const) {
-      seedGame({ ...createInitialState(), imo: 200_000, runEarnedScore: 200_000,
+      seedGame({ ...createInitialState(), imo: gn(200_000), runEarnedScore: gn(200_000),
         equipmentCounts: { ...createInitialState().equipmentCounts, worker: count } });
       const view = renderGame();
       const worker = screen.getByRole('article', { name: '作業員' });
@@ -462,7 +464,7 @@ describe('automation UI', () => {
   });
 
   it('persists policy, equipment switches, priority swaps and immediate ON/OFF', () => {
-    seedGame({ ...createAutomationReadyState(), imo: 100, runEarnedScore: 100 });
+    seedGame({ ...createAutomationReadyState(), imo: gn(100), runEarnedScore: gn(100) });
     const view = renderGame(); openAutomation();
     fireEvent.change(screen.getByRole('combobox', { name: '購入方針' }), { target: { value: 'priority' } });
     fireEvent.change(screen.getByRole('combobox', { name: '第1優先の設備' }), { target: { value: 'harvester' } });
@@ -482,7 +484,7 @@ describe('automation UI', () => {
   });
 
   it('keeps settings OFF and reports a save error when applying ON fails', () => {
-    seedGame({ ...createAutomationReadyState(), imo: 100, runEarnedScore: 100 }); renderGame(); openAutomation();
+    seedGame({ ...createAutomationReadyState(), imo: gn(100), runEarnedScore: gn(100) }); renderGame(); openAutomation();
     const before = localStorage.getItem(SAVE_STORAGE_KEY);
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
     fireEvent.click(screen.getByRole('checkbox', { name: '自動購入を有効にする' }));
@@ -505,7 +507,7 @@ describe('breakthrough UI', () => {
   });
 
   it('cancels then performs a no-reset breakthrough once, resumes production and survives reload', () => {
-    const state = { ...createBreakthroughReadyState(), imo: 1234,
+    const state = { ...createBreakthroughReadyState(), imo: gn(1234),
       equipmentCounts: { ...createInitialState().equipmentCounts, worker: 10 } };
     seedGame(state); const view = renderGame();
     const trigger = screen.getByRole('button', { name: '限界突破する' });
@@ -518,14 +520,14 @@ describe('breakthrough UI', () => {
     fireEvent.click(trigger); fireEvent.click(screen.getByRole('button', { name: '限界突破を実行' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState).toEqual({ ...state, scoreCapStage: 1 });
-    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1e9);
+    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1);
     expect(screen.getByLabelText('現在SCORE').textContent).toBe('1,000,000');
     expect(screen.getByLabelText('所持芋').textContent).toBe('1,234');
     expect(screen.getByLabelText('収穫速度').textContent).toBe('30');
     tickAfter(1);
     expect(screen.getByLabelText('現在SCORE').textContent).toBe('1,000,030');
     view.unmount(); renderGame();
-    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1e9);
+    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1);
     expect((screen.getByRole('button', { name: '限界突破する' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText(/次は地層研究の深層解析/)).toBeTruthy();
   });
@@ -537,13 +539,13 @@ describe('breakthrough UI', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
     fireEvent.click(screen.getByRole('button', { name: '限界突破を実行' }));
     expect(screen.getByRole('dialog')).toBeTruthy();
-    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1e6);
+    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1);
     expect(localStorage.getItem(SAVE_STORAGE_KEY)).toBe(raw);
     expect(screen.getByText(/限界突破できませんでした/)).toBeTruthy();
   });
 
   it('unlocks both higher equipment, stops at 1e9 and resets only the run on prestige', () => {
-    const state = { ...performBreakthrough(createBreakthroughReadyState()), imo: 100_000_000, runEarnedScore: 100_000_000 };
+    const state = { ...performBreakthrough(createBreakthroughReadyState()), imo: gn(100_000_000), runEarnedScore: gn(100_000_000) };
     seedGame(state); renderGame();
     for (const name of ['深層掘削機', '芋精製プラント']) {
       const button = within(screen.getByRole('article', { name })).getByRole('button');
@@ -555,7 +557,7 @@ describe('breakthrough UI', () => {
     expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
     expect(within(screen.getByRole('region', { name: '採掘' })).getByText(/SCORE 1E9到達/)).toBeTruthy();
     confirmPrestige(2);
-    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1e6);
+    expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1);
     expect(screen.getByLabelText('限界突破の心得のランク').textContent).toBe('1');
     expect(screen.getByLabelText('深層掘削機の所有数').textContent).toBe('0');
     expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.scoreCapStage).toBe(0);
@@ -565,7 +567,7 @@ describe('breakthrough UI', () => {
 describe('prestige and skill UI', () => {
   it.each([[99_999, '0', true], [100_000, '1', false], [999_999, '1', false], [1_000_000, '2', false]] as const)(
     'previews the reward at SCORE %s', (score, reward, disabled) => {
-      seedGame({ ...createInitialState(), imo: score, runEarnedScore: score });
+      seedGame({ ...createInitialState(), imo: gn(score), runEarnedScore: gn(score) });
       renderGame();
       expect(screen.getByLabelText('獲得見込みポイント').textContent).toBe(reward);
       expect((screen.getByRole('button', { name: '転生する' }) as HTMLButtonElement).disabled).toBe(disabled);
@@ -573,7 +575,7 @@ describe('prestige and skill UI', () => {
   );
 
   it('cancels without resetting, then confirms exactly one reset and reward under StrictMode', () => {
-    seedGame({ ...createInitialState(), imo: 90_000, runEarnedScore: 100_000, equipmentCounts: { ...createInitialState().equipmentCounts, worker: 3, cart: 1, harvester: 0 } });
+    seedGame({ ...createInitialState(), imo: gn(90_000), runEarnedScore: gn(100_000), equipmentCounts: { ...createInitialState().equipmentCounts, worker: 3, cart: 1, harvester: 0 } });
     renderGame();
     fireEvent.click(screen.getByRole('button', { name: '転生する' }));
     expect(screen.getByRole('dialog', { name: '転生して次の周回へ進みますか？' })).toBeTruthy();
@@ -651,7 +653,7 @@ describe('prestige and skill UI', () => {
   });
 
   it('requests a new confirmation when the final click crosses the 2pt boundary', () => {
-    seedGame({ ...createInitialState(), imo: 999_999, runEarnedScore: 999_999 });
+    seedGame({ ...createInitialState(), imo: gn(999_999), runEarnedScore: gn(999_999) });
     renderGame();
     fireEvent.click(screen.getByRole('button', { name: '転生する' }));
     now += 2_000;

@@ -1,0 +1,61 @@
+{
+  "saveVersion": 6,
+  "savedAt": 1700000000000,
+  "gameState": {
+    "imo": 77522275,
+    "runEarnedScore": 1000000000,
+    "equipmentCounts": {
+      "worker": 56,
+      "cart": 42,
+      "harvester": 34,
+      "deepDrill": 14,
+      "refinery": 12,
+      "veinExtractor": 0,
+      "concentrator": 0
+    },
+    "runStartingImo": 0,
+    "scoreCapStage": 2,
+    "permanent": {
+      "prestigeCount": 6,
+      "unspentPoints": 1,
+      "skillRanks": {
+        "harvest": 3,
+        "discount": 1,
+        "startingImo": 0,
+        "breakthrough": 1,
+        "automation": 1
+      },
+      "deepResearchUnlocked": true
+    },
+    "automation": {
+      "enabled": true,
+      "policy": "efficient",
+      "equipment": {
+        "worker": true,
+        "cart": true,
+        "harvester": true,
+        "deepDrill": true,
+        "refinery": true,
+        "veinExtractor": true,
+        "concentrator": true
+      },
+      "priority": [
+        "worker",
+        "cart",
+        "harvester",
+        "deepDrill",
+        "refinery",
+        "veinExtractor",
+        "concentrator"
+      ]
+    },
+    "researchRanks": {
+      "geology": 0,
+      "resonance": 0
+    },
+    "automationRemainder": {
+      "score": 0,
+      "imo": 0
+    }
+  }
+}

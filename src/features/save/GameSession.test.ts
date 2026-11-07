@@ -1,3 +1,5 @@
+import { testAmount as gn, stringifyTestSave } from '../../test/amounts';
+
 import { describe, expect, it } from 'vitest';
 import { advanceGame } from '../../core/game';
 import { createSave, parseSave, serializeSave } from '../../core/save';
@@ -16,7 +18,7 @@ describe('research session transactions', () => {
     const before = game.session.getSnapshot().gameState;
     expect(game.session.deepResearch()).toBe(true);
     expect(game.session.deepResearch()).toBe(false);
-    expect(game.session.getSnapshot().gameState.imo).toBe(before.imo);
+    expect(game.session.getSnapshot().gameState.imo).toBeAmount(before.imo);
     expect(game.session.buyResearch('geology')).toBe(true);
     expect(parseSave(game.storage.value!).gameState.researchRanks.geology).toBe(1);
     const exported = parseSave(game.session.exportText());
@@ -24,8 +26,8 @@ describe('research session transactions', () => {
     expect(next.getSnapshot().gameState).toEqual(exported.gameState);
     expect(next.importSave(exported)).toBe(true);
     expect(next.resetResearch()).toBe(true);
-    expect(next.getSnapshot().gameState.imo).toBe(before.imo);
-    expect(next.getSnapshot().gameState.runEarnedScore).toBe(before.runEarnedScore);
+    expect(next.getSnapshot().gameState.imo).toBeAmount(before.imo);
+    expect(next.getSnapshot().gameState.runEarnedScore).toBeAmount(before.runEarnedScore);
     expect(next.resetResearch()).toBe(false);
   });
 
@@ -48,7 +50,7 @@ describe('research session transactions', () => {
     game.storage.value = serializeSave(createSave(ready, START)); game.session.start();
     game.elapse(60);
     expect(game.session.buyResearch('geology')).toBe(true);
-    expect(game.session.getSnapshot().gameState.runEarnedScore).toBe(1e9 + 150);
+    expect(game.session.getSnapshot().gameState.runEarnedScore).toBeAmount(1e9 + 150);
     game.session.hide();
     expect(game.session.buyResearch('geology')).toBe(false);
     expect(game.session.resetResearch()).toBe(false);
@@ -99,9 +101,9 @@ describe('automation session transactions', () => {
     game.elapse(10);
     expect(game.session.setAutomation({ ...initial.automation, enabled: true })).toBe(true);
     let state = game.session.getSnapshot().gameState;
-    expect(state.runEarnedScore).toBe(15);
+    expect(state.runEarnedScore).toBeAmount(15);
     expect(state.equipmentCounts.worker).toBe(1);
-    expect(state.imo).toBe(5);
+    expect(state.imo).toBeAmount(5);
     expect(game.session.getSnapshot().automaticPurchases).toBe(1);
     game.session.purchase('worker', 1);
     expect(game.session.getSnapshot().gameState.equipmentCounts.worker).toBe(1);
@@ -110,12 +112,12 @@ describe('automation session transactions', () => {
     state = game.session.getSnapshot().gameState;
     expect(state.equipmentCounts.worker).toBe(1);
     expect(state.automation.enabled).toBe(false);
-    expect(state.imo).toBe(185);
+    expect(state.imo).toBeAmount(185);
   });
 
   it('preserves OFF settings and funds if enabling cannot be written', () => {
     const game = setup();
-    const initial = { ...createAutomationReadyState(), imo: 100, runEarnedScore: 100 };
+    const initial = { ...createAutomationReadyState(), imo: gn(100), runEarnedScore: gn(100) };
     game.storage.value = serializeSave(createSave(initial, START)); game.session.start();
     const state = game.session.getSnapshot().gameState; const raw = game.storage.value;
     game.storage.failWrites = true;
@@ -131,7 +133,7 @@ describe('automation session transactions', () => {
     expect(game.session.setAutomation({ ...initial.automation, enabled: true, policy: 'priority' })).toBe(true);
     game.session.hide(); game.elapse(21_600); game.session.show();
     const state = game.session.getSnapshot().gameState;
-    expect(state.runEarnedScore).toBe(1e6);
+    expect(state.runEarnedScore).toBeAmount(1e6);
     expect(game.session.getSnapshot().report?.automaticPurchases).toBeGreaterThan(0);
     game.session.show(); expect(game.session.getSnapshot().gameState).toBe(state);
     const reloaded = game.nextSession(); reloaded.start();
@@ -146,10 +148,10 @@ describe('automation session transactions', () => {
   it('retains real v4 progress and raw text when v5 migration cannot be written', () => {
     const game = setup(); const { automation: _settings, ...legacy } = createBreakthroughReadyState();
     const { automation: _rank, ...skillRanks } = legacy.permanent.skillRanks;
-    const text = JSON.stringify({ saveVersion: 4, savedAt: START, gameState: { ...legacy, permanent: { ...legacy.permanent, skillRanks } } });
+    const text = stringifyTestSave({ saveVersion: 4, savedAt: START, gameState: { ...legacy, permanent: { ...legacy.permanent, skillRanks } } });
     game.storage.value = text; game.storage.failWrites = true; game.session.start();
     expect(game.session.getSnapshot().status).toBe('unavailable'); expect(game.storage.value).toBe(text);
-    expect(game.session.getSnapshot().gameState.runEarnedScore).toBe(1e6);
+    expect(game.session.getSnapshot().gameState.runEarnedScore).toBeAmount(1e6);
     expect(game.session.getSnapshot().gameState.automation.enabled).toBe(false);
   });
 });
@@ -167,7 +169,7 @@ describe('breakthrough session transactions', () => {
     const restored = game.nextSession(); restored.start();
     expect(restored.getSnapshot().gameState.scoreCapStage).toBe(1);
     game.elapse(60); restored.tick();
-    expect(restored.getSnapshot().gameState.runEarnedScore).toBeGreaterThan(1e6);
+    expect(restored.getSnapshot().gameState.runEarnedScore).toBeGreaterThanAmount(1e6);
     const exported = parseSave(restored.exportText());
     expect(restored.importSave(exported)).toBe(true);
     expect(restored.getSnapshot().gameState).toEqual(exported.gameState);
@@ -206,9 +208,9 @@ describe('breakthrough session transactions', () => {
 describe('prestige persistence and migration', () => {
   it('retains actual v2 progress and raw text if a v3 migration write fails', () => {
     const game = setup();
-    const legacyState = { ...createInitialState(), imo: 90, runEarnedScore: 100,
+    const legacyState = { ...createInitialState(), imo: gn(90), runEarnedScore: gn(100),
       equipmentCounts: { worker: 10, cart: 0, harvester: 0 } };
-    const text = JSON.stringify({ saveVersion: 2, savedAt: START, gameState: legacyState });
+    const text = stringifyTestSave({ saveVersion: 2, savedAt: START, gameState: legacyState });
     game.storage.value = text;
     game.storage.failWrites = true;
     game.session.start();
@@ -221,29 +223,29 @@ describe('prestige persistence and migration', () => {
 
   it('migrates v1 after offline settlement and commits v3 without losing equipment', () => {
     const game = setup();
-    game.storage.value = JSON.stringify({ saveVersion: 1, savedAt: START - 1_000, gameState: { imo: 90, runEarnedScore: 100, equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } });
+    game.storage.value = stringifyTestSave({ saveVersion: 1, savedAt: START - 1_000, gameState: { imo: gn(90), runEarnedScore: gn(100), equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } });
     game.session.start();
-    expect(JSON.parse(game.storage.value!).saveVersion).toBe(6);
-    expect(game.session.getSnapshot().gameState.imo).toBe(92);
-    expect(game.session.getSnapshot().gameState.runEarnedScore).toBe(102);
+    expect(JSON.parse(game.storage.value!).saveVersion).toBe(7);
+    expect(game.session.getSnapshot().gameState.imo).toBeAmount(92);
+    expect(game.session.getSnapshot().gameState.runEarnedScore).toBeAmount(102);
     expect(game.session.getSnapshot().gameState.equipmentCounts.worker).toBe(1);
     expect(game.session.getSnapshot().gameState.permanent).toEqual(createInitialState().permanent);
   });
 
   it('preserves original legacy text if the migration cannot be saved', () => {
     const game = setup();
-    const legacy = JSON.stringify({ saveVersion: 1, savedAt: START, gameState: { imo: 90, runEarnedScore: 100, equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } });
+    const legacy = stringifyTestSave({ saveVersion: 1, savedAt: START, gameState: { imo: gn(90), runEarnedScore: gn(100), equipmentCounts: { worker: 1, cart: 0, harvester: 0 } } });
     game.storage.value = legacy;
     game.storage.failWrites = true;
     game.session.start();
     expect(game.session.getSnapshot().status).toBe('unavailable');
     expect(game.storage.value).toBe(legacy);
-    expect(parseSave(game.session.exportText()).gameState.imo).toBe(90);
+    expect(parseSave(game.session.exportText()).gameState.imo).toBeAmount(90);
   });
 
   it.each([
-    JSON.stringify({ saveVersion: 2, savedAt: START, gameState: { imo: 0, runEarnedScore: 0, equipmentCounts: { worker: 0, cart: 0, harvester: 0 } } }),
-    JSON.stringify({ saveVersion: 7, savedAt: START, gameState: createInitialState() }),
+    stringifyTestSave({ saveVersion: 2, savedAt: START, gameState: { imo: gn(0), runEarnedScore: gn(0), equipmentCounts: { worker: 0, cart: 0, harvester: 0 } } }),
+    stringifyTestSave({ saveVersion: 8, savedAt: START, gameState: createInitialState() }),
   ])('preserves malformed v2 or future text without fallback %#', (text) => {
     const game = setup();
     game.storage.value = text;
@@ -271,7 +273,7 @@ describe('prestige persistence and migration', () => {
     reloaded.hide();
     game.elapse(3_600);
     reloaded.show();
-    expect(reloaded.getSnapshot().gameState.runEarnedScore).toBe(5_400);
+    expect(reloaded.getSnapshot().gameState.runEarnedScore).toBeAmount(5_400);
     expect(reloaded.getSnapshot().gameState.permanent.skillRanks.harvest).toBe(1);
     expect(reloaded.getSnapshot().gameState.permanent.prestigeCount).toBe(1);
   });
@@ -338,8 +340,8 @@ describe('game save lifecycle', () => {
     session.purchase('worker', 1);
     expect(storage.writes).toBe(3);
     const save = parseSave(storage.value!);
-    expect(save.gameState.imo).toBe(0);
-    expect(save.gameState.runEarnedScore).toBe(10);
+    expect(save.gameState.imo).toBeAmount(0);
+    expect(save.gameState.runEarnedScore).toBeAmount(10);
     expect(save.gameState.equipmentCounts.worker).toBe(1);
     const reloaded = setupGame.nextSession();
     reloaded.start();
@@ -351,11 +353,11 @@ describe('game save lifecycle', () => {
     game.storage.value = serializeSave(createSave(createInitialState(), START - 3_600_000));
     game.session.start();
     game.session.start();
-    expect(game.session.getSnapshot().gameState.imo).toBe(3_600);
+    expect(game.session.getSnapshot().gameState.imo).toBeAmount(3_600);
     const reloaded = game.nextSession();
     reloaded.start();
-    expect(reloaded.getSnapshot().gameState.imo).toBe(3_600);
-    expect(reloaded.getSnapshot().report?.earnedImo).toBe(0);
+    expect(reloaded.getSnapshot().gameState.imo).toBeAmount(3_600);
+    expect(reloaded.getSnapshot().report?.earnedImo).toBeAmount(0);
   });
 
   it('saves on hide, ignores hidden ticks, and settles visibility/page events only once', () => {
@@ -368,15 +370,15 @@ describe('game save lifecycle', () => {
     expect(game.storage.writes).toBe(writes);
     game.elapse(48 * 3_600);
     game.session.tick();
-    expect(game.session.getSnapshot().gameState.imo).toBe(5);
+    expect(game.session.getSnapshot().gameState.imo).toBeAmount(5);
     game.session.show();
     game.session.show();
     game.session.tick();
-    expect(game.session.getSnapshot().gameState.imo).toBe(86_405);
+    expect(game.session.getSnapshot().gameState.imo).toBeAmount(86_405);
     expect(game.session.getSnapshot().report?.appliedSeconds).toBe(86_400);
     const reloaded = game.nextSession();
     reloaded.start();
-    expect(reloaded.getSnapshot().gameState.imo).toBe(86_405);
+    expect(reloaded.getSnapshot().gameState.imo).toBeAmount(86_405);
   });
 
   it.each(['broken', '', '{"saveVersion":0}'])('preserves corrupt or unsupported raw text %s until explicit replacement', (text) => {
@@ -415,7 +417,7 @@ describe('game save lifecycle', () => {
     game.session.start();
     const snapshot = game.session.getSnapshot();
     const raw = game.storage.value;
-    const invalid = { ...createSave(createInitialState(), START), gameState: { ...createInitialState(), imo: -1 } };
+    const invalid = { ...createSave(createInitialState(), START), gameState: { ...createInitialState(), imo: gn(-1) } };
     expect(() => game.session.importSave(invalid)).toThrow();
     expect(game.session.getSnapshot()).toBe(snapshot);
     expect(game.storage.value).toBe(raw);
@@ -479,7 +481,7 @@ describe('game save lifecycle', () => {
     game.rewindClock(3_600);
     game.session.show();
     expect(game.session.getSnapshot().report?.clockReversed).toBe(true);
-    expect(game.session.getSnapshot().gameState.imo).toBe(0);
+    expect(game.session.getSnapshot().gameState.imo).toBeAmount(0);
     expect(parseSave(game.storage.value!).savedAt).toBe(START);
   });
 
@@ -492,7 +494,7 @@ describe('game save lifecycle', () => {
     expect(game.session.getSnapshot().gameState).toEqual(createInitialState());
     game.elapse(1);
     game.session.tick();
-    expect(game.session.getSnapshot().gameState.imo).toBe(1);
+    expect(game.session.getSnapshot().gameState.imo).toBeAmount(1);
     expect(parseSave(game.storage.value!).gameState).toEqual(createInitialState());
   });
 });

@@ -71,7 +71,7 @@ SVG は [Observable Plot の document オプション](https://observablehq.com/
 
 正規突破経路（`breakthrough.csv` / `breakthrough-timeline.csv`）は、初期状態からスキル・通常転生・突破権・同一周回の1e9到達を検証します。突破優先の1分/6時間/12時間、1分の早期転生、既存スキル買切り後という5経路です。`max-days` を経路全体の打切りに使い、未到達ならそのまま記録します。`runs` は初期15方策の周回数で、突破経路の取得回数は実際の条件から決まります。条件・採用値・時間は [初回限界突破](../breakthrough.md) にまとめています。
 
-正規1e9の購入比較（`expansion.csv` / `expansion-timeline.csv`）は、1分確認・突破優先経路の実際の突破直前状態に `performBreakthrough` を実行し、購入なし / 既存3種 / 解禁済み5種を1分・6時間・12時間で比較する9ケースです。7日で打ち切り、突破後に転生しません。JSONには `assumed: false` / `actualSaveSupported: true` を記録し、全オフライン方策が現行v6セーブ・復元・24時間制限を通ります。権利取得前に打ち切った場合は設備比較を生成しません。#19の `EconomyContext` による仮定は削除しました。
+正規1e9の購入比較（`expansion.csv` / `expansion-timeline.csv`）は、1分確認・突破優先経路の実際の突破直前状態に `performBreakthrough` を実行し、購入なし / 既存3種 / 解禁済み5種を1分・6時間・12時間で比較する9ケースです。7日で打ち切り、突破後に転生しません。JSONには `assumed: false` / `actualSaveSupported: true` を記録し、全オフライン方策が現行v7セーブ・復元・24時間制限を通ります。権利取得前に打ち切った場合は設備比較を生成しません。#19の `EconomyContext` による仮定は削除しました。
 
 固定生産の感度分析は、正規の突破・購入経路とは別の比較です。研究・上位段階ボーナスなど未実装機能を含む将来の確定予測や「この設備数が必須」という結論には使えません。
 
@@ -80,3 +80,7 @@ SVG は [Observable Plot の document オプション](https://observablehq.com/
 ## 検証
 
 `npm test` で無購入の解析解、確認前の転生禁止、オフライン上限、SCOREクリップ、保存往復、決定性、打切り、不正入力を確認します。`npm run simulate:check` がモデル変更時の数値/図の差分を CI で検出します。ゲーム本体のテスト・ビルドも継続します。
+
+## 巨大数移行後の出力（#28）
+
+結果形式v2ではJSON/CSVの金額・速度を `gn1:sign:layer:mag` の正規化文字列として保存します。台数・ランク・時刻・秒数はnumberです。図はlog10座標へ変換し、巨大額をInfinityへ変換しません。`src/test/fixtures/balance-v6.json` は移行前の固定基準で再生成対象外です。既存の#4基準も維持します。[互換性・誤差・性能の比較](../number-migration.md) を参照してください。

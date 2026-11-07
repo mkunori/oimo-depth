@@ -1,3 +1,4 @@
+import { GameNumber, progressRatio } from '../../core/numbers';
 import { formatNumber } from '../../components/formatNumber';
 import { getEquipmentAvailability, getEquipmentPrice } from '../../core/game';
 import { getScoreCap } from '../../data/scoreCaps';
@@ -9,7 +10,7 @@ import { getPrestigeReward } from '../../core/prestige';
 
 interface MiningPanelProps {
   readonly state: GameState;
-  readonly production: number;
+  readonly production: GameNumber;
   readonly isCapped: boolean;
   readonly isPaused: boolean;
   readonly onBreakthrough: () => boolean;
@@ -18,7 +19,7 @@ interface MiningPanelProps {
 export function MiningPanel({ state, production, isCapped, isPaused, onBreakthrough }: MiningPanelProps) {
   const scoreCap = getScoreCap(state);
   const affordable = EQUIPMENT_IDS.find(
-    (id) => getEquipmentAvailability(id, state).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent) <= state.imo,
+    (id) => getEquipmentAvailability(id, state).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent).lte(state.imo),
   );
   const goal = isPaused ? '進行を一時停止しています。セーブ管理の案内を確認してください。' : isCapped
     ? canBreakthrough(state) ? '限界突破でこの周回を続けるか、転生で2ptを獲得して次の周回へ進めます。'
@@ -51,9 +52,9 @@ export function MiningPanel({ state, production, isCapped, isPaused, onBreakthro
           <label htmlFor="score-progress">SCORE</label>
           <span><output aria-label="現在SCORE" aria-live="off">{formatNumber(state.runEarnedScore)}</output> / <output aria-label="SCORE上限">{formatNumber(scoreCap)}</output></span>
         </div>
-        <progress id="score-progress" value={state.runEarnedScore} max={scoreCap} />
+        <progress id="score-progress" value={progressRatio(state.runEarnedScore, scoreCap)} max={1} />
         <p className="score-note">この周回の累計収穫。設備を買っても減りません。</p>
-        {state.runStartingImo > 0 && <p className="score-note">開始時の支給芋 {formatNumber(state.runStartingImo)} は SCORE に含みません。</p>}
+        {state.runStartingImo.gt(0) && <p className="score-note">開始時の支給芋 {formatNumber(state.runStartingImo)} は SCORE に含みません。</p>}
       </div>
       <p className={`mining-status ${isCapped ? 'is-capped' : ''}`} role="status">
         <span className="status-dot" aria-hidden="true" />

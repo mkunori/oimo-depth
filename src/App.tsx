@@ -9,7 +9,7 @@ import { ResearchPanel } from './features/research/ResearchPanel';
 
 export default function App() {
   const { state, snapshot, purchase, exportText, importSave, reset, dismissReport, prestige, buySkill, breakthrough, setAutomation, deepResearch, buyResearch, resetResearch } = useMiningGame();
-  const isCapped = state.runEarnedScore >= getScoreCap(state);
+  const isCapped = state.runEarnedScore.gte(getScoreCap(state));
   const isPaused = snapshot.status !== 'ready';
 
   return (

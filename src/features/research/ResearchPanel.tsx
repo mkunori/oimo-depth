@@ -26,7 +26,7 @@ export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onR
   }, [confirming]);
   const quote = getDeepResearch(state);
   const introduced = state.permanent.deepResearchUnlocked || state.scoreCapStage === 2
-    || (state.scoreCapStage === 1 && state.runEarnedScore >= 1e9);
+    || (state.scoreCapStage === 1 && state.runEarnedScore.gte(1e9));
   return <section className="panel research-panel" aria-labelledby="research-title">
     <div className="section-heading"><span className="section-index" aria-hidden="true">04</span><h2 id="research-title">地層研究</h2></div>
     <h3>深層解析 {state.permanent.deepResearchUnlocked ? '— 研究権限を取得済み' : '— 未解禁'}</h3>
@@ -46,7 +46,7 @@ export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onR
         </article>;
       })}
     </div>
-    <button type="button" className="secondary-button" disabled={isPaused || state.scoreCapStage !== 2 || state.runEarnedScore >= 1e12 || getResearchSpent(state.researchRanks) === 0} onClick={onReset}>研究強化を振り直す（{formatNumber(getResearchSpent(state.researchRanks))} 芋を全額返却）</button>
+    <button type="button" className="secondary-button" disabled={isPaused || state.scoreCapStage !== 2 || state.runEarnedScore.gte(1e12) || getResearchSpent(state.researchRanks).equals(0)} onClick={onReset}>研究強化を振り直す（{formatNumber(getResearchSpent(state.researchRanks))} 芋を全額返却）</button>
     <p>強化は段階2のみ。上限到達前なら無料で振り直せます。1E12で収穫・購入は停止します。さらに先の突破・上位転生は未実装です。</p>
     {confirming && <dialog ref={dialog} className="prestige-dialog" aria-labelledby="research-dialog-title" onCancel={() => setConfirming(false)}>
       <h2 id="research-dialog-title">研究による突破：リセットなし / SCORE 1E9→1E12</h2>

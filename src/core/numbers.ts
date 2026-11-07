@@ -6,9 +6,14 @@ export const MAX_NUMBER_TEXT_LENGTH = 256;
 const MAX_LAYER = Number.MAX_SAFE_INTEGER - 1;
 const DECIMAL_TEXT = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE]([+-]?\d+))?$/;
 const COMPONENT_TEXT = /^gn1:(-1|0|1):(0|[1-9]\d*):(-?(?:0|[1-9]\d*)(?:\.\d+)?(?:e[+-]?\d+)?)$/;
+const nativeValues = new Map<number, GameNumber>();
 
 function normalize(value: Decimal): Decimal {
   const result = new Decimal(value).normalize();
+  return validate(result);
+}
+
+function validate(result: Decimal): Decimal {
   if (!result.isFinite() || !Number.isFinite(result.mag)
     || !Number.isSafeInteger(result.layer) || result.layer < 0 || result.layer > MAX_LAYER
     || ![-1, 0, 1].includes(result.sign)) throw new RangeError('GameNumber is outside the finite supported range.');
@@ -39,7 +44,8 @@ export class GameNumber {
   readonly #value: Decimal;
 
   private constructor(value: Decimal) {
-    this.#value = normalize(value);
+    // All constructors and arithmetic methods of Decimal already return normalized values.
+    this.#value = validate(new Decimal(value));
     Object.freeze(this.#value);
     Object.freeze(this);
   }
@@ -50,34 +56,52 @@ export class GameNumber {
       value.#value;
       return value;
     }
-    if (typeof value === 'number' && Number.isFinite(value)) return new GameNumber(new Decimal(value));
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const cached = nativeValues.get(value);
+      if (cached) return cached;
+      const result = new GameNumber(new Decimal(value));
+      if (nativeValues.size < 4_096) nativeValues.set(value, result);
+      return result;
+    }
     if (typeof value === 'string') return new GameNumber(parseText(value));
     throw new TypeError('Expected a finite number, strict numeric string, or GameNumber.');
   }
 
-  add(other: GameNumberInput): GameNumber { return new GameNumber(this.#value.add(GameNumber.from(other).#value)); }
-  subtract(other: GameNumberInput): GameNumber { return new GameNumber(this.#value.sub(GameNumber.from(other).#value)); }
-  multiply(other: GameNumberInput): GameNumber { return new GameNumber(this.#value.mul(GameNumber.from(other).#value)); }
+  add(other: GameNumberInput): GameNumber { const b = GameNumber.from(other); return b.isZero() ? this : this.isZero() ? b : new GameNumber(this.#value.add(b.#value)); }
+  subtract(other: GameNumberInput): GameNumber { const b = GameNumber.from(other); return b.isZero() ? this : this.equals(b) ? GameNumber.from(0) : new GameNumber(this.#value.sub(b.#value)); }
+  multiply(other: GameNumberInput): GameNumber { const b = GameNumber.from(other); return b.isZero() || this.isZero() ? GameNumber.from(0) : b.equals(1) ? this : this.equals(1) ? b : new GameNumber(this.#value.mul(b.#value)); }
   divide(other: GameNumberInput): GameNumber {
     const divisor = GameNumber.from(other);
     if (divisor.isZero()) throw new RangeError('Cannot divide by zero.');
+    if (divisor.equals(1)) return this;
+    if (this.equals(divisor)) return GameNumber.from(1);
     return new GameNumber(this.#value.div(divisor.#value));
   }
   pow(other: GameNumberInput): GameNumber {
     const exponent = GameNumber.from(other);
     if (this.sign < 0) {
       // Parity above the safe integer range cannot be inferred reliably.
-      if (exponent.abs().compare(Number.MAX_SAFE_INTEGER) > 0 || !Number.isSafeInteger(exponent.toFiniteNumber())) throw new RangeError('Negative bases require a safe integer exponent.');
+      if (exponent.#value.layer !== 0 || exponent.abs().compare(Number.MAX_SAFE_INTEGER) > 0 || !Number.isSafeInteger(exponent.toFiniteNumber())) throw new RangeError('Negative bases require a safe integer exponent.');
     }
     if (this.isZero() && exponent.sign < 0) throw new RangeError('Zero cannot have a negative exponent.');
+    // Preserve the existing IEEE-754 price curve while its result is in layer 0.
+    if (this.#value.layer === 0 && exponent.#value.layer === 0) {
+      const result = (this.#value.sign * this.#value.mag) ** (exponent.#value.sign * exponent.#value.mag);
+      if (Number.isFinite(result) && (result === 0 ? this.isZero() : Math.abs(result) >= 1e-15 && Math.abs(result) < 9e15)) return GameNumber.from(result);
+    }
     return new GameNumber(this.#value.pow(exponent.#value));
   }
-  abs(): GameNumber { return new GameNumber(this.#value.abs()); }
+  abs(): GameNumber { return this.sign >= 0 ? this : new GameNumber(this.#value.abs()); }
   negate(): GameNumber { return new GameNumber(this.#value.neg()); }
   ceil(): GameNumber { return new GameNumber(this.#value.ceil()); }
   floor(): GameNumber { return new GameNumber(this.#value.floor()); }
   compare(other: GameNumberInput): NumberOrder { return this.#value.cmp(GameNumber.from(other).#value); }
   equals(other: GameNumberInput): boolean { return this.compare(other) === 0; }
+  lt(other: GameNumberInput): boolean { return this.compare(other) < 0; }
+  lte(other: GameNumberInput): boolean { return this.compare(other) <= 0; }
+  gt(other: GameNumberInput): boolean { return this.compare(other) > 0; }
+  gte(other: GameNumberInput): boolean { return this.compare(other) >= 0; }
+  log10(): GameNumber { return new GameNumber(this.#value.log10()); }
   min(other: GameNumberInput): GameNumber { const b = GameNumber.from(other); return this.compare(b) <= 0 ? this : b; }
   max(other: GameNumberInput): GameNumber { const b = GameNumber.from(other); return this.compare(b) >= 0 ? this : b; }
   get sign(): NumberOrder { return this.#value.sign as NumberOrder; }
@@ -90,9 +114,9 @@ export class GameNumber {
     return result;
   }
 
-  /** Lossless component text for this representation, NOT a v6 save format or display string. */
+  /** Lossless canonical component text for v7 and reports; display text is separate. */
   toString(): string { return `gn1:${this.#value.sign}:${this.#value.layer}:${this.#value.mag}`; }
-  toJSON(): never { throw new TypeError('Serialize GameNumber explicitly; GameState/save migration is a separate change.'); }
+  toJSON(): never { throw new TypeError('Use encodeGameNumbers before JSON serialization.'); }
   [Symbol.toPrimitive](hint: string): string {
     if (hint === 'string') return this.toString();
     throw new TypeError('Use GameNumber arithmetic and compare(), not JavaScript numeric operators.');
@@ -122,6 +146,24 @@ export class GameNumber {
     const body = `${layer <= 3 ? 'e'.repeat(layer) : `(e^${layer})`}${magText}`;
     return guard(body, Decimal.fromComponents(1, layer, Number(magText)));
   }
+}
+
+export const gn = GameNumber.from;
+
+/** Explicit JSON boundary; GameNumber.toJSON remains disabled to prevent accidental lossy encoding. */
+export function encodeGameNumbers(value: unknown): unknown {
+  if (value instanceof GameNumber) return value.toString();
+  if (Array.isArray(value)) return value.map(encodeGameNumbers);
+  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, encodeGameNumbers(item)]));
+  return value;
+}
+
+/** Rendering-only bounded conversion; very small nonzero amounts can have a zero gauge ratio. */
+export function progressRatio(value: GameNumberInput, cap: GameNumberInput): number {
+  const target = nonNegativeGameNumber(cap);
+  if (target.isZero()) throw new RangeError('Progress cap must be positive.');
+  const ratio = nonNegativeGameNumber(value).divide(target).min(1);
+  return ratio.lt(Number.MIN_VALUE) ? 0 : ratio.toFiniteNumber();
 }
 
 /** Runtime boundary for UI/save input; object-shaped Decimal/JSON values are intentionally rejected. */

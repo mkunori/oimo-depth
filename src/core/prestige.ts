@@ -1,4 +1,4 @@
-import { getProductionPerSecond } from './game';
+import { getProductionPerSecond, NumericProgressError } from './game';
 import { createInitialState } from './state';
 import type { GameState } from './state';
 import { getSkillBonuses, getSkillPurchase } from './skills';
@@ -8,13 +8,14 @@ import type { SkillId } from '../data/skills';
 
 export function getPrestigeReward(state: GameState): number {
   getProductionPerSecond(state); // 周回・恒久データを既存コアと同じ条件で検証する。
-  if (state.runEarnedScore < PRESTIGE_BALANCE.unlockScore) return 0;
-  return state.runEarnedScore >= INITIAL_BALANCE.scoreCap ? PRESTIGE_BALANCE.capReward : PRESTIGE_BALANCE.earlyReward;
+  if (state.runEarnedScore.lt(PRESTIGE_BALANCE.unlockScore)) return 0;
+  return state.runEarnedScore.gte(INITIAL_BALANCE.scoreCap) ? PRESTIGE_BALANCE.capReward : PRESTIGE_BALANCE.earlyReward;
 }
 
 export function prestigeGame(state: GameState): GameState {
   const reward = getPrestigeReward(state);
   if (reward === 0) return state;
+  if (!Number.isSafeInteger(state.permanent.prestigeCount + 1) || !Number.isSafeInteger(state.permanent.unspentPoints + reward)) throw new NumericProgressError('Prestige counters would exceed the safe integer range.');
   const permanent = {
     ...state.permanent,
     prestigeCount: state.permanent.prestigeCount + 1,

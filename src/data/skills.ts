@@ -1,3 +1,4 @@
+import { gn } from '../core/numbers';
 export const SKILL_IDS = ['harvest', 'discount', 'startingImo', 'breakthrough', 'automation'] as const;
 export type SkillId = typeof SKILL_IDS[number];
 
@@ -38,4 +39,4 @@ export const SKILLS = {
   },
 } as const satisfies Record<SkillId, SkillDefinition>;
 
-export const PRESTIGE_BALANCE = Object.freeze({ unlockScore: 100_000, earlyReward: 1, capReward: 2 });
+export const PRESTIGE_BALANCE = Object.freeze({ unlockScore: gn(100_000), earlyReward: 1, capReward: 2 });
