@@ -1,3 +1,6 @@
+import { applyGearPreset } from '../core/gearModes';
+import { gearModeKey } from '../core/gearModeEffects';
+import type { BuiltinGearPreset } from '../data/gearModes';
 import { unlockGear } from '../core/gear';
 import { getGearMultiplier, getSpendableScore } from '../core/gearProgress';
 import { GEAR_IDS } from '../data/gear';
@@ -37,6 +40,7 @@ export interface Scenario {
   readonly research?: 'geology-first' | 'resonance-first';
   readonly originResearch?: boolean;
   readonly gear?: 'early' | 'cap';
+  readonly gearModePreset?: BuiltinGearPreset;
   readonly digResearch?: boolean;
 }
 
@@ -52,6 +56,7 @@ export interface TracePoint {
   readonly spendableScore: GameNumber;
   readonly gearUnlocked: GameState['permanent']['gearUnlocked'];
   readonly gearMultiplier: number;
+  readonly gearModes: GameState['permanent']['gearModes'];
   readonly originResearchRanks: GameState['originResearchRanks'];
   readonly depthMeters: number;
   readonly digSpeed: number;
@@ -60,7 +65,7 @@ export interface TracePoint {
   readonly digResearchRanks: GameState['permanent']['digResearchRanks'];
   readonly elapsedSeconds: number;
   readonly run: number;
-  readonly kind: 'start' | 'decision' | 'cap-reached' | 'end' | 'prestige' | 'automatic-purchase' | 'research-purchase' | 'gear-unlock';
+  readonly kind: 'start' | 'decision' | 'cap-reached' | 'end' | 'prestige' | 'automatic-purchase' | 'research-purchase' | 'gear-unlock' | 'mode-change';
   readonly researchRanks: GameState['researchRanks'];
   readonly score: GameNumber;
   readonly imo: GameNumber;
@@ -90,7 +95,7 @@ export interface RunResult {
 const TIME_EPSILON = 1e-7;
 const MAX_DECISIONS = 100_000;
 function depthTrace(state: GameState) {
-  return { scoreSpentThisRun: state.scoreSpentThisRun, spendableScore: getSpendableScore(state), gearUnlocked: state.permanent.gearUnlocked, gearMultiplier: getGearMultiplier(state.permanent), originResearchRanks: state.originResearchRanks, depthMeters: state.permanent.depthMeters, digSpeed: state.runEarnedScore.gte(getScoreCap(state)) ? 0 : getDigSpeed(state),
+  return { gearModes: state.permanent.gearModes, scoreSpentThisRun: state.scoreSpentThisRun, spendableScore: getSpendableScore(state), gearUnlocked: state.permanent.gearUnlocked, gearMultiplier: getGearMultiplier(state.permanent), originResearchRanks: state.originResearchRanks, depthMeters: state.permanent.depthMeters, digSpeed: state.runEarnedScore.gte(getScoreCap(state)) ? 0 : getDigSpeed(state),
     digPower: getDigPower(state), stratum: STRATA[getStratum(state.permanent.depthMeters)]!.name, digResearchRanks: state.permanent.digResearchRanks };
 }
 
@@ -148,6 +153,10 @@ export function simulateRun(initial: GameState, scenario: Scenario, maxSeconds: 
     for (const id of GEAR_IDS) {
       const next = unlockGear(state, id);
       if (next !== state) { state = next; record('gear-unlock'); }
+    }
+    if (scenario.gearModePreset) {
+      const next = applyGearPreset(state, scenario.gearModePreset);
+      if (gearModeKey(next.permanent) !== gearModeKey(state.permanent)) { state = next; record('mode-change'); }
     }
   };
   const invest = () => {

@@ -1,4 +1,4 @@
-# 保存・オフライン進行（v13）
+# 保存・オフライン進行（v14）
 
 ## 保存形式と検証
 
@@ -6,7 +6,7 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 ```json
 {
-  "saveVersion": 13,
+  "saveVersion": 14,
   "savedAt": 1700000000000,
   "gameState": {
     "imo": "gn1:0:0:0",
@@ -21,6 +21,9 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
     "researchRanks": { "geology": 0, "resonance": 0 },
     "equipmentCounts": { "worker": 0, "cart": 0, "harvester": 0, "deepDrill": 0, "refinery": 0, "veinExtractor": 0, "concentrator": 0, "rootRelay": 0, "coreChamber": 0, "originMiner": 0, "imoReactor": 0 },
     "permanent": {
+      "gearModes": { "shovel": "standard", "lens": "standard", "drillBit": "standard", "compass": "standard", "rootCore": "standard" },
+      "gearCustomPresets": [null, null, null],
+      "selectedGearPreset": "standard",
       "gearUnlocked": { "shovel": false, "lens": false, "drillBit": false, "compass": false, "rootCore": false },
       "gearDiscovered": { "shovel": false, "lens": false, "drillBit": false, "compass": false, "rootCore": false },
       "rootRebirthCount": 0,
@@ -53,7 +56,7 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 `src/core/save.ts` が外部テキストを `unknown` として検証します。残高・累計・設備の制約と次の価格の有限性はコアで検証します。欠落・負数・NaN/Infinity・小数の設備数・上限超過・未対応バージョンは拒否します。保存時刻は非負整数で JavaScript Date の範囲内です。未知の追加フィールドは採用せず、既知の値をコピーします。
 
-v7以降の金額は `GameNumber.toString()` の正規形文字列だけを受理します。通常の数値JSONや `"1e6"`、非正規な成分、NaN/Infinity・負金額は拒否します。価格はGameNumberで検証し、旧形式v1〜v6だけは従来通り次価格が安全整数を超える所有状態も拒否します。v13でも所有数・ランク・段階・回数・時刻はnumberで、安全整数と権限・上限・残高整合性を維持します。
+v7以降の金額は `GameNumber.toString()` の正規形文字列だけを受理します。通常の数値JSONや `"1e6"`、非正規な成分、NaN/Infinity・負金額は拒否します。価格はGameNumberで検証し、旧形式v1〜v6だけは従来通り次価格が安全整数を超える所有状態も拒否します。v14でも所有数・ランク・段階・回数・時刻はnumberで、安全整数と権限・上限・残高整合性を維持します。
 
 v1〜v6の既存値は従来の補完と検証後に巨大数へ変換します。v5/v6の `automationRemainder` は符号を保持して `productionRemainder` へ移し、v1〜v4はゼロを補います。端数は符号付き巨大数文字列で、絶対値が `現上限 × 32 × Number.EPSILON` を超えるものを拒否します。負の補償を含めたSCOREも0〜上限内に制限します。省略時はゼロですが、明示されたnull・欠落成分・不正値は拒否します。詳細・許容誤差・旧結果との比較は [巨大数移行](number-migration.md)。
 
@@ -137,3 +140,7 @@ v5で全5スキルと自動設定、v6で研究権限・研究ランク・全7�
 `npm test` で保存形式・異常値・1時間/48時間の放置・SCORE クリップ・時計巻戻り・決定性、保存/復帰の二重実行、保存失敗・競合を検証します。UI テストでは StrictMode 起動、報告、入出力の確認と取消、破損からの復旧、ページイベントの重複、別タブ通知を確認します。
 
 GitHub Pages のサブパス・公開ワークフローは維持しています。PR ではビルドと `/oimo-depth/` プレビューを確認し、実公開はマージ後に既存ワークフローで行います。
+
+## 効果モードとプリセット（v14）
+
+[モード保存仕様](gear-modes.md)。v1〜13は標準モードと空の3枠を補完し、既存の資産・進行を保持します。

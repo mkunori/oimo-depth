@@ -1,3 +1,4 @@
+import type { BuiltinGearPreset } from '../data/gearModes';
 import { performRootRebirth, purchaseRootUpgrade } from '../core/root';
 import { performBreakthrough } from '../core/breakthrough';
 import { performDeepResearch } from '../core/research';
@@ -14,12 +15,12 @@ import type { TracePoint } from './simulator';
 
 /** Three representative schedules, plus one late-purchase control. ROOT
  * crystals after the first choice are held to isolate the gear contribution. */
-export function simulateGear(origins: ReturnType<typeof simulateOrigins>, maxSeconds: number) {
+export function simulateGear(origins: ReturnType<typeof simulateOrigins>, maxSeconds: number, preset?: BuiltinGearPreset) {
   const sources = origins.filter((trial) => trial.policy === 'research' && trial.result.completed
     && (trial.automated && [60, 21600].includes(trial.scenario.visitSeconds!) || !trial.automated && trial.scenario.visitSeconds === 43200));
-  return sources.flatMap((previous) => (previous.automated && previous.scenario.visitSeconds === 60 ? ['early', 'cap'] as const : ['early'] as const).map((policy) => {
-    const scenario = { ...previous.scenario, id: `gear-${previous.scenario.visitSeconds}-${previous.automated ? 'auto' : 'manual'}-${policy}`,
-      label: `${previous.scenario.label} / 装備${policy === 'early' ? '随時解禁' : '各上限で解禁'}`, gear: policy };
+  return sources.flatMap((previous) => (!preset && previous.automated && previous.scenario.visitSeconds === 60 ? ['early', 'cap'] as const : ['early'] as const).map((policy) => {
+    const scenario = { ...previous.scenario, id: `gear-${previous.scenario.visitSeconds}-${previous.automated ? 'auto' : 'manual'}-${policy}${preset ? `-${preset}` : ''}`,
+      label: `${previous.scenario.label} / 装備${policy === 'early' ? '随時解禁' : '各上限で解禁'}`, gear: policy, ...(preset ? { gearModePreset: preset } : {}) };
     let state = purchaseRootUpgrade(performRootRebirth(previous.result.state), 'blessing'), elapsedSeconds = 0;
     const cycles = [], trace: TracePoint[] = [];
     for (let cycle = 1; cycle <= 3 && elapsedSeconds < maxSeconds; cycle += 1) {

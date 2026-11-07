@@ -1,5 +1,5 @@
 import { formatNumber } from '../../components/formatNumber';
-import { getDigPower, getDigSpeed, getStratum } from '../../core/excavation';
+import { getDigPower, getDigSpeed, getStratum, getEffectiveHardness } from '../../core/excavation';
 import { getDigResearchPurchase } from '../../core/digResearch';
 import { DEPTH_REWARDS, DIG_RESEARCH, DIG_RESEARCH_IDS, STRATA } from '../../data/depth';
 import type { DigResearchId } from '../../data/depth';
@@ -15,7 +15,7 @@ export function DepthPanel({ state, isStopped, notice, onPurchase }: Props) {
   return <section className="depth-panel" aria-labelledby="depth-title">
     <h3 id="depth-title"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M5 8h38M5 19h38M5 32h38M5 43h38M24 4v35m-6-6 6 6 6-6" /></svg>地下を開拓する</h3>
     <dl className="depth-stats"><div><dt>DEPTH</dt><dd><output aria-label="DEPTH" aria-live="off">{meters(depth)}</output> m</dd></div><div><dt>掘削速度</dt><dd><output aria-label="掘削速度" aria-live="off">{speedText(isStopped ? 0 : getDigSpeed(state))}</output> m/s</dd></div></dl>
-    <p>現在の地層: <strong>{stratum.name}</strong> / 硬さ ×{stratum.hardness}</p>
+    <p>現在の地層: <strong>{stratum.name}</strong> / 硬さ ×{getEffectiveHardness(state.permanent)}</p>
     <p>{next ? `次の発見 ？？？ まで ${meters(Math.max(0, next.start - depth))} m（深度 ${formatNumber(next.start)} m）` : '現在知られている最深の地層です。SCORE稼働中はこの先も掘れます。'}</p>
     {notice && <p className="progress-notice depth-notice" role="status">{notice}</p>}
     <p className="shop-note">掘削力 {speedText(getDigPower(state))} ÷ 地層の硬さ。SCORE上限中は深度も停止します。転生・突破で深度と掘削研究を保持し、SCOREや芋へ変換しません。</p>

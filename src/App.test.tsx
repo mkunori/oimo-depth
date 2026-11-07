@@ -21,6 +21,30 @@ import { performBreakthrough } from './core/breakthrough';
 
 let now = 0;
 
+it('exposes only owned modes, previews changes, saves custom presets and retains their selection on reload', () => {
+  const root = performRootRebirth(createRootRebirthReadyState());
+  seedGame(unlockGear({ ...root, runEarnedScore: gn(1e5) }, 'shovel'));
+  let view = renderGame();
+  expect(view.container.innerHTML).not.toMatch(/lens|drillBit|compass|rootCore|研究共鳴|根脈集中|地層破砕/);
+  fireEvent.click(screen.getByText(/効果モード・プリセット — 現在:/));
+  fireEvent.click(screen.getByRole('button', { name: 'DEPTH探索に切替' }));
+  expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.permanent.gearModes.shovel).toBe('excavation');
+  expect(screen.getByText(/効果モード・プリセット — 現在: DEPTH探索/)).toBeTruthy();
+  fireEvent.click(screen.getByText('カスタムプリセット（3枠）'));
+  fireEvent.change(screen.getByLabelText('枠1の名前'), { target: { value: '深度用' } });
+  fireEvent.click(screen.getAllByRole('button', { name: '現在の構成を保存' })[0]!);
+  fireEvent.change(screen.getByLabelText('強化スコップのモード'), { target: { value: 'balanced' } });
+  expect(screen.getByText(/切替前 → 切替後:/)).toBeTruthy();
+  expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.permanent.gearModes.shovel).toBe('excavation');
+  fireEvent.click(screen.getByRole('button', { name: 'この構成を適用' }));
+  expect(screen.getByText(/効果モード・プリセット — 現在: カスタム/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: '適用を確認' }));
+  fireEvent.click(screen.getByRole('button', { name: 'この構成を適用' }));
+  view.unmount(); view = renderGame();
+  expect(screen.getByText(/効果モード・プリセット — 現在: 深度用/)).toBeTruthy();
+  expect(view.container.innerHTML).not.toMatch(/rootCore|compass|研究共鳴|根脈集中/);
+});
+
 beforeEach(() => {
   now = 0;
   localStorage.clear();

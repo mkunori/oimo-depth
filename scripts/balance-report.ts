@@ -8,6 +8,7 @@ import { AUTOMATION_POLICIES } from '../src/data/automation';
 import { GameNumber, gn, encodeGameNumbers } from '../src/core/numbers';
 import { getDigSpeed, getStratum } from '../src/core/excavation';
 import { STRATA } from '../src/data/depth';
+import { GEAR_PRESETS } from '../src/data/gearModes';
 
 const number = (value: number | GameNumber) => value instanceof GameNumber ? value.format(12) : new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 }).format(value);
 const axisNumber = (value: number) => new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(value);
@@ -43,7 +44,7 @@ function json(value: unknown): string {
 }
 
 function chart(id: string, options: Plot.PlotOptions, legend: readonly { label: string; color: string }[] = [], note = ''): string {
-  if (['score', 'expansion', 'breakthrough', 'automation', 'research', 'root', 'origin', 'root-cycle', 'gear'].includes(id)) {
+  if (['score', 'expansion', 'breakthrough', 'automation', 'research', 'root', 'origin', 'root-cycle', 'gear', 'gear-modes'].includes(id)) {
     const domain = options.y?.domain ? Array.from(options.y.domain, (value: unknown) => gn(value as number | GameNumber).log10().toFiniteNumber()) : undefined;
     options = { ...options, y: { ...options.y, type: 'linear', domain, tickFormat: (value: number) => `10^${Number(value.toFixed(2))}` } };
   }
@@ -105,14 +106,28 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     stages: stages.map(({ result: { trace: _stageTrace, ...result }, ...stage }) => ({ ...stage, result })) }));
   const compactGear = suite.gear.map(({ trace: _trace, cycles, ...trial }) => ({ ...trial, cycles: cycles.map(({ stages, ...cycle }) => ({ ...cycle,
     stages: stages.map(({ result: { trace: _stageTrace, ...result }, ...stage }) => ({ ...stage, result })) })) }));
+  const compactGearModes = suite.gearModes.map(({ trace: _trace, cycles, ...trial }) => ({ ...trial, cycles: cycles.map(({ stages, ...cycle }) => ({ ...cycle,
+    stages: stages.map(({ result: { trace: _stageTrace, ...result }, ...stage }) => ({ ...stage, result })) })) }));
   const compactDepth = {
     campaigns: suite.depth.campaigns.map(({ result: { trace: _trace, runs, ...result }, ...trial }) => ({ ...trial, result: { ...result,
       runs: runs.map(({ result: { trace: _runTrace, ...runResult }, ...run }) => ({ ...run, result: runResult })) } })),
     late: suite.depth.late.map(({ result: { trace: _trace, ...result }, resumed: { trace: _resumedTrace, ...resumed }, ...trial }) => ({ ...trial, result, resumed })),
   };
-  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, origins: _origins, rootCycles: _rootCycles, gear: _gear, depth: _depth, ...metadata } = suite;
+  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, origins: _origins, rootCycles: _rootCycles, gear: _gear, gearModes: _gearModes, depth: _depth, ...metadata } = suite;
   const files: Record<string, string> = {
-    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, origins: originReportValue(compactOrigins), rootCycles: originReportValue(compactRootCycles), gear: originReportValue(compactGear), depth: compactDepth }),
+    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, origins: originReportValue(compactOrigins), rootCycles: originReportValue(compactRootCycles), gear: originReportValue(compactGear), gearModes: originReportValue(compactGearModes), depth: compactDepth }),
+    'gear-modes.csv': csv([
+      ['scenario', 'preset', 'cycle', 'completed', 'seconds', 'production', 'depth_meters', 'unlocked', 'unlock_order', 'modes'],
+      ...suite.gearModes.flatMap((trial) => trial.cycles.map((cycle) => [trial.scenario.id, trial.scenario.gearModePreset ?? null, cycle.cycle, String(cycle.completed), cycle.elapsedSeconds,
+        cycle.production, cycle.state.permanent.depthMeters, cycle.unlocked.join('/'),
+        trial.trace.filter((p) => p.run === cycle.cycle && p.kind === 'gear-unlock').map((p) => `${p.elapsedSeconds}:${Object.entries(p.gearUnlocked).filter(([, v]) => v).map(([id]) => id).join('+')}`).join('/'),
+        Object.entries(cycle.state.permanent.gearModes).map(([id, mode]) => `${id}:${mode}`).join('/')])),
+    ], true),
+    'gear-modes-timeline.csv': csv([
+      ['scenario', 'cycle', 'event', 'seconds', 'score', 'imo', 'production', 'depth_meters', 'actual_dig_speed', 'modes', 'unlocked'],
+      ...suite.gearModes.flatMap((trial) => trial.trace.map((point) => [trial.scenario.id, point.run, point.kind, point.elapsedSeconds, point.score, point.imo,
+        point.actualProduction, point.depthMeters, point.digSpeed, Object.entries(point.gearModes).map(([id, mode]) => `${id}:${mode}`).join('/'), Object.entries(point.gearUnlocked).filter(([, v]) => v).map(([id]) => id).join('/')])),
+    ], true),
     'gear.csv': csv([
       ['scenario', 'policy', 'cycle', 'completed', 'seconds', 'total_seconds', 'first_root_seconds', 'gear_multiplier', 'unlocked', 'spent_score', 'cumulative_score', 'spendable_score', 'production', 'depth_meters'],
       ...suite.gear.flatMap((trial) => trial.cycles.map((cycle) => [trial.scenario.id, trial.policy, cycle.cycle, String(cycle.completed), cycle.elapsedSeconds,
@@ -252,7 +267,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '# 現行バランスのシミュレーション結果', '',
     `コア識別子（LF 正規化 SHA-256）: \`${coreSha256}\`。${suite.runCount}周回、打切り ${time(suite.maxSeconds)}。生成日時や乱数を含まない再現可能な結果です。`, '',
     'これは方策比較であり、最適解の探索やプレイヤー全体の平均ではありません。生産・価格・報酬・保存は実コアから計算しています。', '',
-    '結果形式v2・セーブv13。JSON/CSVの芋金額・SCORE支出・生産速度はgn1文字列、台数・ランク・秒数・DEPTH・掘削速度はnumberです。数値移行は [巨大数移行](../../number-migration.md)、深層解析は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md)、恒久深度は [DEPTH](../../depth.md)、第4突破は [根源領域](../../origin.md)、根源転生は [ROOT](../../root-rebirth.md)、恒久装備は [装備](../../gear.md) を参照してください。', '',
+    '結果形式v2・セーブv14。JSON/CSVの芋金額・SCORE支出・生産速度はgn1文字列、台数・ランク・秒数・DEPTH・掘削速度はnumberです。数値移行は [巨大数移行](../../number-migration.md)、深層解析は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md)、恒久深度は [DEPTH](../../depth.md)、第4突破は [根源領域](../../origin.md)、根源転生は [ROOT](../../root-rebirth.md)、恒久装備は [装備](../../gear.md)、構成切替は [効果モード](../../gear-modes.md) を参照してください。', '',
     '## 現行パラメータ', '',
     `基礎生産 ${number(suite.parameters.balance.baseProduction)}/秒、上限 ${number(suite.parameters.balance.scoreCap)}、転生解禁 ${number(suite.parameters.prestige.unlockScore)}、報酬 ${suite.parameters.prestige.earlyReward}/${suite.parameters.prestige.capReward}pt、オフライン上限 ${time(suite.parameters.offlineLimitSeconds)}。`, '',
     '| 設備 | 基礎価格 | 台数価格倍率 | 1台あたり基礎生産 | 解禁する上限 | 台数/追加倍率（乗算） |', '| --- | ---: | ---: | ---: | ---: | --- |',
@@ -374,6 +389,12 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '| --- | --- | --- | ---: | ---: | ---: | ---: |',
     ...suite.rootCycles.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.choice === 'blessing' ? '原初の恵み' : '根源の記憶'} | ${time(trial.firstRootSeconds)} | ${trial.completed ? time(trial.elapsedSeconds) : '打切り'} | ${time(trial.stages[0]?.result.elapsedSeconds)} | ${number(trial.state.permanent.depthMeters)} m |`), '',
     '初回ROOTで全収穫×3、結晶1個を手動で使用。維持した通常ポイントだけで収穫3/割引1を再取得し、通常転生を挟まず段階0〜4を再突破します。第2深層解析では収穫3を保持し割引を返還します。根源の記憶は設備割引が即時、初期芋は次のリセットから支給するため、最初のROOT直後に芋を捏造しません。詳細・保持検証は [ROOT](../../root-rebirth.md)。', '',
+    '## 効果モード・4プリセット（ROOT1〜3）', '',
+    '| 確認 | 購入 | プリセット | ROOT後の周回 | 全段階の時間 | 序盤1E6まで | 最終DEPTH | 解禁数 |',
+    '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |',
+    ...suite.gearModes.flatMap((trial) => trial.cycles.map((cycle) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${GEAR_PRESETS[trial.scenario.gearModePreset!].name} | ${cycle.cycle} | ${time(cycle.elapsedSeconds)} | ${time(cycle.stages[0]?.result.elapsedSeconds)} | ${number(cycle.state.permanent.depthMeters)} m | ${cycle.unlocked.length} |`)), '',
+    '各確認時の解禁後にプリセットを手動適用する12経路。ROOT1〜3の36周回すべて完了し、有効装備は3→4→5点です。高速周回は序盤設備、長期成長は深層以降、根脈連携はリンク、DEPTH探索は掘削に重点を置きます。初回ROOTまでの経路は共通で、確認間隔による上限待ちも含めます。倍率・適用順・比較条件は [効果モード](../../gear-modes.md)。', '',
+    '- [ROOT3・1分自動のSCORE比較](gear-modes.svg) / [周回・解禁順CSV](gear-modes.csv) / [切替・掘削の時系列](gear-modes-timeline.csv)', '',
     '## 恒久装備・ROOT1〜3周回', '',
     '| 確認 | 購入 | 解禁方策 | ROOT後の周回 | 所要時間 | 有効装備数 | 装備倍率 | 支出SCORE |',
     '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |',
@@ -517,5 +538,15 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     color: { domain: gearTrials.map((trial) => trial.scenario.id), range: colors.slice(0, 2) },
     marks: [amountLineY(gearPoints, { x: 'hours', y: 'score', stroke: 'id', clip: true })],
   }, gearTrials.map((trial, index) => ({ label: trial.policy === 'early' ? '確認時に随時解禁' : '各上限で解禁', color: colors[index]! })), '同じ初回ROOTから継続。累計SCOREを消費せず、全解禁装備の効果を保持');
+  const modeTrials = suite.gearModes.filter((trial) => trial.scenario.visitSeconds === 60);
+  const modePoints = modeTrials.flatMap((trial) => trial.trace.filter((point) => point.run === 3 && point.score.gt(0)).map((point) => ({ ...point,
+    id: trial.scenario.id, hours: (point.elapsedSeconds - trial.cycles[2]!.startsAtSeconds) / 3600 })));
+  files['gear-modes.svg'] = chart('gear-modes', {
+    ariaLabel: 'ROOT3回後、1分自動で4プリセットのSCORE到達を比較。',
+    x: { label: 'ROOT3回後の経過時間 (hours)', grid: true },
+    y: { label: '累計SCORE (log)', domain: [1e5, 1e18], grid: true },
+    color: { domain: modeTrials.map((trial) => trial.scenario.id), range: colors.slice(0, 4) },
+    marks: [amountLineY(modePoints, { x: 'hours', y: 'score', stroke: 'id', clip: true })],
+  }, modeTrials.map((trial, index) => ({ label: GEAR_PRESETS[trial.scenario.gearModePreset!].name, color: colors[index]! })), '全装備の常時効果を保持。解禁後の手動切替を含む');
   return files;
 }
