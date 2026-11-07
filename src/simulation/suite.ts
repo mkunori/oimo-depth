@@ -1,3 +1,5 @@
+import { GEAR_MODES, GEAR_PRESETS } from '../data/gearModes';
+import type { BuiltinGearPreset } from '../data/gearModes';
 import { GEAR } from '../data/gear';
 import { simulateGear } from './gear';
 import { INITIAL_BALANCE } from '../data/balance';
@@ -24,7 +26,7 @@ import { ORIGIN_RESEARCH } from '../data/originResearch';
 import { simulateDepth } from './depth';
 import { DEPTH_BALANCE, DIG_RESEARCH, STRATA } from '../data/depth';
 
-export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 6, maxSeconds = 90 * 86_400) {
+export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 6, maxSeconds = 90 * 86_400, options = { includeGearModes: true }) {
   if (scenarios.length === 0 || new Set(scenarios.map((scenario) => scenario.id)).size !== scenarios.length) {
     throw new RangeError('Choose at least one scenario with unique IDs.');
   }
@@ -43,7 +45,7 @@ export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 
   return {
     formatVersion: 2,
     parameters: { balance: INITIAL_BALANCE, equipment: EQUIPMENT, prestige: PRESTIGE_BALANCE,
-      skills: SKILLS, gear: GEAR, root: { rewards: ROOT_REWARDS, upgrades: ROOT_UPGRADES, firstProductionMultiplier: ROOT_FIRST_PRODUCTION_MULTIPLIER }, research: RESEARCH, originResearch: ORIGIN_RESEARCH, depth: { balance: DEPTH_BALANCE, strata: STRATA, digResearch: DIG_RESEARCH }, rootLink: { relaysPerLink: 2, baseProduction: ROOT_LINK_PRODUCTION }, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
+      skills: SKILLS, gear: GEAR, gearModes: GEAR_MODES, gearPresets: GEAR_PRESETS, root: { rewards: ROOT_REWARDS, upgrades: ROOT_UPGRADES, firstProductionMultiplier: ROOT_FIRST_PRODUCTION_MULTIPLIER }, research: RESEARCH, originResearch: ORIGIN_RESEARCH, depth: { balance: DEPTH_BALANCE, strata: STRATA, digResearch: DIG_RESEARCH }, rootLink: { relaysPerLink: 2, baseProduction: ROOT_LINK_PRODUCTION }, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
     runCount, maxSeconds, skillPlans: SKILL_PLANS, coverage: COVERAGE, campaigns, benchmarks,
     equipmentBaseline: EQUIPMENT_BASELINE,
     breakthroughJourneys,
@@ -53,6 +55,7 @@ export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 
     origins,
     rootCycles: simulateRootCycles(origins, maxSeconds),
     gear: simulateGear(origins, maxSeconds),
+    gearModes: options.includeGearModes ? (['speed', 'growth', 'links', 'depth'] as BuiltinGearPreset[]).flatMap((preset) => simulateGear(origins, maxSeconds, preset)) : [],
     depth: simulateDepth(rootConnections, maxSeconds),
     expansion: breakthroughSeed ? simulateExpansion(breakthroughSeed) : [],
     projectionReference: referenceProduction === null ? null : {

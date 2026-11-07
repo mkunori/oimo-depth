@@ -1,3 +1,4 @@
+import { assertGearSettings } from './gearModeEffects';
 import { GEAR, GEAR_IDS } from '../data/gear';
 import type { GearId } from '../data/gear';
 import type { GameState, PermanentProgress } from './state';
@@ -30,6 +31,7 @@ export function assertGearProgress(state: GameState): void {
     || !Array.isArray(purchased) || purchased.length > GEAR_IDS.length) throw new RangeError('Invalid SCORE spending.');
   const unlocked = permanent.gearUnlocked, discovered = permanent.gearDiscovered;
   if (!unlocked || !discovered) throw new RangeError('Missing gear progress.');
+  assertGearSettings(permanent);
   if (permanent.rootRebirthCount === 0 && purchased.length === 0 && spent.isZero()
     && GEAR_IDS.every((id) => unlocked[id] === false && discovered[id] === false)) return;
   for (const id of GEAR_IDS) {

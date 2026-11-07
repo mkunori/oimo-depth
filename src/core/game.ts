@@ -1,3 +1,4 @@
+import { getGearModeEffects, gearModeKey } from './gearModeEffects';
 import { assertGearProgress, getGearMultiplier } from './gearProgress';
 import { getRootBonuses } from './rootProgress';
 import { createEmptyOriginResearch, getOriginResearchSpent, ORIGIN_RESEARCH, ORIGIN_RESEARCH_IDS, originMultiplier } from '../data/originResearch';
@@ -92,23 +93,25 @@ export function assertGameState(state: GameState) {
 export function getProductionPerSecond(state: GameState): GameNumber {
   const bonuses = assertGameState(state);
   const root = getRootBonuses(state.permanent);
-  const key = `${EQUIPMENT_IDS.map((id) => state.equipmentCounts[id]).join(',')}:${bonuses.productionMultiplier}:${root.lateAndDig}:${getGearMultiplier(state.permanent)}:${state.researchRanks.geology}:${state.researchRanks.resonance}:${state.originResearchRanks.harvest}:${state.originResearchRanks.link}`;
+  const modes = getGearModeEffects(state.permanent, state.researchRanks.geology);
+  const key = `${gearModeKey(state.permanent)}:${EQUIPMENT_IDS.map((id) => state.equipmentCounts[id]).join(',')}:${bonuses.productionMultiplier}:${root.lateAndDig}:${getGearMultiplier(state.permanent)}:${state.researchRanks.geology}:${state.researchRanks.resonance}:${state.originResearchRanks.harvest}:${state.originResearchRanks.link}`;
   const cached = productionCache.get(key);
   if (cached) return cached;
   const value = EQUIPMENT_IDS.reduce((sum, id) => sum.add(getDefinition(id).productionPerUnit.multiply(state.equipmentCounts[id])
     .multiply(getEquipmentMilestones(id, state.equipmentCounts[id]).multiplier)
     .multiply(researchMultiplier(state.researchRanks, id === 'veinExtractor' || id === 'concentrator'))
-    .multiply(getDefinition(id).unlockAtScoreCap.gte(1e12) ? root.lateAndDig : 1)),
+    .multiply(getDefinition(id).unlockAtScoreCap.gte(1e12) ? root.lateAndDig : 1).multiply(modes.equipment[id])),
   INITIAL_BALANCE.baseProduction.multiply(researchMultiplier(state.researchRanks)))
     .add(getRootLink(state.equipmentCounts).baseProduction.multiply(researchMultiplier(state.researchRanks))
-      .multiply(ORIGIN_RESEARCH.link.multiplier ** state.originResearchRanks.link))
+      .multiply(ORIGIN_RESEARCH.link.multiplier ** state.originResearchRanks.link).multiply(modes.link))
     .multiply(originMultiplier(state.originResearchRanks))
-    .multiply(bonuses.productionMultiplier).multiply(getGearMultiplier(state.permanent));
+    .multiply(bonuses.productionMultiplier).multiply(getGearMultiplier(state.permanent)).multiply(modes.global);
   if (productionCache.size < 4_096) productionCache.set(key, value);
   return value;
 }
 export function getEquipmentProductionPerUnit(id: EquipmentId, permanent: PermanentProgress = createInitialPermanent(), ownedCount = 0, research: ResearchRanks = createEmptyResearch(), origin: OriginResearchRanks = createEmptyOriginResearch()): GameNumber {
-  return getDefinition(id).productionPerUnit.multiply(getSkillBonuses(permanent).productionMultiplier)
+  const modes = getGearModeEffects(permanent, research.geology);
+  return getDefinition(id).productionPerUnit.multiply(getSkillBonuses(permanent).productionMultiplier).multiply(modes.equipment[id]).multiply(modes.global)
     .multiply(getEquipmentMilestones(id, ownedCount).multiplier)
     .multiply(researchMultiplier(research, id === 'veinExtractor' || id === 'concentrator')).multiply(originMultiplier(origin)).multiply(getDefinition(id).unlockAtScoreCap.gte(1e12) ? getRootBonuses(permanent).lateAndDig : 1).multiply(getGearMultiplier(permanent));
 }
@@ -143,7 +146,8 @@ export function getEquipmentPurchaseGain(id: EquipmentId, state: Pick<GameState,
       .subtract(getEquipmentProductionPerUnit(equipment, permanent, before[equipment], research, origin).multiply(before[equipment])));
   }
   const linkGain = getRootLink(after).baseProduction.subtract(getRootLink(before).baseProduction);
-  return gain.add(linkGain.multiply(originMultiplier(origin, true)).multiply(researchMultiplier(research)).multiply(getSkillBonuses(permanent).productionMultiplier).multiply(getGearMultiplier(permanent)));
+  const modes = getGearModeEffects(permanent, research.geology);
+  return gain.add(linkGain.multiply(modes.link).multiply(modes.global).multiply(originMultiplier(origin, true)).multiply(researchMultiplier(research)).multiply(getSkillBonuses(permanent).productionMultiplier).multiply(getGearMultiplier(permanent)));
 }
 export function isEquipmentDiscovered(id: EquipmentId, state: Pick<GameState, 'permanent'>): boolean {
   return isOriginEquipment(id) ? state.permanent.maxDiscoveredStage >= 4 : !isRootEquipment(id) || state.permanent.maxDiscoveredStage >= 3;
@@ -231,7 +235,7 @@ export interface AutomaticProgress {
 }
 function nextAutomaticEquipment(state: GameState): EquipmentId | undefined {
   const settings = state.automation;
-  const key = settings.policy === 'priority' ? '' : `${getGearMultiplier(state.permanent)}:${state.scoreCapStage}:${settings.policy}:${EQUIPMENT_IDS.map((id) => `${state.equipmentCounts[id]}:${Number(settings.equipment[id])}`).join(',')}:${state.permanent.skillRanks.harvest}:${state.permanent.skillRanks.discount}:${state.permanent.rootRebirthCount}:${state.permanent.rootUpgradeRanks.blessing}:${state.permanent.rootUpgradeRanks.memory}:${state.permanent.rootUpgradeRanks.adaptation}:${state.researchRanks.geology}:${state.researchRanks.resonance}:${state.originResearchRanks.harvest}:${state.originResearchRanks.link}`;
+  const key = settings.policy === 'priority' ? '' : `${gearModeKey(state.permanent)}:${getGearMultiplier(state.permanent)}:${state.scoreCapStage}:${settings.policy}:${EQUIPMENT_IDS.map((id) => `${state.equipmentCounts[id]}:${Number(settings.equipment[id])}`).join(',')}:${state.permanent.skillRanks.harvest}:${state.permanent.skillRanks.discount}:${state.permanent.rootRebirthCount}:${state.permanent.rootUpgradeRanks.blessing}:${state.permanent.rootUpgradeRanks.memory}:${state.permanent.rootUpgradeRanks.adaptation}:${state.researchRanks.geology}:${state.researchRanks.resonance}:${state.originResearchRanks.harvest}:${state.originResearchRanks.link}`;
   if (settings.policy !== 'priority' && targetCache.has(key)) return targetCache.get(key);
   const ids = EQUIPMENT_IDS.filter((id) => settings.equipment[id] && getEquipmentAvailability(id, state).unlocked);
   const price = (id: EquipmentId) => getEquipmentPrice(id, state.equipmentCounts[id], state.permanent);

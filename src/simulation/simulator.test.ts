@@ -124,10 +124,10 @@ describe('event-driven simulation', () => {
   it('is deterministic without ambient clocks or randomness and completes the default matrix', () => {
     vi.spyOn(Date, 'now').mockImplementation(() => { throw new Error('ambient clock'); });
     vi.spyOn(Math, 'random').mockImplementation(() => { throw new Error('randomness'); });
-    const first = runSuite();
+    const first = runSuite(undefined, undefined, undefined, { includeGearModes: false });
     defaultSuite = first;
     assertV6BalanceBaseline(first);
-    const second = runSuite();
+    const second = runSuite(undefined, undefined, undefined, { includeGearModes: false });
     expect(first).toEqual(second);
     expect(first.campaigns).toHaveLength(15);
     expect(first.research).toHaveLength(18);
@@ -292,7 +292,7 @@ describe('simulation policy boundaries', () => {
 describe('equipment growth comparison', () => {
   it('compares actual automation policies from equal seeds, with a low-cost unlock path', () => {
     // Reuse the deterministic immutable fixture; filtered runs can still build it.
-    const suite = defaultSuite ?? runSuite();
+    const suite = defaultSuite ?? runSuite(undefined, undefined, undefined, { includeGearModes: false });
     expect(suite.automation.trials).toHaveLength(24);
     expect(suite.automation.journeys).toHaveLength(12);
     for (const trial of suite.automation.trials) {

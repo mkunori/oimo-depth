@@ -37,11 +37,11 @@ function sameOrigin(a: unknown, b: unknown, key = '', score = 1, depth = 1, carr
 export function equivalentOriginArtifact(name: string, expected: string, actual: string): boolean {
   try {
     if (name === 'results.json') {
-      const { origins: a, rootCycles: rootsA, gear: gearA, ...left } = JSON.parse(expected) as Row;
-      const { origins: b, rootCycles: rootsB, gear: gearB, ...right } = JSON.parse(actual) as Row;
-      return a !== undefined && b !== undefined && JSON.stringify(left) === JSON.stringify(right) && sameOrigin(a, b) && sameOrigin(rootsA, rootsB) && sameOrigin(gearA, gearB);
+      const { origins: a, rootCycles: rootsA, gear: gearA, gearModes: modesA, ...left } = JSON.parse(expected) as Row;
+      const { origins: b, rootCycles: rootsB, gear: gearB, gearModes: modesB, ...right } = JSON.parse(actual) as Row;
+      return a !== undefined && b !== undefined && JSON.stringify(left) === JSON.stringify(right) && sameOrigin(a, b) && sameOrigin(rootsA, rootsB) && sameOrigin(gearA, gearB) && sameOrigin(modesA, modesB);
     }
-    if (!['origin.csv', 'origin-timeline.csv', 'root-cycle.csv', 'root-cycle-timeline.csv', 'gear.csv', 'gear-timeline.csv'].includes(name)) return false;
+    if (!['origin.csv', 'origin-timeline.csv', 'root-cycle.csv', 'root-cycle-timeline.csv', 'gear.csv', 'gear-timeline.csv', 'gear-modes.csv', 'gear-modes-timeline.csv'].includes(name)) return false;
     // These generated CSVs quote every cell and contain no embedded line breaks.
     const parse = (text: string) => text.trimEnd().split('\n').map((line) => JSON.parse(`[${line}]`) as string[]);
     const left = parse(expected), right = parse(actual);

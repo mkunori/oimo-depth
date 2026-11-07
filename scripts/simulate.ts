@@ -33,7 +33,7 @@ for (let index = 0; index < args.length; index += 1) {
 if (!Number.isFinite(maxDays) || maxDays <= 0 || maxDays > 365) throw new RangeError('max-days must be >0 and <=365.');
 if (new Set(selected).size !== selected.length || selected.some((id) => !SCENARIOS.some((scenario) => scenario.id === id))) throw new RangeError('Unknown or duplicate scenario.');
 const scenarios = selected.length > 0 ? selected.map((id) => SCENARIOS.find((scenario) => scenario.id === id)!) : SCENARIOS;
-const modelFiles = ['src/core/gear.ts', 'src/core/gearProgress.ts', 'src/data/gear.ts', 'src/core/root.ts', 'src/core/rootProgress.ts', 'src/data/root.ts', 'src/core/origin.ts', 'src/data/originResearch.ts', 'src/core/numbers.ts', 'src/core/state.ts', 'src/core/game.ts', 'src/core/skills.ts', 'src/core/prestige.ts', 'src/core/save.ts',
+const modelFiles = ['src/core/gearModes.ts', 'src/core/gearModeEffects.ts', 'src/data/gearModes.ts', 'src/core/gear.ts', 'src/core/gearProgress.ts', 'src/data/gear.ts', 'src/core/root.ts', 'src/core/rootProgress.ts', 'src/data/root.ts', 'src/core/origin.ts', 'src/data/originResearch.ts', 'src/core/numbers.ts', 'src/core/state.ts', 'src/core/game.ts', 'src/core/skills.ts', 'src/core/prestige.ts', 'src/core/save.ts',
   'src/core/breakthrough.ts', 'src/core/research.ts', 'src/core/rootConnection.ts', 'src/core/excavation.ts', 'src/core/digResearch.ts', 'src/data/depth.ts', 'src/data/research.ts', 'src/data/scoreCaps.ts', 'src/data/automation.ts', 'src/data/balance.ts', 'src/data/equipment.ts', 'src/data/skills.ts'];
 const hash = createHash('sha256');
 for (const name of modelFiles) hash.update(name + '\n' + (await readFile(path.join(root, name), 'utf8')).replaceAll('\r\n', '\n') + '\n');

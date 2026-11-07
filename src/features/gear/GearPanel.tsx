@@ -1,3 +1,5 @@
+import { GearModeControls } from './GearModeControls';
+import type { GearControlProps } from './GearModeControls';
 import type { GameState } from '../../core/state';
 import { GEAR, GEAR_IDS } from '../../data/gear';
 import type { GearId } from '../../data/gear';
@@ -6,7 +8,7 @@ import { getGearMultiplier, getSpendableScore } from '../../core/gearProgress';
 import { formatMultiplier, formatNumber } from '../../components/formatNumber';
 import { GearIcon } from '../../components/GearIcon';
 
-export function GearPanel({ state, isPaused, onUnlock }: {
+export function GearPanel({ state, isPaused, onUnlock, ...controls }: GearControlProps & {
   readonly state: GameState; readonly isPaused: boolean; readonly onUnlock: (id: GearId) => boolean;
 }) {
   if (!state.permanent.equipmentSystemUnlocked) return state.permanent.maxDiscoveredStage >= 4
@@ -23,6 +25,7 @@ export function GearPanel({ state, isPaused, onUnlock }: {
       <div><dt>この周回の装備支出</dt><dd><output aria-label="装備支出SCORE">{formatNumber(state.scoreSpentThisRun)}</output></dd></div>
     </dl>
     <p>常時有効 <output aria-label="有効な装備数">{count}</output>点 / 装備由来の全生産 ×{formatMultiplier(getGearMultiplier(state.permanent))}。基礎生産・全設備・リンク追加生産に適用します。</p>
+    <GearModeControls state={state} isPaused={isPaused} {...controls} />
     <div className="research-nodes">
       {visible.map((id) => {
         const definition = GEAR[id], quote = getGearUnlock(state, id), owned = state.permanent.gearUnlocked[id];
@@ -36,6 +39,6 @@ export function GearPanel({ state, isPaused, onUnlock }: {
       })}
     </div>
     {next && <p className="gear-next">次の装備: ？？？ — ROOT {GEAR[next].minimumRootCount}回と対応する突破段階で発見します。</p>}
-    <p className="shop-note">周回リセットでは利用可能SCOREと支出内訳をリセットします。モード・プリセットはIssue #34で実装予定です。</p>
+    <p className="shop-note">周回リセットでは利用可能SCOREと支出内訳をリセットします。モード・プリセットも転生・ROOT後に保持します。</p>
   </section>;
 }

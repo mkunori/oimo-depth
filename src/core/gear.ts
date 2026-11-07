@@ -1,3 +1,4 @@
+import { reconcileGearPreset } from './gearModeEffects';
 import { GEAR, GEAR_IDS } from '../data/gear';
 import type { GearId } from '../data/gear';
 import type { GameState } from './state';
@@ -21,5 +22,5 @@ export function unlockGear(state: GameState, id: GearId): GameState {
   const quote = getGearUnlock(state, id);
   if (!quote.canUnlock) return state;
   return { ...state, scoreSpentThisRun: quote.spentAfter, gearPurchasedThisRun: quote.purchased,
-    permanent: { ...state.permanent, gearUnlocked: { ...state.permanent.gearUnlocked, [id]: true } } };
+    permanent: reconcileGearPreset({ ...state.permanent, gearModes: { ...state.permanent.gearModes, [id]: 'standard' }, gearUnlocked: { ...state.permanent.gearUnlocked, [id]: true } }) };
 }

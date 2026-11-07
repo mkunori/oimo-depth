@@ -1,3 +1,5 @@
+import { setGearMode, applyGearPreset, editGearPreset, getGearRates } from '../../core/gearModes';
+import type { GearModeId, GearPresetId } from '../../data/gearModes';
 import { advanceWithAutomation, AutomationLimitError, NumericProgressError, configureAutomation, getEquipmentMilestones, purchaseEquipment } from '../../core/game';
 import type { PurchaseMode } from '../../core/game';
 import { createSave, parseSave, SaveDataError, serializeSave, settleOffline, SAVE_VERSION } from '../../core/save';
@@ -224,6 +226,19 @@ export class GameSession {
     } catch (error) { this.fail(error); return false; }
   };
 
+  setGearMode = (id: GearId, mode: GearModeId): boolean => this.gearAction((state) => setGearMode(state, id, mode));
+  applyGearPreset = (id: GearPresetId): boolean => this.gearAction((state) => applyGearPreset(state, id));
+  editGearPreset = (slot: number, operation: 'save' | 'rename' | 'delete', name = ''): boolean => this.gearAction((state) => editGearPreset(state, slot, operation, name));
+  private gearAction(action: (state: GameState) => GameState): boolean {
+    this.tick();
+    if (this.hidden || this.snapshot.status !== 'ready') return false;
+    try {
+      const before = this.snapshot.gameState, after = action(before);
+      if (after === before) return false;
+      const oldRates = getGearRates(before), newRates = getGearRates(after);
+      return this.commitProgress(after, `装備構成を保存しました。収穫 ${oldRates.production.format()} → ${newRates.production.format()} 芋/s、掘削 ${oldRates.dig.toPrecision(4)} → ${newRates.dig.toPrecision(4)} m/s`);
+    } catch (error) { this.fail(error); return false; }
+  }
   unlockGear = (id: GearId): boolean => this.researchAction((state) => unlockGear(state, id), `${GEAR[id].name}を恒久解禁しました。全解禁装備の常時効果が有効です。`);
   rootRebirth = (): boolean => {
     this.tick();

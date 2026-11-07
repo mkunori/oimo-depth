@@ -1,8 +1,9 @@
+import { unlockGear } from '../../core/gear';
 import { withoutDepth } from '../../test/depth';
 import { testAmount as gn, stringifyTestSave } from '../../test/amounts';
 
 import { describe, expect, it } from 'vitest';
-import { advanceGame } from '../../core/game';
+import { advanceGame, advanceWithAutomation } from '../../core/game';
 import { createSave, parseSave, serializeSave, SAVE_VERSION } from '../../core/save';
 import { createInitialState } from '../../core/state';
 import { prestigeGame } from '../../core/prestige';
@@ -16,6 +17,26 @@ import { performRootConnection } from '../../core/rootConnection';
 import { performDeepResearch, purchaseResearch } from '../../core/research';
 
 describe('research session transactions', () => {
+  it('settles automatic purchases and depth with old modes before committing a switch, then rejects stale switches', () => {
+    const game = setup(), root = performRootRebirth(createRootRebirthReadyState());
+    const owned = unlockGear({ ...root, imo: gn(1000), runEarnedScore: gn(1e5), automation: { ...root.automation, enabled: true } }, 'shovel');
+    game.storage.value = serializeSave(createSave(owned, START)); game.session.start();
+    const before = game.session.getSnapshot().gameState;
+    game.elapse(60);
+    const expected = advanceWithAutomation(before, 60).state;
+    expect(game.session.setGearMode('shovel', 'excavation')).toBe(true);
+    const after = game.session.getSnapshot().gameState;
+    expect(after.runEarnedScore).toBeAmount(expected.runEarnedScore);
+    expect(after.equipmentCounts).toEqual(expected.equipmentCounts);
+    expect(after.permanent.depthMeters).toBe(expected.permanent.depthMeters);
+    expect(after.permanent.gearModes.shovel).toBe('excavation');
+    expect(parseSave(game.storage.value!).gameState).toEqual(after);
+    const external = serializeSave(createSave(after, START + 123));
+    game.storage.value = external;
+    expect(game.session.applyGearPreset('speed')).toBe(false);
+    expect(game.session.getSnapshot().status).toBe('conflict');
+    expect(game.storage.value).toBe(external);
+  });
   it('persists breakthrough/upgrades/refund and restores through export/import without an extra purchase', () => {
     const game = setup();
     game.storage.value = serializeSave(createSave(createResearchReadyState(), START)); game.session.start();
@@ -38,18 +59,18 @@ describe('research session transactions', () => {
     expect(next.resetResearch()).toBe(false);
   });
 
-  it.each(['gear', 'root-rebirth', 'root-upgrade', 'breakthrough', 'root', 'origin', 'origin-upgrade', 'dig', 'upgrade', 'refund'] as const)('retains the prior state/raw save when %s cannot be written', (action) => {
+  it.each(['mode', 'gear', 'root-rebirth', 'root-upgrade', 'breakthrough', 'root', 'origin', 'origin-upgrade', 'dig', 'upgrade', 'refund'] as const)('retains the prior state/raw save when %s cannot be written', (action) => {
     const game = setup();
     const ready = createResearchReadyState();
     const empty = createInitialState();
     const initial = action === 'dig' ? { ...empty, imo: gn(1e5), runEarnedScore: gn(1e5), permanent: { ...empty.permanent, depthMeters: 100 } }
       : action === 'origin' || action === 'origin-upgrade' ? advanceGame(performRootConnection(createRootConnectionReadyState()), Number.MAX_VALUE) : action === 'root' ? createRootConnectionReadyState() : action === 'breakthrough' ? ready : action === 'upgrade' ? performDeepResearch(ready) : purchaseResearch(performDeepResearch(ready), 'geology');
-    const gearRoot = action === 'gear' ? performRootRebirth(createRootRebirthReadyState()) : null;
+    const gearRoot = action === 'gear' || action === 'mode' ? performRootRebirth(createRootRebirthReadyState()) : null;
     const prepared = gearRoot ? { ...gearRoot, imo: gn(123), runEarnedScore: gn(1e5) } : action === 'root-rebirth' ? createRootRebirthReadyState() : action === 'root-upgrade' ? performRootRebirth(createRootRebirthReadyState()) : action === 'origin-upgrade' ? { ...performOriginAnalysis(initial), imo: gn(1e17), runEarnedScore: gn(1e17) } : initial;
-    game.storage.value = serializeSave(createSave(prepared, START)); game.session.start();
+    game.storage.value = serializeSave(createSave(action === 'mode' ? unlockGear(prepared, 'shovel') : prepared, START)); game.session.start();
     const state = game.session.getSnapshot().gameState; const raw = game.storage.value;
     game.storage.failWrites = true;
-    const succeeded = action === 'gear' ? game.session.unlockGear('shovel') : action === 'root-rebirth' ? game.session.rootRebirth() : action === 'root-upgrade' ? game.session.buyRootUpgrade('blessing') : action === 'origin' ? game.session.originAnalysis() : action === 'origin-upgrade' ? game.session.buyOriginResearch('harvest') : action === 'dig' ? game.session.buyDigResearch('basic') : action === 'root' ? game.session.rootConnection() : action === 'breakthrough' ? game.session.deepResearch() : action === 'upgrade' ? game.session.buyResearch('geology') : game.session.resetResearch();
+    const succeeded = action === 'mode' ? game.session.setGearMode('shovel', 'excavation') : action === 'gear' ? game.session.unlockGear('shovel') : action === 'root-rebirth' ? game.session.rootRebirth() : action === 'root-upgrade' ? game.session.buyRootUpgrade('blessing') : action === 'origin' ? game.session.originAnalysis() : action === 'origin-upgrade' ? game.session.buyOriginResearch('harvest') : action === 'dig' ? game.session.buyDigResearch('basic') : action === 'root' ? game.session.rootConnection() : action === 'breakthrough' ? game.session.deepResearch() : action === 'upgrade' ? game.session.buyResearch('geology') : game.session.resetResearch();
     expect(succeeded).toBe(false);
     expect(game.session.getSnapshot().gameState).toBe(state);
     expect(game.storage.value).toBe(raw);
