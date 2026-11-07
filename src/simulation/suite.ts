@@ -15,6 +15,8 @@ import { simulateAutomation } from './automation';
 import { simulateResearch } from './research';
 import { RESEARCH } from '../data/research';
 import { simulateRootConnections } from './rootConnection';
+import { simulateDepth } from './depth';
+import { DEPTH_BALANCE, DIG_RESEARCH, STRATA } from '../data/depth';
 
 export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 6, maxSeconds = 90 * 86_400) {
   if (scenarios.length === 0 || new Set(scenarios.map((scenario) => scenario.id)).size !== scenarios.length) {
@@ -30,16 +32,18 @@ export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 
   const breakthroughJourneys = BREAKTHROUGH_SCENARIOS.map((scenario) => simulateBreakthroughJourney(scenario, maxSeconds));
   const breakthroughSeed = breakthroughJourneys[0]?.beforeBreakthrough;
   const research = simulateResearch(maxSeconds);
+  const rootConnections = simulateRootConnections(research, maxSeconds);
   return {
     formatVersion: 2,
     parameters: { balance: INITIAL_BALANCE, equipment: EQUIPMENT, prestige: PRESTIGE_BALANCE,
-      skills: SKILLS, research: RESEARCH, rootLink: { relaysPerLink: 2, baseProduction: ROOT_LINK_PRODUCTION }, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
+      skills: SKILLS, research: RESEARCH, depth: { balance: DEPTH_BALANCE, strata: STRATA, digResearch: DIG_RESEARCH }, rootLink: { relaysPerLink: 2, baseProduction: ROOT_LINK_PRODUCTION }, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
     runCount, maxSeconds, skillPlans: SKILL_PLANS, coverage: COVERAGE, campaigns, benchmarks,
     equipmentBaseline: EQUIPMENT_BASELINE,
     breakthroughJourneys,
     automation: simulateAutomation(maxSeconds),
     research,
-    rootConnections: simulateRootConnections(research, maxSeconds),
+    rootConnections,
+    depth: simulateDepth(rootConnections, maxSeconds),
     expansion: breakthroughSeed ? simulateExpansion(breakthroughSeed) : [],
     projectionReference: referenceProduction === null ? null : {
       scenarioId: reference!.scenario.id, run: lastCompleted!.run, production: referenceProduction,

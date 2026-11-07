@@ -6,6 +6,8 @@ import { EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS } from '../src/data/equipment';
 import { SCORE_CAP_STAGES } from '../src/data/scoreCaps';
 import { AUTOMATION_POLICIES } from '../src/data/automation';
 import { GameNumber, gn, encodeGameNumbers } from '../src/core/numbers';
+import { getDigSpeed, getStratum } from '../src/core/excavation';
+import { STRATA } from '../src/data/depth';
 
 const number = (value: number | GameNumber) => value instanceof GameNumber ? value.format(12) : new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 2 }).format(value);
 const axisNumber = (value: number) => new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 }).format(value);
@@ -88,9 +90,28 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     trials: suite.automation.trials.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result })) };
   const compactResearch = suite.research.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
   const compactRoots = suite.rootConnections.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
-  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, ...metadata } = suite;
+  const compactDepth = {
+    campaigns: suite.depth.campaigns.map(({ result: { trace: _trace, runs, ...result }, ...trial }) => ({ ...trial, result: { ...result,
+      runs: runs.map(({ result: { trace: _runTrace, ...runResult }, ...run }) => ({ ...run, result: runResult })) } })),
+    late: suite.depth.late.map(({ result: { trace: _trace, ...result }, resumed: { trace: _resumedTrace, ...resumed }, ...trial }) => ({ ...trial, result, resumed })),
+  };
+  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, depth: _depth, ...metadata } = suite;
   const files: Record<string, string> = {
-    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots }),
+    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, depth: compactDepth }),
+    'depth.csv': csv([
+      ['scenario', 'band', 'dig_research', 'visit_seconds', 'run', 'completed', 'seconds', 'score', 'depth_meters', 'stratum', 'dig_speed_capacity', 'idle_at_score_cap_seconds', 'basic_rank', 'vein_rank'],
+      ...suite.depth.campaigns.flatMap((trial) => trial.result.runs.map((run) => [trial.scenario.id, '1e6', String(trial.digResearch), trial.scenario.visitSeconds, run.run,
+        String(run.result.completed), run.result.elapsedSeconds, run.result.state.runEarnedScore, run.result.state.permanent.depthMeters, STRATA[getStratum(run.result.state.permanent.depthMeters)]!.name,
+        getDigSpeed(run.result.state), run.result.idleAtCapSeconds, run.result.state.permanent.digResearchRanks.basic, run.result.state.permanent.digResearchRanks.vein])),
+      ...suite.depth.late.flatMap((trial) => ([['1e15', trial.result], ['post-prestige-early-target', trial.resumed]] as const).map(([band, result]) => [trial.scenario.id, band, String(trial.digResearch), trial.scenario.visitSeconds, 1,
+        String(result.completed), result.elapsedSeconds, result.state.runEarnedScore, result.state.permanent.depthMeters, STRATA[getStratum(result.state.permanent.depthMeters)]!.name,
+        getDigSpeed(result.state), result.idleAtCapSeconds, result.state.permanent.digResearchRanks.basic, result.state.permanent.digResearchRanks.vein])),
+    ]),
+    'depth-timeline.csv': csv([
+      ['scenario', 'run', 'event', 'seconds', 'score', 'depth_meters', 'stratum', 'dig_power', 'actual_dig_speed', 'basic_rank', 'vein_rank'],
+      ...suite.depth.campaigns.flatMap((trial) => trial.result.trace.map((point) => [trial.scenario.id, point.run, point.kind, point.elapsedSeconds, point.score, point.depthMeters, point.stratum, point.digPower, point.digSpeed, point.digResearchRanks.basic, point.digResearchRanks.vein])),
+      ...suite.depth.late.flatMap((trial) => trial.result.trace.map((point) => [trial.scenario.id, point.run, point.kind, point.elapsedSeconds, point.score, point.depthMeters, point.stratum, point.digPower, point.digSpeed, point.digResearchRanks.basic, point.digResearchRanks.vein])),
+    ]),
     'root-connection.csv': csv([
       ['scenario', 'automated', 'policy', 'visit_seconds', 'completed', 'before_connection_seconds', 'after_connection_seconds', 'total_seconds', 'purchases', 'idle_at_cap_seconds', 'initial_production', 'final_production', 'production_multiplier', 'links', ...EQUIPMENT_IDS],
       ...suite.rootConnections.map((trial) => [trial.scenario.id, String(trial.automated), trial.policy, trial.scenario.visitSeconds, String(trial.result.completed),
@@ -178,7 +199,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '# 現行バランスのシミュレーション結果', '',
     `コア識別子（LF 正規化 SHA-256）: \`${coreSha256}\`。${suite.runCount}周回、打切り ${time(suite.maxSeconds)}。生成日時や乱数を含まない再現可能な結果です。`, '',
     'これは方策比較であり、最適解の探索やプレイヤー全体の平均ではありません。生産・価格・報酬・保存は実コアから計算しています。', '',
-    '結果形式v2・セーブv9。JSON/CSVの金額・速度は正規化したgn1文字列、台数・ランク・秒数はnumberです。図は巨大数のlog10座標を描画し、金額を直接numberへ変換しません。数値移行の固定比較は [巨大数移行](../../number-migration.md)、解析リセットによる意図的差分は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md) を参照してください。', '',
+    '結果形式v2・セーブv10。JSON/CSVの芋金額・生産速度はgn1文字列、台数・ランク・秒数・DEPTH・掘削速度はnumberです。数値移行は [巨大数移行](../../number-migration.md)、深層解析は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md)、恒久深度は [DEPTH](../../depth.md) を参照してください。', '',
     '## 現行パラメータ', '',
     `基礎生産 ${number(suite.parameters.balance.baseProduction)}/秒、上限 ${number(suite.parameters.balance.scoreCap)}、転生解禁 ${number(suite.parameters.prestige.unlockScore)}、報酬 ${suite.parameters.prestige.earlyReward}/${suite.parameters.prestige.capReward}pt、オフライン上限 ${time(suite.parameters.offlineLimitSeconds)}。`, '',
     '| 設備 | 基礎価格 | 台数価格倍率 | 1台あたり基礎生産 | 解禁する上限 | 台数/追加倍率（乗算） |', '| --- | ---: | ---: | ---: | ---: | --- |',
@@ -259,7 +280,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     ...suite.breakthroughJourneys.map((journey) => `| ${journey.scenario.label} | ${time(journey.firstScore1mSeconds)} | ${time(journey.permissionAtSeconds)} | ${journey.beforeBreakthrough?.permanent.prestigeCount ?? '未到達'}回 / ${journey.runs.reduce((sum, run) => sum + run.reward, 0)}pt | ${time(journey.breakthroughAtSeconds)} | ${journey.expansion?.completed ? time(journey.expansion.elapsedSeconds) : '未到達 / 打切り'} | ${time(journey.elapsedSeconds)} | ${time(journey.expansion?.idleAtCapSeconds)} |`), '',
     '通常転生は突破権を保持して周回上限を1e6へ戻します。各段階の突破は同一周回で一度だけで、次周回の再突破には追加ptを使いません。通常転生報酬はSCORE1e6以上で2ptのままです。1e9で停止した後は手動の地層研究で1e12へ進めます。下記の既存比較は1e9までです。', '',
     '## 正規の上限1e9・設備購入比較', '',
-    '1分確認・突破優先経路の実際の突破直前状態を共通の開始条件にします。取得済みの権利でコアのperformBreakthroughを実行し、購入なし・既存3種・解禁済み5種を比較します。仮の権利やポイントは付与しません。全オフライン方策で現行v9セーブの保存・復元・24h制限を通します。', '',
+    '1分確認・突破優先経路の実際の突破直前状態を共通の開始条件にします。取得済みの権利でコアのperformBreakthroughを実行し、購入なし・既存3種・解禁済み5種を比較します。仮の権利やポイントは付与しません。全オフライン方策で現行v10セーブの保存・復元・24h制限を通します。', '',
     '| 確認方策 | 購入 | 1e9までの追加時間 | 到達時生産 | 深層掘削機 | 芋精製プラント |', '| --- | --- | ---: | ---: | ---: | ---: |',
     ...suite.expansion.map((trial) => `| ${trial.scenario.label} | ${trial.policy === 'fixed' ? '購入なし' : trial.policy === 'existing' ? '既存3種のみ' : '追加2種を含む5種'} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '7日で打切り'} | ${number(trial.finalProduction)} /秒 | ${trial.result.state.equipmentCounts.deepDrill} | ${trial.result.state.equipmentCounts.refinery} |`), '',
     '上位設備の解禁条件は獲得SCOREではなく周回の上限段階です。固定生産の感度分析との差は、実際の設備購入・台数マイルストーンによるものです。', '',
@@ -283,6 +304,13 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '| 確認 | 購入 | 方策 | 1e15までの追加時間 | 設備購入台数 | 連携数 | 生産増幅 | 上限停止待ち |', '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |',
     ...suite.rootConnections.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.policy === 'control' ? '既存設備のみ' : trial.policy === 'saving' ? '連携設備へ貯蓄' : '連携設備あり'} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '打切り'} | ${trial.result.purchases} | ${trial.links} | ×${number(trial.productionMultiplier)} | ${time(trial.result.idleAtCapSeconds)} |`), '',
     '目標は研究あり・1分自動で2〜6h、6h確認で6〜18h、12h確認で12〜36hです。連携追加生産には全体・地層倍率だけを適用し、地脈共鳴の対象は従来の2設備に限定します。1e15より先は未実装です。', '',
+    '## 恒久DEPTHと任意の掘削研究（#30）', '',
+    '設備の掘削力を地層の硬さで割り、SCOREの稼働時間だけ深度を進めます。地層境界はイベントで切替。通常転生でも深度と購入済み掘削研究を保持し、芋生産の研究・設備優先方針は変えません。研究あり方策は確認時にだけ所持芋で任意強化を買います。ROOTは未実装で、以下は通常転生とROOT前の正規段階3の比較です。', '',
+    '| 確認 | 掘削研究 | 初周の深度 | 6周後の深度 | 到達層 | 総時間 |', '| --- | --- | ---: | ---: | --- | ---: |',
+    ...suite.depth.campaigns.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.digResearch ? 'あり' : 'なし'} | ${number(trial.result.runs[0]?.result.state.permanent.depthMeters ?? 0)} m | ${number(trial.result.state.permanent.depthMeters)} m | ${STRATA[getStratum(trial.result.state.permanent.depthMeters)]!.name} | ${time(trial.result.elapsedSeconds)} |`), '',
+    '| 確認 | 掘削研究 | 段階3開始深度 | 1e15時の深度 | 到達層 | 通常転生後の次回転生判断時 |', '| --- | --- | ---: | ---: | --- | ---: |',
+    ...suite.depth.late.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.digResearch ? 'あり' : 'なし'} | ${number(trial.initialState.permanent.depthMeters)} m | ${number(trial.result.state.permanent.depthMeters)} m | ${STRATA[getStratum(trial.result.state.permanent.depthMeters)]!.name} | ${number(trial.resumed.state.permanent.depthMeters)} m |`), '',
+    '待機時間・深度・掘削速度と研究ランクの明細はdepth.csv、確認/購入/SCORE停止時の進行はdepth-timeline.csvに記録します。発見報酬は記録・任意研究・掘削連携補助の解禁だけで、芋や転生ptの受取操作はありません。', '',
     '## 検証範囲と未確定事項', '', '| 項目 | 区分 | 内容 |', '| --- | --- | --- |',
     ...suite.coverage.map((row) => `| ${row.feature} | ${row.status} | ${row.detail} |`), '',
     '## 図と機械可読データ', '',
@@ -292,6 +320,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '- [自動購入の成長比較](automation.svg) / [方針比較CSV](automation.csv) / [購入時系列](automation-timeline.csv) / [取得経路CSV](automation-journeys.csv)',
     '- [研究・新設備の成長比較](research.svg) / [比較CSV](research.csv) / [研究・購入時系列](research-timeline.csv)',
     '- [設備連携の比較](root-connection.svg) / [比較CSV](root-connection.csv) / [購入時系列](root-connection-timeline.csv)',
+    '- [恒久DEPTHの比較](depth.svg) / [SCORE帯ごとの深度・待機CSV](depth.csv) / [進行時系列](depth-timeline.csv)',
     '- [全結果 JSON](results.json) / [周回 CSV](runs.csv) / [時系列 CSV](timeline.csv) / [将来試算 CSV](projections.csv)', '',
     '再生成方法・方策の定義・後続 Issue の判断材料は [検証ガイド](../README.md) を参照してください。', '');
   files['report.md'] = lines.join('\n');
@@ -378,5 +407,15 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     marks: [amountLineY(rootPoints, { x: 'hours', y: 'score', stroke: 'id' })],
   }, rootTrials.map((trial, index) => ({ label: `${trial.automated ? '自動' : '手動'} / ${trial.policy === 'control' ? '既存設備のみ' : trial.policy === 'saving' ? '連携設備へ貯蓄' : '連携設備あり'}`, color: colors[index]! })),
   '1分確認。対照は新設備を除外。深層記憶後の正規経路から開始');
+  const depthTrials = suite.depth.campaigns;
+  const depthColors = [...colors, '#336b68'];
+  const depthPoints = depthTrials.flatMap((trial) => trial.result.trace.filter((point) => point.elapsedSeconds > 0 && point.depthMeters > 0).map((point) => ({ ...point, id: trial.scenario.id, hours: point.elapsedSeconds / 3600 })));
+  files['depth.svg'] = chart('depth', {
+    ariaLabel: '1分・6h・12h確認、6周回の恒久深度と任意掘削研究あり・なしの比較。',
+    x: { type: 'log', label: '開始からの実経過時間 (hours, log)', tickFormat: axisNumber, grid: true },
+    y: { type: 'log', label: 'DEPTH (m, log)', tickFormat: axisNumber, grid: true },
+    color: { domain: depthTrials.map((trial) => trial.scenario.id), range: depthColors },
+    marks: [Plot.lineY(depthPoints, { x: 'hours', y: 'depthMeters', stroke: 'id' })],
+  }, depthTrials.map((trial, index) => ({ label: `${time(trial.scenario.visitSeconds)} / 研究${trial.digResearch ? 'あり' : 'なし'}`, color: depthColors[index]! })), 'SCORE上限の待機中はDEPTHも停止。深度は通常転生で維持');
   return files;
 }

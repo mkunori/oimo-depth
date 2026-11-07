@@ -51,6 +51,7 @@ export function useMiningGame() {
     setAutomation: session.setAutomation,
     deepResearch: session.deepResearch,
     rootConnection: session.rootConnection,
+    buyDigResearch: session.buyDigResearch,
     buyResearch: session.buyResearch,
     resetResearch: session.resetResearch,
   };

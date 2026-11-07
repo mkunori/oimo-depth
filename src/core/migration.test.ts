@@ -21,7 +21,7 @@ describe('v7 amount migration', () => {
     expect(migrated.savedAt).toBe(legacy.savedAt);
     for (const key of ['imo', 'runEarnedScore', 'runStartingImo'] as const) expect(migrated.gameState[key]).toBeAmount(legacy.gameState[key]);
     expect(migrated.gameState.equipmentCounts).toEqual({ ...legacy.gameState.equipmentCounts, rootRelay: 0, coreChamber: 0 });
-    expect(migrated.gameState.permanent).toEqual({ ...legacy.gameState.permanent, deepResearchCount: 1, maxDiscoveredStage: 2, rootConnectionUnlocked: false });
+    expect(migrated.gameState.permanent).toEqual({ ...legacy.gameState.permanent, depthMeters: 0, depthRemainder: 0, digResearchRanks: { basic: 0, vein: 0 }, deepResearchCount: 1, maxDiscoveredStage: 2, rootConnectionUnlocked: false });
     expect(migrated.gameState.researchRanks).toEqual(legacy.gameState.researchRanks);
     expect(migrated.gameState.automation).toEqual({ ...legacy.gameState.automation, equipment: { ...legacy.gameState.automation.equipment, rootRelay: true, coreChamber: true }, priority: [...legacy.gameState.automation.priority, "rootRelay", "coreChamber"] });
     const raw = JSON.parse(serializeSave(migrated));

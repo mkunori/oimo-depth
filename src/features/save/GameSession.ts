@@ -13,6 +13,10 @@ import type { SkillId } from '../../data/skills';
 import { getScoreCap } from '../../data/scoreCaps';
 import { performBreakthrough } from '../../core/breakthrough';
 import { performRootConnection } from '../../core/rootConnection';
+import { purchaseDigResearch } from '../../core/digResearch';
+import { DIG_RESEARCH, STRATA } from '../../data/depth';
+import { getStratum } from '../../core/excavation';
+import type { DigResearchId } from '../../data/depth';
 import type { AutomationSettings } from '../../data/automation';
 import { performDeepResearch, purchaseResearch, resetResearch } from '../../core/research';
 import type { DeepMemoryChoice } from '../../core/research';
@@ -31,11 +35,17 @@ export interface SessionSnapshot {
   readonly report: OfflineReport | null;
   readonly savedAt: number | null;
   readonly progressNotice: string | null;
+  readonly depthNotice: string | null;
   readonly milestoneNotice: { readonly id: EquipmentId; readonly counts: readonly number[]; readonly multiplier: number } | null;
   readonly automaticPurchases: number;
 }
 
 const AUTOSAVE_INTERVAL_MS = 10_000;
+function depthNotice(before: GameState, after: GameState): string | null {
+  const layer = getStratum(after.permanent.depthMeters);
+  return layer > getStratum(before.permanent.depthMeters)
+    ? `DEPTH ${STRATA[layer]!.start.toLocaleString('ja-JP')} mに到達。${STRATA[layer]!.name}を発見しました。` : null;
+}
 
 /** 保存・時計・復帰のライフサイクルを担当。React とブラウザイベントには依存しない。 */
 export class GameSession {
@@ -48,7 +58,7 @@ export class GameSession {
   private stateAt = 0;
   private migrationSource: string | null = null;
   private snapshot: SessionSnapshot = {
-    gameState: createInitialState(), status: 'loading', message: null, report: null, savedAt: null, progressNotice: null, milestoneNotice: null, automaticPurchases: 0,
+    gameState: createInitialState(), status: 'loading', message: null, report: null, savedAt: null, progressNotice: null, depthNotice: null, milestoneNotice: null, automaticPurchases: 0,
   };
 
   constructor(storage: SaveStorage, private readonly clock: SessionClock) {
@@ -103,7 +113,7 @@ export class GameSession {
       this.update({ gameState: save.gameState, report: result?.report ?? null, automaticPurchases: result?.report.automaticPurchases ?? 0 });
       this.repository.write(save);
       this.migrationSource = null;
-      this.update({ status: 'ready', savedAt: save.savedAt });
+      this.update({ status: 'ready', savedAt: save.savedAt, depthNotice: parsed ? depthNotice(parsed.gameState, save.gameState) : null });
     } catch (error) { this.fail(error); }
   }
 
@@ -120,9 +130,11 @@ export class GameSession {
     const elapsed = Math.max(0, (now - this.lastTick) / 1_000);
     try {
       const progress = advanceWithAutomation(this.snapshot.gameState, elapsed);
+      const discovery = depthNotice(this.snapshot.gameState, progress.state);
       this.lastTick = now;
       this.stateAt = Math.max(this.stateAt, this.clock.wallNow());
       if (progress.state !== this.snapshot.gameState) this.update({ gameState: progress.state,
+        ...(discovery ? { depthNotice: discovery } : {}),
         ...(progress.purchaseCount > 0 ? { automaticPurchases: progress.purchaseCount } : {}) });
     } catch (error) { this.fail(error); return; }
     if (now - this.lastAutosave >= AUTOSAVE_INTERVAL_MS) this.persist();
@@ -207,6 +219,7 @@ export class GameSession {
     ? '根脈接続を再実行しました。上限1E15で同じ周回を継続します。'
     : '根脈接続を解析しました。根脈中継塔・芋核培養槽を発見！ 上限1E15で同じ周回を継続します。');
   buyResearch = (id: ResearchId): boolean => this.researchAction((state) => purchaseResearch(state, id), `${RESEARCH[id].name}を強化しました。`);
+  buyDigResearch = (id: DigResearchId): boolean => this.researchAction((state) => purchaseDigResearch(state, id), `${DIG_RESEARCH[id].name}を強化しました。掘削研究は転生後も保持します。`);
   resetResearch = (): boolean => this.researchAction(resetResearch, '研究強化を振り直しました。使用した芋を全額返却しました。');
 
   private researchAction(action: (state: GameState) => GameState, notice: string): boolean {
@@ -231,9 +244,10 @@ export class GameSession {
     if (this.snapshot.status !== 'ready' || !this.checkCurrent()) return;
     try {
       const { save, report } = settleOffline(createSave(this.snapshot.gameState, this.stateAt), this.clock.wallNow());
+      const discovery = depthNotice(this.snapshot.gameState, save.gameState);
       this.stateAt = save.savedAt;
       this.lastTick = this.clock.monotonicNow();
-      this.update({ gameState: save.gameState, report, ...(report.automaticPurchases > 0 ? { automaticPurchases: report.automaticPurchases } : {}) });
+      this.update({ gameState: save.gameState, report, ...(discovery ? { depthNotice: discovery } : {}), ...(report.automaticPurchases > 0 ? { automaticPurchases: report.automaticPurchases } : {}) });
       this.persist();
     } catch (error) { this.fail(error); }
   }
@@ -258,7 +272,7 @@ export class GameSession {
       this.repository.write(save);
       this.stateAt = save.savedAt;
       this.lastTick = this.lastAutosave = this.clock.monotonicNow();
-      this.update({ gameState: save.gameState, status: 'ready', savedAt: save.savedAt, message: null, report: null, progressNotice: null, milestoneNotice: null, automaticPurchases: 0 });
+      this.update({ gameState: save.gameState, status: 'ready', savedAt: save.savedAt, message: null, report: null, progressNotice: null, depthNotice: null, milestoneNotice: null, automaticPurchases: 0 });
       return true;
     } catch (error) { this.fail(error); return false; }
   }

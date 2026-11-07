@@ -1,3 +1,4 @@
+import { withoutDepth } from '../test/depth';
 import { testAmount as gn, stringifyTestSave } from '../test/amounts';
 
 import { describe, expect, it } from 'vitest';
@@ -101,7 +102,7 @@ describe('equipment ID migration', () => {
     expect(parsed.gameState.imo).toBeAmount(12.5);
     expect(parsed.gameState.runEarnedScore).toBeAmount(500);
     expect(parsed.gameState.equipmentCounts).toEqual({ ...initial.equipmentCounts, ...oldState.equipmentCounts });
-    expect(parsed.gameState.permanent).toEqual(version === 2 ? progressed.permanent : initial.permanent);
+    expect(withoutDepth(parsed.gameState.permanent)).toEqual(withoutDepth(version === 2 ? progressed.permanent : initial.permanent));
     expect(parsed.gameState.equipmentCounts.deepDrill).toBe(0);
     expect(parsed.gameState.equipmentCounts.refinery).toBe(0);
     expect(parseSave(serializeSave(parsed))).toEqual(parsed);

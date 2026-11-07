@@ -1,3 +1,4 @@
+import { withoutDepth } from '../test/depth';
 import { testAmount as gn, stringifyTestSave } from '../test/amounts';
 
 import { describe, expect, it } from 'vitest';
@@ -47,7 +48,8 @@ describe('automated equipment buying', () => {
       expect(state.equipmentCounts).toEqual(whole.equipmentCounts);
       expect(state.imo).toBeCloseToAmount(whole.imo, 3);
       expect(state.runEarnedScore).toBeCloseToAmount(whole.runEarnedScore, 3);
-      expect(state.permanent).toEqual(initial.permanent);
+      expect(withoutDepth(state.permanent)).toEqual(withoutDepth(initial.permanent));
+      expect(Math.abs(state.permanent.depthMeters - whole.permanent.depthMeters)).toBeLessThan(1e-6);
     }
     expect(whole.scoreCapStage).toBe(0);
     expect(whole.permanent.prestigeCount).toBe(1);
@@ -86,8 +88,9 @@ describe('automated equipment buying', () => {
       expect(state.equipmentCounts).toEqual(once.equipmentCounts);
       expect(state.runEarnedScore).toBeCloseToAmount(once.runEarnedScore, 3);
       expect(state.imo).toBeCloseToAmount(once.imo, 3);
+      expect(Math.abs(state.permanent.depthMeters - once.permanent.depthMeters)).toBeLessThan(1e-6);
     }
-    expect(once.permanent).toBe(initial.permanent);
+    expect(withoutDepth(once.permanent)).toEqual(withoutDepth(initial.permanent));
     expect(once.scoreCapStage).toBe(1);
     expect(initial.runEarnedScore).toBeAmount(1e6);
   }, 30_000); // 数十万回の更新を含む数値回帰。共有CIのCPU速度を合否条件にしない。

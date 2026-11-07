@@ -59,7 +59,7 @@ describe('deep research breakthrough', () => {
       permanent: { ...createResearchReadyState(true).permanent, deepResearchUnlocked: true } };
     const migrated = parseSave(stringifyTestSave({ saveVersion: 7, savedAt: 321, gameState: old }));
     expect(migrated.savedAt).toBe(321);
-    expect(migrated.gameState).toEqual({ ...old, permanent: { ...old.permanent, deepResearchCount: 1, maxDiscoveredStage: 2 } });
+    expect(migrated.gameState).toEqual({ ...old, permanent: { ...old.permanent, deepResearchCount: 1, maxDiscoveredStage: 2, depthMeters: 0, depthRemainder: 0 } });
     expect(migrated.gameState.postDeepResearchSkillLock).toBe(false);
     const reset = performDeepResearch(createResearchReadyState(true));
     for (const change of [

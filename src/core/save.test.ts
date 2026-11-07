@@ -1,3 +1,4 @@
+import { withoutDepth } from '../test/depth';
 import { testAmount as gn, stringifyTestSave } from '../test/amounts';
 
 import { describe, expect, it } from 'vitest';
@@ -60,8 +61,8 @@ describe('offline settlement', () => {
   it('adds an hour at the saved production rate without buying equipment', () => {
     const result = settleOffline(createSave(owned, SAVED_AT), SAVED_AT + 3_600_000);
 
-    expect(result.save.gameState).toEqual({ ...owned, imo: gn(7_290), runEarnedScore: gn(7_300) });
-    expect(result.report).toEqual({ elapsedSeconds: 3_600, appliedSeconds: 3_600, earnedImo: gn(7_200), reachedScore: gn(7_300), clockReversed: false, automaticPurchases: 0 });
+    expect(result.save.gameState).toEqual({ ...owned, imo: gn(7_290), runEarnedScore: gn(7_300), permanent: { ...owned.permanent, depthMeters: 43.5 } });
+    expect(result.report).toEqual({ elapsedSeconds: 3_600, appliedSeconds: 3_600, earnedImo: gn(7_200), reachedScore: gn(7_300), clockReversed: false, automaticPurchases: 0, earnedDepth: 41 });
   });
 
   it('limits a 48 hour absence to 24 hours', () => {
@@ -124,7 +125,7 @@ describe('permanent growth saves and migration', () => {
     const offline = settleOffline(restored, SAVED_AT + 3_600_000);
     expect(offline.save.gameState.imo).toBeAmount(5_450);
     expect(offline.save.gameState.runEarnedScore).toBeAmount(5_400);
-    expect(offline.save.gameState.permanent).toEqual(game.permanent);
+    expect(withoutDepth(offline.save.gameState.permanent)).toEqual(withoutDepth(game.permanent));
     expect(offline.report.earnedImo).toBeAmount(5_400);
   });
 
