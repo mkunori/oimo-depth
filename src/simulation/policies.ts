@@ -7,7 +7,7 @@ import { EQUIPMENT_IDS } from '../data/equipment';
 import type { EquipmentId } from '../data/equipment';
 import type { SkillId } from '../data/skills';
 
-export type EquipmentPolicy = 'none' | 'payback' | 'highest-tier';
+export type EquipmentPolicy = 'none' | 'payback' | 'highest-tier' | 'root-saving';
 export const SKILL_PLANS = {
   harvest: ['harvest', 'harvest', 'harvest', 'discount', 'discount', 'startingImo', 'startingImo'],
   discount: ['harvest', 'discount', 'discount', 'harvest', 'harvest', 'startingImo', 'startingImo'],
@@ -34,7 +34,7 @@ export function investSkills(state: GameState, plan: SkillPlan, automation?: Aut
 }
 
 function payback(state: GameState, id: EquipmentId): GameNumber {
-  return getEquipmentPrice(id, state.equipmentCounts[id], state.permanent).divide(getEquipmentPurchaseGain(id, state.equipmentCounts[id], state.permanent, state.researchRanks));
+  return getEquipmentPrice(id, state.equipmentCounts[id], state.permanent).divide(getEquipmentPurchaseGain(id, state));
 }
 
 /** 現在買える設備だけで選ぶ局所方策。将来を見通した最適化ではない。 */
@@ -42,6 +42,13 @@ export function investEquipment(state: GameState, policy: EquipmentPolicy, allow
   if (policy === 'none') return { state, purchased: 0 };
   let purchased = 0;
   while (true) {
+    if (policy === 'root-saving') {
+      const id = Math.floor(state.equipmentCounts.rootRelay / 2) > state.equipmentCounts.coreChamber ? 'coreChamber' : 'rootRelay';
+      if (!allowed.includes(id)) return { state, purchased };
+      const next = purchaseEquipment(state, id, 1);
+      if (next === state) return { state, purchased };
+      state = next; purchased += 1; continue;
+    }
     const affordable = allowed.filter((id) => getEquipmentAvailability(id, state).unlocked && getEquipmentPrice(id, state.equipmentCounts[id], state.permanent).lte(state.imo));
     const id = policy === 'highest-tier' ? affordable.at(-1)
       : affordable.sort((left, right) => payback(state, left).compare(payback(state, right)))[0];

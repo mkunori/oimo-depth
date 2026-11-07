@@ -8,7 +8,7 @@ import {
 import { createInitialState } from './state';
 import { createSave, parseSave, SAVE_VERSION, serializeSave, settleOffline } from './save';
 import { prestigeGame, purchaseSkill } from './prestige';
-import { EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS } from '../data/equipment';
+import { EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS, isRootEquipment } from '../data/equipment';
 import { createBreakthroughReadyState } from '../test/progress';
 import { performBreakthrough } from './breakthrough';
 import { performDeepResearch } from './research';
@@ -28,8 +28,8 @@ describe('equipment milestones', () => {
   it('applies a bonus to that equipment only, including previously owned units', () => {
     const state = { ...createInitialState(), equipmentCounts: { ...createInitialState().equipmentCounts, worker: 10, cart: 1 } };
     expect(getProductionPerSecond(state)).toBeAmount(22);
-    expect(getEquipmentPurchaseGain('worker', 9, state.permanent)).toBeCloseToAmount(2, 8);
-    expect(getEquipmentPurchaseGain('worker', 24, state.permanent)).toBeCloseToAmount(5.225, 8);
+    expect(getEquipmentPurchaseGain('worker', { ...state, equipmentCounts: { ...state.equipmentCounts, worker: 9 } })).toBeCloseToAmount(2, 8);
+    expect(getEquipmentPurchaseGain('worker', { ...state, equipmentCounts: { ...state.equipmentCounts, worker: 24 } })).toBeCloseToAmount(5.225, 8);
   });
 
   it('uses the same milestone/skill rate online and offline without stored multiplier flags', () => {
@@ -42,7 +42,7 @@ describe('equipment milestones', () => {
     expect(parseSave(serializeSave(createSave(state, 0))).gameState).toEqual(state);
   });
 
-  it.each(EQUIPMENT_IDS)('keeps individual and bulk cost/count/effects identical for %s', (id) => {
+  it.each(EQUIPMENT_IDS.filter((id) => !isRootEquipment(id)))('keeps individual and bulk cost/count/effects identical for %s', (id) => {
     for (const count of [0, 9, 24, 49]) {
       const state = { ...performDeepResearch(advanceGame(performBreakthrough(createBreakthroughReadyState()), 1e9)), imo: gn(1e12 - 1), runEarnedScore: gn(1e12 - 1),
         equipmentCounts: { ...createInitialState().equipmentCounts, [id]: count } };

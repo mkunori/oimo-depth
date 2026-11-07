@@ -49,9 +49,9 @@ describe('first SCORE breakthrough', () => {
       equipmentCounts: { ...createInitialState().equipmentCounts, worker: 50, cart: 25, harvester: 10 } };
     Object.freeze(state.equipmentCounts); Object.freeze(state.permanent.skillRanks); Object.freeze(state.permanent); Object.freeze(state);
     const after = performBreakthrough(state);
-    expect(after).toEqual({ ...state, scoreCapStage: 1 });
+    expect(after).toEqual({ ...state, scoreCapStage: 1, permanent: { ...state.permanent, maxDiscoveredStage: 1 } });
     expect(after.equipmentCounts).toBe(state.equipmentCounts);
-    expect(after.permanent).toBe(state.permanent);
+    expect(after.permanent.skillRanks).toBe(state.permanent.skillRanks);
     expect(after.runEarnedScore).toBeAmount(1e6);
     expect(getScoreCap(after)).toBeAmount(1e9);
     expect(getProductionPerSecond(after)).toBeAmount(getProductionPerSecond(state));

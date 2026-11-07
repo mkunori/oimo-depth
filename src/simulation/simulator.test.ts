@@ -107,6 +107,22 @@ describe('event-driven simulation', () => {
     expect(first).toEqual(second);
     expect(first.campaigns).toHaveLength(15);
     expect(first.research).toHaveLength(18);
+    expect(first.rootConnections).toHaveLength(13);
+    for (const trial of first.rootConnections) {
+      expect(trial.result.completed).toBe(true);
+      expect(trial.initialState.permanent.deepResearchCount).toBe(1);
+      expect(trial.initialState.permanent.skillRanks.harvest).toBe(0);
+      expect(trial.initialState.runEarnedScore).toBeAmount(1e12);
+      expect(trial.result.state.runEarnedScore).toBeAmount(1e15);
+      if (trial.policy === 'control') expect(trial.links).toBe(0);
+      if (trial.policy === 'saving') expect(trial.links).toBeGreaterThan(0);
+      if (trial.automated && trial.policy === 'linked') {
+        const [minHours, maxHours] = trial.scenario.visitSeconds === 60 ? [2, 6] : trial.scenario.visitSeconds === 21600 ? [6, 18] : [12, 36];
+        expect(trial.result.elapsedSeconds / 3600).toBeGreaterThanOrEqual(minHours!);
+        expect(trial.result.elapsedSeconds / 3600).toBeLessThanOrEqual(maxHours!);
+        expect(trial.links).toBeGreaterThan(0);
+      }
+    }
     for (const trial of first.research) {
       expect(trial.result.completed).toBe(true);
       expect(trial.initialState.runEarnedScore).toBeAmount(1e9);
@@ -251,8 +267,8 @@ describe('equipment growth comparison', () => {
       expect(journey.completed).toBe(true);
       expect(journey.beforeBreakthrough?.scoreCapStage).toBe(0);
       expect(journey.beforeBreakthrough?.runEarnedScore).toBeAmount(1e6);
-      expect(journey.afterBreakthrough).toEqual({ ...journey.beforeBreakthrough, scoreCapStage: 1 });
-      expect(journey.state.permanent).toEqual(journey.beforeBreakthrough?.permanent);
+      expect(journey.afterBreakthrough).toEqual({ ...journey.beforeBreakthrough, scoreCapStage: 1, permanent: { ...journey.beforeBreakthrough!.permanent, maxDiscoveredStage: 1 } });
+      expect(journey.state.permanent).toEqual({ ...journey.beforeBreakthrough!.permanent, maxDiscoveredStage: 1 });
       expect(journey.state.runEarnedScore).toBeAmount(1e9);
       expect(journey.expansion!.state.equipmentCounts.deepDrill).toBeGreaterThan(0);
       expect(journey.expansion!.trace.at(-1)?.actualProduction).toBeAmount(0);
@@ -269,7 +285,7 @@ describe('equipment growth comparison', () => {
       expect(trial.actualSaveSupported).toBe(true);
       expect(trial.result.completed).toBe(true);
       expect(trial.result.state.runEarnedScore).toBeAmount(1e9);
-      expect(trial.result.state.permanent).toEqual(seed.permanent);
+      expect(trial.result.state.permanent).toEqual({ ...seed.permanent, maxDiscoveredStage: 1 });
       expect(trial.result.trace.every((point) => point.score.lte(1e9))).toBe(true);
       if (trial.policy === 'expanded') {
         expect(trial.result.state.equipmentCounts.deepDrill).toBeGreaterThan(0);

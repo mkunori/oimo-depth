@@ -2,6 +2,7 @@ import { advanceGame } from '../core/game';
 import { prestigeGame, purchaseSkill } from '../core/prestige';
 import { createInitialState } from '../core/state';
 import { performBreakthrough } from '../core/breakthrough';
+import { performDeepResearch } from '../core/research';
 
 /** 本番と同じ転生・支出を経由した、初回突破の確認直前の状態。 */
 export function createBreakthroughReadyState() {
@@ -20,4 +21,8 @@ export function createResearchReadyState(automation = false) {
   let state = createBreakthroughReadyState();
   if (automation) state = advanceGame(purchaseSkill(prestigeGame(state), 'automation'), 1e6);
   return advanceGame(performBreakthrough(state), 1e9);
+}
+
+export function createRootConnectionReadyState(automation = false) {
+  return advanceGame(performDeepResearch(createResearchReadyState(automation)), Number.MAX_VALUE);
 }

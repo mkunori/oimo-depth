@@ -28,7 +28,8 @@ export const COVERAGE = [
   { feature: '自動設備管理・3購入方針・オンライン/放置', status: 'core', detail: '取得コストを含む12経路と、同じ取得済み状態からの24比較。購入イベントと実際の上限到達を記録' },
   { feature: '掘削・地層・自動転生・自動突破', status: 'not-modeled', detail: '自動化は設備購入のみ。従来の常時操作15方策は手動操作の理想化比較として保持' },
   { feature: '第2限界突破・地層研究', status: 'modeled', detail: '正規の1e9到達→無料深層解析→1e12、新設備2種と手動研究2種、1分/6h/12h・手動/自動の18比較' },
-  { feature: '1e12より先の限界突破', status: 'not-modeled', detail: '上位転生・1e15以上は未実装' },
+  { feature: '第3限界突破・設備連携', status: 'modeled', detail: '深層記憶後の正規1e12→1e15。1分/6h/12h・自動ON/OFF・新設備あり/なし12比較＋手動貯蓄1比較' },
+  { feature: '1e15より先の限界突破', status: 'not-modeled', detail: '1e18・上位転生・DEPTH・装備は未実装' },
   { feature: '上位転生・装備モード・消費可能SCORE', status: 'not-modeled', detail: '#7/#8 の閾値・費用・倍率が未確定。仕様とコアの追加後に到達時間・構成差を検証する' },
   { feature: 'クリック補助・任意ブースト', status: 'not-modeled', detail: '機能・数値とも未実装' },
 ] as const;

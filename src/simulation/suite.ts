@@ -1,5 +1,5 @@
 import { INITIAL_BALANCE } from '../data/balance';
-import { EQUIPMENT } from '../data/equipment';
+import { EQUIPMENT, ROOT_LINK_PRODUCTION } from '../data/equipment';
 import { PRESTIGE_BALANCE, SKILLS } from '../data/skills';
 import { OFFLINE_LIMIT_SECONDS, SAVE_VERSION } from '../core/save';
 import { getProductionPerSecond } from '../core/game';
@@ -14,6 +14,7 @@ import { BREAKTHROUGH_SCENARIOS, simulateBreakthroughJourney, simulateExpansion 
 import { simulateAutomation } from './automation';
 import { simulateResearch } from './research';
 import { RESEARCH } from '../data/research';
+import { simulateRootConnections } from './rootConnection';
 
 export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 6, maxSeconds = 90 * 86_400) {
   if (scenarios.length === 0 || new Set(scenarios.map((scenario) => scenario.id)).size !== scenarios.length) {
@@ -28,15 +29,17 @@ export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 
   const referenceProduction = lastCompleted ? getProductionPerSecond(lastCompleted.result.state) : null;
   const breakthroughJourneys = BREAKTHROUGH_SCENARIOS.map((scenario) => simulateBreakthroughJourney(scenario, maxSeconds));
   const breakthroughSeed = breakthroughJourneys[0]?.beforeBreakthrough;
+  const research = simulateResearch(maxSeconds);
   return {
     formatVersion: 2,
     parameters: { balance: INITIAL_BALANCE, equipment: EQUIPMENT, prestige: PRESTIGE_BALANCE,
-      skills: SKILLS, research: RESEARCH, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
+      skills: SKILLS, research: RESEARCH, rootLink: { relaysPerLink: 2, baseProduction: ROOT_LINK_PRODUCTION }, offlineLimitSeconds: OFFLINE_LIMIT_SECONDS, saveVersion: SAVE_VERSION },
     runCount, maxSeconds, skillPlans: SKILL_PLANS, coverage: COVERAGE, campaigns, benchmarks,
     equipmentBaseline: EQUIPMENT_BASELINE,
     breakthroughJourneys,
     automation: simulateAutomation(maxSeconds),
-    research: simulateResearch(maxSeconds),
+    research,
+    rootConnections: simulateRootConnections(research, maxSeconds),
     expansion: breakthroughSeed ? simulateExpansion(breakthroughSeed) : [],
     projectionReference: referenceProduction === null ? null : {
       scenarioId: reference!.scenario.id, run: lastCompleted!.run, production: referenceProduction,

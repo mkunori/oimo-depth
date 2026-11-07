@@ -22,7 +22,7 @@ export function getDeepResearchReset(state: GameState, choice: DeepMemoryChoice 
 
 export function getDeepResearch(state: GameState) {
   getProductionPerSecond(state);
-  const reason = state.scoreCapStage === 2 ? '深層解析による突破は実行済みです。'
+  const reason = state.scoreCapStage >= 2 ? '深層解析による突破は実行済みです。'
     : state.scoreCapStage !== 1 ? '初回限界突破でSCORE上限1E9へ進むと研究できます。'
       : state.runEarnedScore.lt(1e9) ? 'この周回でSCORE 1E9に到達すると、無料で研究による突破ができます。' : null;
   return { canResearch: reason === null, reason };
@@ -38,7 +38,8 @@ export function performDeepResearch(state: GameState, choice: DeepMemoryChoice =
   const skillRanks = { ...state.permanent.skillRanks };
   for (const { id } of reset.lost) skillRanks[id] = 0;
   return { ...state, scoreCapStage: 2, postDeepResearchSkillLock: reset.locked,
-    permanent: { ...state.permanent, deepResearchUnlocked: true, deepResearchCount: reset.count, unspentPoints: points, skillRanks } };
+    permanent: { ...state.permanent, maxDiscoveredStage: state.permanent.maxDiscoveredStage < 2 ? 2 : state.permanent.maxDiscoveredStage,
+      deepResearchUnlocked: true, deepResearchCount: reset.count, unspentPoints: points, skillRanks } };
 }
 
 export function getResearchPurchase(state: GameState, id: ResearchId) {
@@ -46,7 +47,7 @@ export function getResearchPurchase(state: GameState, id: ResearchId) {
   if (!Object.hasOwn(RESEARCH, id)) throw new RangeError('Unknown research.');
   const rank = state.researchRanks[id];
   const cost = RESEARCH[id].costs[rank] ?? null;
-  const reason = state.scoreCapStage !== 2 ? '研究による突破でSCORE上限1E12へ進むと強化できます。'
+  const reason = state.scoreCapStage < 2 ? '研究による突破でSCORE上限1E12へ進むと強化できます。'
     : state.runEarnedScore.gte(getScoreCap(state)) ? 'SCORE上限到達のため購入を停止しています。'
       : cost === null ? '最大ランクです。' : state.imo.lt(cost) ? '所持芋が足りません。' : null;
   return { cost, rank, canPurchase: reason === null, reason };
@@ -63,6 +64,6 @@ export function purchaseResearch(state: GameState, id: ResearchId): GameState {
 export function resetResearch(state: GameState): GameState {
   getProductionPerSecond(state);
   const refund = getResearchSpent(state.researchRanks);
-  if (state.scoreCapStage !== 2 || state.runEarnedScore.gte(getScoreCap(state)) || refund.equals(0)) return state;
+  if (state.scoreCapStage < 2 || state.runEarnedScore.gte(getScoreCap(state)) || refund.equals(0)) return state;
   return { ...state, imo: state.imo.add(refund), researchRanks: createEmptyResearch() };
 }

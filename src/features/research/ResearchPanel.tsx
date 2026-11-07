@@ -6,6 +6,7 @@ import type { GameState } from '../../core/state';
 import { getResearchSpent, RESEARCH, RESEARCH_IDS } from '../../data/research';
 import type { ResearchId } from '../../data/research';
 import { SKILLS } from '../../data/skills';
+import { getScoreCap } from '../../data/scoreCaps';
 
 interface Props {
   readonly state: GameState;
@@ -29,7 +30,7 @@ export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onR
   }, [confirming]);
   const quote = getDeepResearch(state);
   const reset = getDeepResearchReset(state, choice);
-  const introduced = state.permanent.deepResearchUnlocked || state.scoreCapStage === 2
+  const introduced = state.permanent.deepResearchUnlocked || state.scoreCapStage >= 2
     || (state.scoreCapStage === 1 && state.runEarnedScore.gte(1e9));
   return <section className="panel research-panel" aria-labelledby="research-title">
     <div className="section-heading"><span className="section-index" aria-hidden="true">04</span><h2 id="research-title">地層研究</h2></div>
@@ -51,8 +52,8 @@ export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onR
         </article>;
       })}
     </div>
-    <button type="button" className="secondary-button" disabled={isPaused || state.scoreCapStage !== 2 || state.runEarnedScore.gte(1e12) || getResearchSpent(state.researchRanks).equals(0)} onClick={onReset}>研究強化を振り直す（{formatNumber(getResearchSpent(state.researchRanks))} 芋を全額返却）</button>
-    <p>強化は段階2のみ。上限到達前なら無料で振り直せます。1E12で収穫・購入は停止します。さらに先の突破・上位転生は未実装です。</p>
+    <button type="button" className="secondary-button" disabled={isPaused || state.scoreCapStage < 2 || state.runEarnedScore.gte(getScoreCap(state)) || getResearchSpent(state.researchRanks).equals(0)} onClick={onReset}>研究強化を振り直す（{formatNumber(getResearchSpent(state.researchRanks))} 芋を全額返却）</button>
+    <p>強化は段階2以降。現在の上限到達前なら無料で振り直せます。{state.scoreCapStage >= 3 ? '1E15で収穫・購入は停止します。さらに先の突破・上位転生は未実装です。' : '1E12で収穫・購入は停止します。到達後は採掘欄から第3限界突破を選べます。'}</p>
     {confirming && <dialog ref={dialog} className="prestige-dialog" aria-labelledby="research-dialog-title" onCancel={() => setConfirming(false)}>
       <h2 id="research-dialog-title">研究による突破：深層記憶 / SCORE 1E9→1E12</h2>
       <p>深層解析を無料で実行します。SCORE・所持芋・周回開始時の支給額・設備・研究ランク・機能解禁権・自動購入設定を保持し、同じ周回で生産を再開します。</p>

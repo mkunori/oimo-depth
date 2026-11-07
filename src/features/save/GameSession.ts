@@ -12,6 +12,7 @@ import { SKILLS } from '../../data/skills';
 import type { SkillId } from '../../data/skills';
 import { getScoreCap } from '../../data/scoreCaps';
 import { performBreakthrough } from '../../core/breakthrough';
+import { performRootConnection } from '../../core/rootConnection';
 import type { AutomationSettings } from '../../data/automation';
 import { performDeepResearch, purchaseResearch, resetResearch } from '../../core/research';
 import type { DeepMemoryChoice } from '../../core/research';
@@ -202,6 +203,9 @@ export class GameSession {
   };
 
   deepResearch = (choice: DeepMemoryChoice = 'discount'): boolean => this.researchAction((state) => performDeepResearch(state, choice), '深層解析を実行し、深層記憶の保持・ポイント返還を適用しました。SCORE上限は1E12です。');
+  rootConnection = (): boolean => this.researchAction(performRootConnection, this.snapshot.gameState.permanent.rootConnectionUnlocked
+    ? '根脈接続を再実行しました。上限1E15で同じ周回を継続します。'
+    : '根脈接続を解析しました。根脈中継塔・芋核培養槽を発見！ 上限1E15で同じ周回を継続します。');
   buyResearch = (id: ResearchId): boolean => this.researchAction((state) => purchaseResearch(state, id), `${RESEARCH[id].name}を強化しました。`);
   resetResearch = (): boolean => this.researchAction(resetResearch, '研究強化を振り直しました。使用した芋を全額返却しました。');
 

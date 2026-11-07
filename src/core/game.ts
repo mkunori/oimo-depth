@@ -1,5 +1,5 @@
 import { INITIAL_BALANCE } from '../data/balance';
-import { EQUIPMENT, EQUIPMENT_IDS } from '../data/equipment';
+import { EQUIPMENT, EQUIPMENT_IDS, isRootEquipment, ROOT_LINK_PRODUCTION } from '../data/equipment';
 import type { EquipmentDefinition, EquipmentId } from '../data/equipment';
 import type { GameState, PermanentProgress } from './state';
 import { createInitialPermanent } from './state';
@@ -39,7 +39,9 @@ export function assertGameState(state: GameState) {
   if (!state.researchRanks || RESEARCH_IDS.some((id) => !Number.isSafeInteger(state.researchRanks[id])
     || state.researchRanks[id] < 0 || state.researchRanks[id] > RESEARCH[id].costs.length)
     || (state.scoreCapStage < 2 && RESEARCH_IDS.some((id) => state.researchRanks[id] !== 0))
-    || (state.scoreCapStage === 2 && !state.permanent.deepResearchUnlocked)) throw new RangeError('Invalid research progress.');
+    || (state.scoreCapStage >= 2 && !state.permanent.deepResearchUnlocked)) throw new RangeError('Invalid research progress.');
+  if (state.permanent.maxDiscoveredStage < state.scoreCapStage
+    || (state.scoreCapStage === 3 && !state.permanent.rootConnectionUnlocked)) throw new RangeError('Invalid discovery or root connection.');
   readAutomation(state.automation);
   if (state.automation.enabled && state.permanent.skillRanks.automation === 0) throw new RangeError('Automation skill is required.');
   const carry = state.productionRemainder;
@@ -54,8 +56,8 @@ export function assertGameState(state: GameState) {
   const locked = state.postDeepResearchSkillLock;
   const ranks = state.permanent.skillRanks;
   const count = state.permanent.deepResearchCount;
-  if (typeof locked !== 'boolean' || (state.scoreCapStage === 2 && count >= 2 && count < 4 && !locked)
-    || (locked && (state.scoreCapStage !== 2 || count < 1 || count >= 4
+  if (typeof locked !== 'boolean' || (state.scoreCapStage >= 2 && count >= 2 && count < 4 && !locked)
+    || (locked && (state.scoreCapStage < 2 || count < 1 || count >= 4
     || (count === 1 && (ranks.harvest > 0 || ranks.discount > 0 || ranks.startingImo > 0))
     || (count === 2 && (ranks.discount > 0 || ranks.startingImo > 0))
     || (count === 3 && ranks.discount > 0 && ranks.startingImo > 0)))) throw new RangeError('Invalid post-research skill lock.');
@@ -83,7 +85,9 @@ export function getProductionPerSecond(state: GameState): GameNumber {
   const value = EQUIPMENT_IDS.reduce((sum, id) => sum.add(getDefinition(id).productionPerUnit.multiply(state.equipmentCounts[id])
     .multiply(getEquipmentMilestones(id, state.equipmentCounts[id]).multiplier)
     .multiply(researchMultiplier(state.researchRanks, id === 'veinExtractor' || id === 'concentrator'))),
-  INITIAL_BALANCE.baseProduction.multiply(researchMultiplier(state.researchRanks))).multiply(bonuses.productionMultiplier);
+  INITIAL_BALANCE.baseProduction.multiply(researchMultiplier(state.researchRanks)))
+    .add(getRootLink(state.equipmentCounts).baseProduction.multiply(researchMultiplier(state.researchRanks)))
+    .multiply(bonuses.productionMultiplier);
   if (productionCache.size < 4_096) productionCache.set(key, value);
   return value;
 }
@@ -100,10 +104,33 @@ export function getEquipmentMilestones(id: EquipmentId, ownedCount: number) {
   const next = milestones.find((milestone) => ownedCount < milestone.count) ?? null;
   return { achieved, multiplier, next, nextMultiplier: next ? multiplier * next.multiplier : null };
 }
-export function getEquipmentPurchaseGain(id: EquipmentId, ownedCount: number, permanent: PermanentProgress, research: ResearchRanks = createEmptyResearch()): GameNumber {
-  assertCount(ownedCount + 1);
-  return getEquipmentProductionPerUnit(id, permanent, ownedCount + 1, research).multiply(ownedCount + 1)
-    .subtract(getEquipmentProductionPerUnit(id, permanent, ownedCount, research).multiply(ownedCount));
+export function getRootLink(counts: GameState['equipmentCounts']) {
+  const relays = counts.rootRelay, chambers = counts.coreChamber;
+  assertCount(relays); assertCount(chambers);
+  const linked = Math.min(Math.floor(relays / 2), chambers);
+  const unconnectedRelays = relays - linked * 2, unconnectedChambers = chambers - linked;
+  return { linked, unconnectedRelays, unconnectedChambers,
+    nextRelays: Math.max(0, 2 - unconnectedRelays), nextChambers: Math.max(0, 1 - unconnectedChambers),
+    baseProduction: ROOT_LINK_PRODUCTION.multiply(linked) };
+}
+/** Difference of total production before/after purchase, including production in
+ * other equipment. Subtract components first to avoid cancelling a small gain
+ * against a much larger unchanged total. */
+export function getEquipmentPurchaseGain(id: EquipmentId, state: Pick<GameState, 'equipmentCounts' | 'permanent' | 'researchRanks'>): GameNumber {
+  const { equipmentCounts: before, permanent, researchRanks: research } = state;
+  const after = { ...before, [id]: before[id] + 1 };
+  assertCount(after[id]);
+  let gain = gn(0);
+  for (const equipment of EQUIPMENT_IDS) {
+    if (before[equipment] === after[equipment]) continue;
+    gain = gain.add(getEquipmentProductionPerUnit(equipment, permanent, after[equipment], research).multiply(after[equipment])
+      .subtract(getEquipmentProductionPerUnit(equipment, permanent, before[equipment], research).multiply(before[equipment])));
+  }
+  const linkGain = getRootLink(after).baseProduction.subtract(getRootLink(before).baseProduction);
+  return gain.add(linkGain.multiply(researchMultiplier(research)).multiply(getSkillBonuses(permanent).productionMultiplier));
+}
+export function isEquipmentDiscovered(id: EquipmentId, state: Pick<GameState, 'permanent'>): boolean {
+  return !isRootEquipment(id) || state.permanent.maxDiscoveredStage >= 3;
 }
 export function getEquipmentAvailability(id: EquipmentId, state: Pick<GameState, 'scoreCapStage'> = { scoreCapStage: 0 }) {
   const requiredScoreCap = getDefinition(id).unlockAtScoreCap;
@@ -187,8 +214,8 @@ function nextAutomaticEquipment(state: GameState): EquipmentId | undefined {
   const price = (id: EquipmentId) => getEquipmentPrice(id, state.equipmentCounts[id], state.permanent);
   if (settings.policy !== 'priority') {
     const id = settings.policy === 'balanced' ? ids.sort((a, b) => state.equipmentCounts[a] - state.equipmentCounts[b])[0]
-      : ids.sort((a, b) => price(a).divide(getEquipmentPurchaseGain(a, state.equipmentCounts[a], state.permanent, state.researchRanks))
-        .compare(price(b).divide(getEquipmentPurchaseGain(b, state.equipmentCounts[b], state.permanent, state.researchRanks))))[0];
+      : ids.sort((a, b) => price(a).divide(getEquipmentPurchaseGain(a, state))
+        .compare(price(b).divide(getEquipmentPurchaseGain(b, state))))[0];
     if (targetCache.size < 4_096) targetCache.set(key, id);
     return id;
   }

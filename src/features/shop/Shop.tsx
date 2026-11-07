@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { EquipmentIcon } from '../../components/EquipmentIcon';
 import { formatMultiplier, formatNumber } from '../../components/formatNumber';
-import { getEquipmentAvailability, getEquipmentMilestones, getEquipmentPrice, getEquipmentProductionPerUnit, getPurchaseQuote } from '../../core/game';
+import { getEquipmentAvailability, getEquipmentMilestones, getEquipmentPrice, getEquipmentProductionPerUnit, getPurchaseQuote, getRootLink, isEquipmentDiscovered } from '../../core/game';
 import type { PurchaseMode } from '../../core/game';
 import type { GameState } from '../../core/state';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../../data/equipment';
@@ -22,6 +22,7 @@ interface ShopProps {
 
 export function Shop({ state, isCapped, isPaused, onPurchase, milestoneNotice, automaticPurchases, onAutomationChange }: ShopProps) {
   const [mode, setMode] = useState<PurchaseMode>(1);
+  const link = getRootLink(state.equipmentCounts);
 
   return (
     <section className="shop-panel panel" aria-labelledby="shop-title">
@@ -43,9 +44,15 @@ export function Shop({ state, isCapped, isPaused, onPurchase, milestoneNotice, a
         </div>
       </fieldset>
       <p className="shop-note">×10 は最大10台、MAX は買えるだけ購入します。</p>
+      {state.permanent.maxDiscoveredStage >= 3 && <aside className="root-link-summary" aria-label="設備連携">
+        <h3>設備連携</h3>
+        <p>根脈中継塔2台＋芋核培養槽1台で1組。連携 <output aria-label="設備連携の組数">{formatNumber(link.linked)}</output>組 / 追加生産 {formatNumber(link.baseProduction)} 芋/秒（倍率適用前）。全体・地層倍率を適用し、地脈共鳴は対象外です。</p>
+        <p>未接続: 中継塔 {formatNumber(link.unconnectedRelays)}台・培養槽 {formatNumber(link.unconnectedChambers)}台。次の連携に中継塔 あと{link.nextRelays}台・培養槽 あと{link.nextChambers}台。</p>
+        {state.scoreCapStage < 3 && <p>この周回は上限段階の再突破が必要です。</p>}
+      </aside>}
       {milestoneNotice && <p className="milestone-notice" role="status">{EQUIPMENT[milestoneNotice.id].name}: {milestoneNotice.counts.join('・')}台のマイルストーン達成！ 現在 ×{formatMultiplier(milestoneNotice.multiplier)}</p>}
       <ul className="equipment-list">
-        {EQUIPMENT_IDS.map((id) => {
+        {EQUIPMENT_IDS.filter((id) => isEquipmentDiscovered(id, state)).map((id) => {
           const definition = EQUIPMENT[id];
           const quote = getPurchaseQuote(state, id, mode);
           const nextPrice = getEquipmentPrice(id, state.equipmentCounts[id], state.permanent);

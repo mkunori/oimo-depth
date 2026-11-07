@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom';
 import * as Plot from '@observablehq/plot';
-import { getProductionPerSecond } from '../src/core/game';
+import { getProductionPerSecond, getRootLink } from '../src/core/game';
 import type { SimulationSuite } from '../src/simulation/suite';
 import { EQUIPMENT_IDS, INITIAL_EQUIPMENT_IDS } from '../src/data/equipment';
 import { SCORE_CAP_STAGES } from '../src/data/scoreCaps';
@@ -31,7 +31,7 @@ function json(value: unknown): string {
 }
 
 function chart(id: string, options: Plot.PlotOptions, legend: readonly { label: string; color: string }[] = [], note = ''): string {
-  if (['score', 'expansion', 'breakthrough', 'automation', 'research'].includes(id)) {
+  if (['score', 'expansion', 'breakthrough', 'automation', 'research', 'root'].includes(id)) {
     const domain = options.y?.domain ? Array.from(options.y.domain, (value: unknown) => gn(value as number | GameNumber).log10().toFiniteNumber()) : undefined;
     options = { ...options, y: { ...options.y, type: 'linear', domain, tickFormat: (value: number) => `10^${Number(value.toFixed(2))}` } };
   }
@@ -87,9 +87,22 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
   const compactAutomation = { journeys: suite.automation.journeys.map(compactJourney),
     trials: suite.automation.trials.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result })) };
   const compactResearch = suite.research.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
-  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, ...metadata } = suite;
+  const compactRoots = suite.rootConnections.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
+  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, ...metadata } = suite;
   const files: Record<string, string> = {
-    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch }),
+    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots }),
+    'root-connection.csv': csv([
+      ['scenario', 'automated', 'policy', 'visit_seconds', 'completed', 'before_connection_seconds', 'after_connection_seconds', 'total_seconds', 'purchases', 'idle_at_cap_seconds', 'initial_production', 'final_production', 'production_multiplier', 'links', ...EQUIPMENT_IDS],
+      ...suite.rootConnections.map((trial) => [trial.scenario.id, String(trial.automated), trial.policy, trial.scenario.visitSeconds, String(trial.result.completed),
+        trial.beforeConnectionSeconds, trial.result.elapsedSeconds, trial.totalSeconds, trial.result.purchases, trial.result.idleAtCapSeconds,
+        trial.initialProduction, trial.finalProduction, trial.productionMultiplier, trial.links, ...EQUIPMENT_IDS.map((id) => trial.result.state.equipmentCounts[id])]),
+    ]),
+    'root-connection-timeline.csv': csv([
+      ['scenario', 'event', 'seconds', 'score', 'imo', 'production', 'actual_production', 'links', 'link_base_production', 'geology_rank', 'resonance_rank', ...EQUIPMENT_IDS],
+      ...suite.rootConnections.flatMap((trial) => trial.result.trace.map((point) => [trial.scenario.id, point.kind, point.elapsedSeconds, point.score, point.imo,
+        point.production, point.actualProduction, getRootLink(point.equipmentCounts).linked, getRootLink(point.equipmentCounts).baseProduction,
+        point.researchRanks.geology, point.researchRanks.resonance, ...EQUIPMENT_IDS.map((id) => point.equipmentCounts[id])])),
+    ]),
     'research.csv': csv([
       ['scenario', 'automated', 'policy', 'visit_seconds', 'completed', 'before_research_seconds', 'after_research_seconds', 'total_seconds', 'idle_at_cap_seconds',
         'cap_only_fixed_production_seconds', 'initial_production', 'final_production', 'production_multiplier', 'geology_rank', 'resonance_rank', ...EQUIPMENT_IDS],
@@ -165,7 +178,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '# 現行バランスのシミュレーション結果', '',
     `コア識別子（LF 正規化 SHA-256）: \`${coreSha256}\`。${suite.runCount}周回、打切り ${time(suite.maxSeconds)}。生成日時や乱数を含まない再現可能な結果です。`, '',
     'これは方策比較であり、最適解の探索やプレイヤー全体の平均ではありません。生産・価格・報酬・保存は実コアから計算しています。', '',
-    '結果形式v2・セーブv8。JSON/CSVの金額・速度は正規化したgn1文字列、台数・ランク・秒数はnumberです。図は巨大数のlog10座標を描画し、金額を直接numberへ変換しません。数値移行の固定比較は [巨大数移行](../../number-migration.md)、解析リセットによる意図的差分は [深層記憶](../../deep-memory.md) を参照してください。', '',
+    '結果形式v2・セーブv9。JSON/CSVの金額・速度は正規化したgn1文字列、台数・ランク・秒数はnumberです。図は巨大数のlog10座標を描画し、金額を直接numberへ変換しません。数値移行の固定比較は [巨大数移行](../../number-migration.md)、解析リセットによる意図的差分は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md) を参照してください。', '',
     '## 現行パラメータ', '',
     `基礎生産 ${number(suite.parameters.balance.baseProduction)}/秒、上限 ${number(suite.parameters.balance.scoreCap)}、転生解禁 ${number(suite.parameters.prestige.unlockScore)}、報酬 ${suite.parameters.prestige.earlyReward}/${suite.parameters.prestige.capReward}pt、オフライン上限 ${time(suite.parameters.offlineLimitSeconds)}。`, '',
     '| 設備 | 基礎価格 | 台数価格倍率 | 1台あたり基礎生産 | 解禁する上限 | 台数/追加倍率（乗算） |', '| --- | ---: | ---: | ---: | ---: | --- |',
@@ -246,7 +259,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     ...suite.breakthroughJourneys.map((journey) => `| ${journey.scenario.label} | ${time(journey.firstScore1mSeconds)} | ${time(journey.permissionAtSeconds)} | ${journey.beforeBreakthrough?.permanent.prestigeCount ?? '未到達'}回 / ${journey.runs.reduce((sum, run) => sum + run.reward, 0)}pt | ${time(journey.breakthroughAtSeconds)} | ${journey.expansion?.completed ? time(journey.expansion.elapsedSeconds) : '未到達 / 打切り'} | ${time(journey.elapsedSeconds)} | ${time(journey.expansion?.idleAtCapSeconds)} |`), '',
     '通常転生は突破権を保持して周回上限を1e6へ戻します。各段階の突破は同一周回で一度だけで、次周回の再突破には追加ptを使いません。通常転生報酬はSCORE1e6以上で2ptのままです。1e9で停止した後は手動の地層研究で1e12へ進めます。下記の既存比較は1e9までです。', '',
     '## 正規の上限1e9・設備購入比較', '',
-    '1分確認・突破優先経路の実際の突破直前状態を共通の開始条件にします。取得済みの権利でコアのperformBreakthroughを実行し、購入なし・既存3種・解禁済み5種を比較します。仮の権利やポイントは付与しません。全オフライン方策で現行v6セーブの保存・復元・24h制限を通します。', '',
+    '1分確認・突破優先経路の実際の突破直前状態を共通の開始条件にします。取得済みの権利でコアのperformBreakthroughを実行し、購入なし・既存3種・解禁済み5種を比較します。仮の権利やポイントは付与しません。全オフライン方策で現行v9セーブの保存・復元・24h制限を通します。', '',
     '| 確認方策 | 購入 | 1e9までの追加時間 | 到達時生産 | 深層掘削機 | 芋精製プラント |', '| --- | --- | ---: | ---: | ---: | ---: |',
     ...suite.expansion.map((trial) => `| ${trial.scenario.label} | ${trial.policy === 'fixed' ? '購入なし' : trial.policy === 'existing' ? '既存3種のみ' : '追加2種を含む5種'} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '7日で打切り'} | ${number(trial.finalProduction)} /秒 | ${trial.result.state.equipmentCounts.deepDrill} | ${trial.result.state.equipmentCounts.refinery} |`), '',
     '上位設備の解禁条件は獲得SCOREではなく周回の上限段階です。固定生産の感度分析との差は、実際の設備購入・台数マイルストーンによるものです。', '',
@@ -264,7 +277,12 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '研究強化は確認時にだけ手動購入し、指定した研究の買えるランクを優先してから他方を買います。その後、OFFは設備を手動購入、ONは実コアで自動購入します。6h/12hの途中に研究を捏造しません。設備のみは研究ランク0の対照。上限だけ拡張した固定生産試算もCSVに併記します。', '',
     '| 確認 | 購入 | 研究方策 | 突破後1e12まで | 上限停止待ち | 開始→到達の生産倍率 | 地層/共鳴 | 抽出機/濃縮炉 |', '| --- | --- | --- | ---: | ---: | ---: | --- | --- |',
     ...suite.research.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.policy} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '打切り'} | ${time(trial.result.idleAtCapSeconds)} | ×${number(trial.productionMultiplier)} | ${trial.result.state.researchRanks.geology}/${trial.result.state.researchRanks.resonance} | ${trial.result.state.equipmentCounts.veinExtractor}/${trial.result.state.equipmentCounts.concentrator} |`), '',
-    'これは方策別の到達観測時間で、プレイヤー全体の平均ではありません。研究で全収穫は最大8倍、新設備はさらに最大8倍。上限到達時は生産・購入が停止し、研究の自動実行や1e12より先への突破はありません。', '',
+    'これは方策別の到達観測時間で、プレイヤー全体の平均ではありません。研究で全収穫は最大8倍、研究段階の新設備はさらに最大8倍。上限到達時は生産・購入が停止し、第3突破も手動です。', '',
+    '## 第3限界突破と設備連携（#29）', '',
+    '深層記憶を反映した初期状態→転生→1e9→深層解析→1e12の正規経路の終点から、無料で根脈接続を実行します。研究は確認時のみ手動購入。比較対照は連携の物理法則を変更せず、連携設備2種を購入対象から外します。手動貯蓄方策は次の連携に必要な設備まで残高を保留し、既存設備を追加購入しません。', '',
+    '| 確認 | 購入 | 方策 | 1e15までの追加時間 | 設備購入台数 | 連携数 | 生産増幅 | 上限停止待ち |', '| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |',
+    ...suite.rootConnections.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.policy === 'control' ? '既存設備のみ' : trial.policy === 'saving' ? '連携設備へ貯蓄' : '連携設備あり'} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '打切り'} | ${trial.result.purchases} | ${trial.links} | ×${number(trial.productionMultiplier)} | ${time(trial.result.idleAtCapSeconds)} |`), '',
+    '目標は研究あり・1分自動で2〜6h、6h確認で6〜18h、12h確認で12〜36hです。連携追加生産には全体・地層倍率だけを適用し、地脈共鳴の対象は従来の2設備に限定します。1e15より先は未実装です。', '',
     '## 検証範囲と未確定事項', '', '| 項目 | 区分 | 内容 |', '| --- | --- | --- |',
     ...suite.coverage.map((row) => `| ${row.feature} | ${row.status} | ${row.detail} |`), '',
     '## 図と機械可読データ', '',
@@ -273,6 +291,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '- [突破までの成長と上限](breakthrough.svg) / [経路CSV](breakthrough.csv) / [全経路時系列](breakthrough-timeline.csv)',
     '- [自動購入の成長比較](automation.svg) / [方針比較CSV](automation.csv) / [購入時系列](automation-timeline.csv) / [取得経路CSV](automation-journeys.csv)',
     '- [研究・新設備の成長比較](research.svg) / [比較CSV](research.csv) / [研究・購入時系列](research-timeline.csv)',
+    '- [設備連携の比較](root-connection.svg) / [比較CSV](root-connection.csv) / [購入時系列](root-connection-timeline.csv)',
     '- [全結果 JSON](results.json) / [周回 CSV](runs.csv) / [時系列 CSV](timeline.csv) / [将来試算 CSV](projections.csv)', '',
     '再生成方法・方策の定義・後続 Issue の判断材料は [検証ガイド](../README.md) を参照してください。', '');
   files['report.md'] = lines.join('\n');
@@ -349,5 +368,15 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     marks: [amountLineY(researchPoints, { x: 'minutes', y: 'score', stroke: 'id' })],
   }, researchTrials.map((trial, index) => ({ label: `${trial.automated ? '自動' : '手動'} / ${trial.policy === 'equipment-only' ? '新設備のみ' : '新設備と研究'}`, color: colors[index]! })),
   '1分確認・正規の深層解析後。研究は確認時のみ手動購入、ON/OFFで取得経路は異なる');
+  const rootTrials = suite.rootConnections.filter((trial) => trial.scenario.visitSeconds === 60);
+  const rootPoints = rootTrials.flatMap((trial) => trial.result.trace.map((point) => ({ ...point, id: trial.scenario.id, hours: point.elapsedSeconds / 3600 })));
+  files['root-connection.svg'] = chart('root', {
+    ariaLabel: '深層記憶を反映した正規の第3突破後、1分確認の設備連携あり・なしと貯蓄方策の比較。',
+    x: { label: '1E12からの追加時間 (hours)', grid: true },
+    y: { type: 'log', label: 'SCORE (log)', domain: [1e12, 1e15], grid: true },
+    color: { domain: rootTrials.map((trial) => trial.scenario.id), range: colors },
+    marks: [amountLineY(rootPoints, { x: 'hours', y: 'score', stroke: 'id' })],
+  }, rootTrials.map((trial, index) => ({ label: `${trial.automated ? '自動' : '手動'} / ${trial.policy === 'control' ? '既存設備のみ' : trial.policy === 'saving' ? '連携設備へ貯蓄' : '連携設備あり'}`, color: colors[index]! })),
+  '1分確認。対照は新設備を除外。深層記憶後の正規経路から開始');
   return files;
 }
