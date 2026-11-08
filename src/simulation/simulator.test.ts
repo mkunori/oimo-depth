@@ -240,7 +240,7 @@ describe('event-driven simulation', () => {
       expect(campaign.trace.every((point) => point.equipmentCounts.deepDrill === 0 && point.equipmentCounts.refinery === 0)).toBe(true);
       expect(campaign.runs.every((run) => getProductionPerSecond(run.result.state).gt(0))).toBe(true);
     }
-  }, 60_000); // 装備3周回を含む全方策を2回比較するため、共有CI向けに個別の実行時間を確保する。
+  }, 120_000); // 台帳・再成長3周回を含む全方策を2回比較。共有CIで約73秒のため、このテストだけ時間枠を確保する。
 
   it.each([0, -1, NaN, Infinity])('rejects invalid horizon %s', (seconds) => {
     expect(() => simulateRun(createInitialState(), idle, seconds)).toThrow(RangeError);
