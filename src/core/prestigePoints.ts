@@ -19,8 +19,8 @@ export function assertPrestigePoints(p: PermanentProgress, spent = getSkillPoint
   const { lifetimePrestigePointsEarned: earned, pointsLostByDeepResearch: lost, pointsLostByRoot: rootLost } = p;
   const accounted = spent + p.unspentPoints + lost + rootLost;
   if ([earned, lost, rootLost, accounted].some((value) => !Number.isSafeInteger(value) || value < 0)
-    || accounted !== earned || earned < p.prestigeCount || Math.ceil(earned / 6) > p.prestigeCount
-    || rootLost !== 0 // reserved for the following ROOT reset issue
+    || accounted !== earned || earned < p.lifetimePrestigeCount || Math.ceil(earned / 6) > p.lifetimePrestigeCount
+    || (rootLost > 0 && p.rootRebirthCount === 0)
     || Math.ceil(lost / MAX_ANALYSIS_LOSS) > p.deepResearchCount
     || (p.deepResearchCount > 0 && earned < 10 + p.skillRanks.automation)) throw new RangeError('Prestige point ledger does not balance.');
 }

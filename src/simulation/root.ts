@@ -1,3 +1,4 @@
+import { simulateRootRebuild } from './rootRebuild';
 import { performRootRebirth, purchaseRootUpgrade } from '../core/root';
 import { performBreakthrough } from '../core/breakthrough';
 import { performDeepResearch } from '../core/research';
@@ -16,7 +17,7 @@ export function simulateRootCycles(origins: ReturnType<typeof simulateOrigins>, 
     .flatMap((previous) => (previous.automated && [60, 21600].includes(previous.scenario.visitSeconds!) ? ['blessing', 'memory'] as const : ['blessing'] as const).map((choice) => {
       const afterRoot = performRootRebirth(previous.result.state);
       const purchased = purchaseRootUpgrade(afterRoot, choice);
-      // Spend only retained normal points, at the manual ROOT confirmation.
+      // No normal points survive ROOT; rebuilding earns and spends them below.
       const initialState = parseSave(serializeSave(createSave(investSkills(purchased, 'breakthrough'), 0))).gameState;
       const scenario = { ...previous.scenario, id: `root-cycle-${previous.scenario.visitSeconds}-${previous.automated ? 'auto' : 'manual'}-${choice}`,
         label: `${previous.scenario.label} / ROOT後 ${choice}`, prestigeAt: 'cap' as const };
@@ -24,7 +25,8 @@ export function simulateRootCycles(origins: ReturnType<typeof simulateOrigins>, 
       let state = initialState, elapsedSeconds = 0;
       for (let stage = 0; stage <= 4 && elapsedSeconds < maxSeconds; stage += 1) {
         const initial = state;
-        const result = simulateRun(state, scenario, maxSeconds - elapsedSeconds);
+        const result = stage === 0 ? simulateRootRebuild(state, scenario, maxSeconds - elapsedSeconds)
+          : simulateRun(state, scenario, maxSeconds - elapsedSeconds);
         stages.push({ stage, startsAtSeconds: elapsedSeconds, initialState: initial, result });
         trace.push(...result.trace.map((point) => ({ ...point, elapsedSeconds: elapsedSeconds + point.elapsedSeconds })));
         elapsedSeconds += result.elapsedSeconds; state = result.state;

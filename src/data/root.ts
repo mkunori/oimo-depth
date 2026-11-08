@@ -1,7 +1,8 @@
 import { gn } from '../core/numbers';
 
 export const ROOT_REWARDS = [{ score: gn(1e18), crystals: 1 }] as const;
-export const ROOT_FIRST_PRODUCTION_MULTIPLIER = 3;
+export const ROOT_PRODUCTION_PER_REBIRTH = 2;
+export const ROOT_FIRST_PRODUCTION_MULTIPLIER = 1 + ROOT_PRODUCTION_PER_REBIRTH;
 export const ROOT_UPGRADE_IDS = ['blessing', 'memory', 'adaptation'] as const;
 export type RootUpgradeId = typeof ROOT_UPGRADE_IDS[number];
 export type RootUpgradeRanks = Readonly<Record<RootUpgradeId, number>>;

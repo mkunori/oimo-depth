@@ -33,14 +33,14 @@ export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onO
   }, [confirming]);
   const quote = getDeepResearch(state);
   const reset = getDeepResearchReset(state, choice);
-  const introduced = state.permanent.deepResearchUnlocked || state.scoreCapStage >= 2
+  const introduced = state.permanent.maxDiscoveredStage >= 2 || state.permanent.deepResearchUnlocked || state.scoreCapStage >= 2
     || (state.scoreCapStage === 1 && state.runEarnedScore.gte(1e9));
   return <section className="panel research-panel" aria-labelledby="research-title">
     <div className="section-heading"><span className="section-index" aria-hidden="true">04</span><h2 id="research-title">地層研究</h2></div>
-    <h3>深層解析 {state.permanent.deepResearchUnlocked ? '— 研究権限を取得済み' : '— 未解禁'}</h3>
+    <h3>深層解析 {state.permanent.deepResearchUnlocked ? '— 研究権限を取得済み' : introduced ? '— 発見済み・現ROOTでは未解析' : '— 未解禁'}</h3>
     <p>{introduced ? '深層の地脈を解析し、同じ周回のSCORE上限を1E9から1E12へ拡張します。費用は無料です。' : '初回限界突破のあと、SCORE 1E9到達で深層解析を解禁します。'}</p>
     <button className="secondary-button" type="button" ref={trigger} disabled={isPaused || !quote.canResearch} aria-describedby="research-reason" onClick={() => { setError(false); setConfirming(true); }}>研究による突破</button>
-    <p id="research-reason">{isPaused ? 'セーブ確認のため研究を停止しています。' : quote.reason ?? 'SCORE 1E9到達。強化スキルの保持・返還を確認して、無料で次の段階へ進めます。'}</p>
+    <p id="research-reason">{isPaused ? 'セーブ確認のため研究を停止しています。' : quote.reason ?? 'SCORE 1E9到達。強化スキルの保持・消失を確認して、無料で次の段階へ進めます。'}</p>
     <p>深層解析では、深層記憶の保持枠に入らない強化スキルをランク0へ戻します。使用ポイントは消失し、返還しません。未使用ポイントは保持します。保持枠は解析累計1回で0/3、2回で1/3、3回で2/3、4回以降で3/3です。3回目は2種類目を選べます。</p>
     <p>同じ成長サイクルで深層解析を完了すると、通常転生後も上限1E12（段階2）を維持します。設備と周回研究はリセットし、強化スキルの再購入制限は解除します。解析累計・深層記憶枠は増えません。{state.permanent.maxDiscoveredStage >= 4 && 'ROOT REBIRTH後は改めて解析が必要です。'}</p>
     <div className="research-nodes">

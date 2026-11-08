@@ -31,7 +31,7 @@ export const COVERAGE = [
   { feature: '第2限界突破・地層研究', status: 'modeled', detail: '正規の1e9到達→無料深層解析→1e12の18比較。解析済み通常転生は段階2・SCORE0で再開する1分/6h自動・12h手動3経路も検証' },
   { feature: '第3限界突破・設備連携', status: 'modeled', detail: '深層記憶後の正規1e12→1e15。1分/6h/12h・自動ON/OFF・新設備あり/なし12比較＋手動貯蓄1比較' },
   { feature: '第4限界突破・根源領域', status: 'modeled', detail: '初期から正規の1e15→1e18へ継続。1分/6h/12h×自動ON/OFFと6hの追加購入なし・新研究なし、計10比較。DEPTHと各段階の停止待ちも記録' },
-  { feature: 'ROOT REBIRTH・結晶・恒久強化', status: 'modeled', detail: '正規初回ROOTから1分/6h/12h×自動ON/OFFの再周回6経路と結晶選択2比較。通常転生なしで第2回ROOTまで検証' },
+  { feature: 'ROOT REBIRTH・結晶・恒久強化', status: 'modeled', detail: '正規初回ROOTから1分/6h/12h×自動ON/OFFの再周回6経路と結晶選択2比較。下位リセット後、実際の通常転生5回・10ptで前提を買い直し第2回ROOTまで検証。回数倍率1＋2×ROOT回数' },
   { feature: '利用可能SCORE・恒久装備', status: 'modeled', detail: '正規初回ROOTから1〜3周回。1分/6h自動・12h手動と1分の上限購入対照、累計SCORE不変と5装備の恒久保持を検証' },
   { feature: '装備モード・プリセット', status: 'modeled', detail: '全装備の常時効果＋各1モード。1分/6h自動・12h手動×4構成でROOT1〜3の36周回、切替・DEPTH・解禁順を実コアで比較' },
   { feature: 'クリック補助・任意ブースト', status: 'not-modeled', detail: '機能・数値とも未実装' },

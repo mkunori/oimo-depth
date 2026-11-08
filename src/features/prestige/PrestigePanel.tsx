@@ -49,15 +49,16 @@ export function PrestigePanel({ state, isPaused, notice, onPrestige, onBuySkill 
       <div className="section-heading"><span className="section-index" aria-hidden="true">03</span><h2 id="prestige-title">転生とスキル</h2><span className="section-caption">次の一周を、もっと速く。</span></div>
       <div className="prestige-summary">
         <dl className="permanent-stats">
-          <div><dt>累計転生回数</dt><dd><output aria-label="累計転生回数" aria-live="off">{formatNumber(state.permanent.prestigeCount)}</output> 回</dd></div>
+          <div><dt>現ROOT転生回数</dt><dd><output aria-label="累計転生回数" aria-live="off">{formatNumber(state.permanent.prestigeCount)}</output> 回</dd></div>
           <div><dt>未使用ポイント</dt><dd><output aria-label="未使用ポイント" aria-live="off">{formatNumber(state.permanent.unspentPoints)}</output> pt</dd></div>
         </dl>
         <p>SCORE {formatNumber(PRESTIGE_BALANCE.unlockScore)} で転生解禁。実際に到達した累計SCOREに応じて1〜6ptを獲得します。設備購入後の残高では減りません。</p>
         {nextReward ? <p>次の報酬段階: SCORE <output aria-label="次の転生報酬SCORE">{formatNumber(nextReward.score)}</output> で <output aria-label="次の転生報酬ポイント">{nextReward.points}</output>pt。</p> : <p>現在の通常転生報酬は最大の6ptです。</p>}
         <p>転生すると所持芋・今周回のSCORE・設備・周回研究をリセットします。{state.permanent.deepAnalysisActiveThisRoot ? '深層解析済みのため上限1E12を維持します。' : '深層解析未完了のため上限1,000,000から再開します。'}転生回数・未使用ポイント・スキル・突破権は引き継ぎます。</p>
         <p className="shop-note">深層記憶: 解析累計 {formatNumber(state.permanent.deepResearchCount)}回 / 保持枠 {getDeepMemorySlots(state.permanent.deepResearchCount)}/3。{state.permanent.deepResearchCount < 4 ? `あと${4 - state.permanent.deepResearchCount}回の解析で強化スキルを全保持。` : '強化スキルを全保持できます。'} 通常転生で強化スキルの再購入制限を解除します。</p>
+        <p>生涯の通常転生 <output aria-label="生涯通常転生回数">{state.permanent.lifetimePrestigeCount}</output>回</p>
         <p className="prestige-reward">獲得見込み: <output aria-label="獲得見込みポイント" aria-live="off">{reward}</output> pt</p>
-        <p className="shop-note">ポイント台帳: 累計獲得 <output aria-label="累計獲得転生ポイント">{state.permanent.lifetimePrestigePointsEarned}</output>pt / スキル使用中 {getSkillPointsSpent(state.permanent.skillRanks)}pt / 未使用 {state.permanent.unspentPoints}pt{state.permanent.deepResearchUnlocked && <> / 解析による消失 <output aria-label="解析消失ポイント">{state.permanent.pointsLostByDeepResearch}</output>pt</>}。</p>
+        <p className="shop-note">ポイント台帳: 累計獲得 <output aria-label="累計獲得転生ポイント">{state.permanent.lifetimePrestigePointsEarned}</output>pt / スキル使用中 {getSkillPointsSpent(state.permanent.skillRanks)}pt / 未使用 {state.permanent.unspentPoints}pt{state.permanent.deepResearchCount > 0 && <> / 解析による消失 <output aria-label="解析消失ポイント">{state.permanent.pointsLostByDeepResearch}</output>pt</>}{state.permanent.rootRebirthCount > 0 && <> / ROOTによる消失 <output aria-label="ROOT消失ポイント">{state.permanent.pointsLostByRoot}</output>pt</>}。</p>
         <button type="button" ref={trigger} className="secondary-button" disabled={isPaused || reward === 0} onClick={() => { setConfirmationError(null); setConfirming(true); }} aria-describedby="prestige-reason">転生する</button>
         <p id="prestige-reason" className="shop-note">{isPaused ? 'セーブの確認が必要なため転生を停止しています。' : reward === 0 ? `SCORE ${formatNumber(PRESTIGE_BALANCE.unlockScore)} まで採掘しましょう。` : '転生後は下のスキルで次の周回を強化できます。'}</p>
         {notice && <p className="progress-notice" role="status">{notice}</p>}
@@ -72,8 +73,8 @@ export function PrestigePanel({ state, isPaused, notice, onPrestige, onBuySkill 
               <div className="skill-heading"><h3 id={`${id}-skill-title`}>{definition.name}</h3><span>ランク <output aria-label={`${definition.name}のランク`} aria-live="off">{rank}</output> / {quote.maxRank}</span></div>
               <p className="shop-note">{isEnhancementSkill(id) ? '強化型 — 深層解析の保持枠外ならリセット' : '機能解禁型 — 深層解析でも保持'}</p>
               {rank > quote.maxRank && <p>前ROOTから保持したランクです。現ROOTの割当上限を超える追加購入はできません。</p>}
-              <p>現在: {skillEffect(id, rank)}</p>
-              {rank < quote.maxRank && <p>次の効果: {skillEffect(id, quote.nextRank)}</p>}
+              <p>現在: {id === 'automation' && state.permanent.rootAutomationUnlocked ? 'ROOTによる恒久解禁済み。ランク0でも自動購入を設定可能' : skillEffect(id, rank)}</p>
+              {rank < quote.maxRank && !(id === 'automation' && state.permanent.rootAutomationUnlocked) && <p>次の効果: {skillEffect(id, quote.nextRank)}</p>}
               <p className="skill-prerequisites">取得時の前提: {definition.prerequisites.length === 0 ? 'なし' : definition.prerequisites.map((required) => `${SKILLS[required.id].name} ランク${required.rank}`).join('、')}{definition.minimumPrestigeCount > 0 && `、累計転生${definition.minimumPrestigeCount}回以上`}</p>
               <button type="button" className="secondary-button" disabled={isPaused || !quote.canPurchase} aria-label={`${definition.name}を強化`} aria-describedby={`${id}-skill-reason`} onClick={() => onBuySkill(id)}>{quote.cost === null ? '最大ランク' : `${quote.cost}ptで強化`}</button>
               <p className="shop-note" id={`${id}-skill-reason`}>{isPaused ? 'セーブの確認が必要なため強化を停止しています。' : quote.reason ?? (id === 'startingImo' ? '次の転生から適用されます。SCORE には加算しません。' : id === 'breakthrough' ? '取得後、採掘欄の「限界突破する」から現在の周回を継続できます。' : id === 'automation' ? '取得後、設備欄の「自動購入」でONにしてください。取得だけでは購入しません。' : '取得するとすぐに効果が反映されます。')}</p>

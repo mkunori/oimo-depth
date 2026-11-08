@@ -1,4 +1,4 @@
-import { withLegacyRefunds } from '../test/progress';
+import { withLegacyRefunds, createLegacyRootState, createNextRootAnalysisReadyState } from '../test/progress';
 import { describe, expect, it } from 'vitest';
 import { GEAR_IDS, createEmptyGear } from '../data/gear';
 import { createRootRebirthReadyState } from '../test/progress';
@@ -7,7 +7,6 @@ import { getGearMultiplier, getGearSpend, getSpendableScore } from './gearProgre
 import { performRootRebirth } from './root';
 import { advanceGame, advanceWithAutomation, getEquipmentPurchaseGain, getProductionPerSecond } from './game';
 import { prestigeGame } from './prestige';
-import { performBreakthrough } from './breakthrough';
 import { performDeepResearch } from './research';
 import { performRootConnection } from './rootConnection';
 import { performOriginAnalysis } from './origin';
@@ -19,7 +18,7 @@ function late(rootCount = 3) {
   let state = root();
   state = { ...state, permanent: { ...state.permanent, rootRebirthCount: rootCount, deepResearchCount: rootCount,
     totalRootCrystalsEarned: rootCount, unspentRootCrystals: rootCount } };
-  state = performBreakthrough(advanceGame(state, Number.MAX_VALUE));
+  state = createNextRootAnalysisReadyState(state);
   state = performDeepResearch(advanceGame(state, Number.MAX_VALUE));
   state = performRootConnection(advanceGame(state, Number.MAX_VALUE));
   return performOriginAnalysis(advanceGame(state, Number.MAX_VALUE));
@@ -37,7 +36,7 @@ describe('permanent gear and SCORE spending', () => {
     expect(after).toEqual({ ...funded, scoreSpentThisRun: gn(1e5), gearPurchasedThisRun: ['shovel'],
       permanent: { ...funded.permanent, gearUnlocked: { ...createEmptyGear(), shovel: true } } });
     expect(getSpendableScore(after)).toBeAmount(0); expect(unlockGear(after, 'shovel')).toBe(after);
-    const stage1 = performBreakthrough(advanceGame(after, Number.MAX_VALUE));
+    const stage1 = createNextRootAnalysisReadyState(after);
     expect(stage1.permanent.gearDiscovered.lens).toBe(true);
     expect(stage1.permanent.gearDiscovered.drillBit).toBe(false);
     const reset = prestigeGame(stage1);
@@ -83,7 +82,7 @@ describe('permanent gear and SCORE spending', () => {
   });
 
   it('migrates v12 without inventing purchases/history and rejects invalid receipts, flags or spend', () => {
-    const source = withLegacyRefunds(root()), raw = JSON.parse(serializeSave(createSave(source, 1234)));
+    const source = withLegacyRefunds(createLegacyRootState()), raw = JSON.parse(serializeSave(createSave(source, 1234)));
     raw.saveVersion = 12; delete raw.gameState.scoreSpentThisRun; delete raw.gameState.gearPurchasedThisRun;
     delete raw.gameState.permanent.gearUnlocked; delete raw.gameState.permanent.gearDiscovered;
     const migrated = parseSave(JSON.stringify(raw));

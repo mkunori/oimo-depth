@@ -1,3 +1,4 @@
+import { getSkillPointsSpent } from './prestigePoints';
 import { discoverGear } from './gearProgress';
 import { getProductionPerSecond, NumericProgressError } from './game';
 import { getSkillBonuses } from './skills';
@@ -20,7 +21,11 @@ export function performRootRebirth(state: GameState): GameState {
   const before = state.permanent;
   const count = before.rootRebirthCount + 1, earned = before.totalRootCrystalsEarned + reward.crystals, balance = before.unspentRootCrystals + reward.crystals;
   if (![count, earned, balance].every(Number.isSafeInteger)) throw new NumericProgressError('ROOT counters exceed the safe integer range.');
-  const permanent = { ...before, deepAnalysisActiveThisRoot: false, rootCycleMaxUnlockedStage: 0 as const, rootRebirthCount: count, totalRootCrystalsEarned: earned, unspentRootCrystals: balance, equipmentSystemUnlocked: true };
+  const pointsLostByRoot = before.pointsLostByRoot + before.unspentPoints + getSkillPointsSpent(before.skillRanks);
+  if (!Number.isSafeInteger(pointsLostByRoot)) throw new NumericProgressError('ROOT point loss exceeds the safe integer range.');
+  const permanent = { ...before, prestigeCount: 0, unspentPoints: 0, pointsLostByRoot,
+    skillRanks: createInitialState().permanent.skillRanks, legacyRootProgress: false, rootAutomationUnlocked: true,
+    deepResearchUnlocked: false, rootConnectionUnlocked: false, originAnalysisUnlocked: false, deepAnalysisActiveThisRoot: false, rootCycleMaxUnlockedStage: 0 as const, rootRebirthCount: count, totalRootCrystalsEarned: earned, unspentRootCrystals: balance, equipmentSystemUnlocked: true };
   const startingImo = getSkillBonuses(permanent).startingImo;
   return discoverGear({ ...createInitialState(), imo: startingImo, runStartingImo: startingImo, permanent, automation: state.automation });
 }

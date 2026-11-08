@@ -1,4 +1,5 @@
-import { withLegacyRefunds } from '../test/progress';
+import { getSkillBonuses } from './skills';
+import { withLegacyRefunds, createLegacyRootState, createNextRootAnalysisReadyState } from '../test/progress';
 import { describe, expect, it } from 'vitest';
 import { createRootRebirthReadyState } from '../test/progress';
 import { GEAR_IDS } from '../data/gear';
@@ -9,7 +10,6 @@ import { unlockGear } from './gear';
 import { getGearMultiplier } from './gearProgress';
 import { applyGearPreset, editGearPreset, getGearRates, setGearMode } from './gearModes';
 import { getDigSpeed } from './excavation';
-import { performBreakthrough } from './breakthrough';
 import { performDeepResearch } from './research';
 import { performRootConnection } from './rootConnection';
 import { performOriginAnalysis } from './origin';
@@ -24,7 +24,7 @@ function first() {
 function late() {
   let s = first();
   s = { ...s, permanent: { ...s.permanent, rootRebirthCount: 3, deepResearchCount: 3, totalRootCrystalsEarned: 3, unspentRootCrystals: 3 } };
-  s = performBreakthrough(advanceGame(s, Number.MAX_VALUE));
+  s = createNextRootAnalysisReadyState(s);
   s = performDeepResearch(advanceGame(s, Number.MAX_VALUE));
   s = performRootConnection(advanceGame(s, Number.MAX_VALUE));
   s = performOriginAnalysis(advanceGame(s, Number.MAX_VALUE));
@@ -35,11 +35,11 @@ describe('gear mode boundaries', () => {
     const capped = late();
     const base = { ...capped, runEarnedScore: gn(2e17), equipmentCounts: { ...capped.equipmentCounts, rootRelay: 2, coreChamber: 1 } };
     const focused = setGearMode(base, 'rootCore', 'rootFocus');
-    const passive = getGearMultiplier(base.permanent), global = 3;
-    const basePart = gn(1).multiply(global * passive);
+    const passive = getGearMultiplier(base.permanent), global = getSkillBonuses(base.permanent).productionMultiplier;
+    const basePart = gn(1).multiply(global).multiply(passive);
     expect(approximatelyEqual(getProductionPerSecond(focused), getProductionPerSecond(base).subtract(basePart).multiply(2.2).add(basePart), 1, 1e-12)).toBe(true);
     const linked = setGearMode(focused, 'compass', 'link');
-    const expectedLinkGain = gn(5e9).multiply(global * passive * 2.2);
+    const expectedLinkGain = gn(5e9).multiply(global).multiply(passive * 2.2);
     expect(approximatelyEqual(getProductionPerSecond(linked).subtract(getProductionPerSecond(focused)), expectedLinkGain, 1, 1e-12)).toBe(true);
     const buyState = { ...linked, equipmentCounts: { ...linked.equipmentCounts, rootRelay: 3, coreChamber: 2 } };
     const purchased = { ...buyState, equipmentCounts: { ...buyState.equipmentCounts, rootRelay: 4 } };
@@ -60,7 +60,7 @@ describe('gear mode boundaries', () => {
     expect(parseSave(serializeSave(createSave(state, 0))).gameState).toEqual(state);
     expect(prestigeGame(advanceGame(state, Number.MAX_VALUE)).permanent.gearModes).toEqual(state.permanent.gearModes);
     const speed = applyGearPreset(state, 'speed');
-    const lens = unlockGear(advanceGame(performBreakthrough(advanceGame(speed, Number.MAX_VALUE)), Number.MAX_VALUE), 'lens');
+    const lens = unlockGear(createNextRootAnalysisReadyState(speed), 'lens');
     expect(lens.permanent.gearModes.lens).toBe('standard');
     expect(lens.permanent.selectedGearPreset).toBe('custom');
     const erased = editGearPreset(state, 0, 'delete');
@@ -86,7 +86,8 @@ describe('gear mode boundaries', () => {
     expect(offline.permanent.depthMeters).toBeCloseTo(online.permanent.depthMeters, 6);
   });
   it('migrates v13 to neutral modes and rejects unknown, mismatched, unowned or malformed presets', () => {
-    const state = withLegacyRefunds(first()), raw = JSON.parse(serializeSave(createSave(state, 0)));
+    const legacy = createLegacyRootState();
+    const state = withLegacyRefunds(unlockGear({ ...legacy, runEarnedScore: gn(1e5) }, 'shovel')), raw = JSON.parse(serializeSave(createSave(state, 0)));
     raw.saveVersion = 13;
     delete raw.gameState.permanent.gearModes; delete raw.gameState.permanent.gearCustomPresets; delete raw.gameState.permanent.selectedGearPreset;
     const migrated = parseSave(JSON.stringify(raw));

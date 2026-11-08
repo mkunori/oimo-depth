@@ -1,4 +1,6 @@
-# 保存・オフライン進行（v16）
+# 保存・オフライン進行（v17）
+
+v17では生涯通常転生回数・ROOT自動購入恒久権・旧ROOT互換フラグを追加しました。旧版の資産を読み込み時に消去せず、次の明示的ROOTから下位回数・ポイント・スキル・権利をリセットします。移行時の推定と台帳の詳細は [ROOT現行仕様](root-rebirth.md) を参照してください。
 
 ## 保存形式と検証
 
@@ -6,7 +8,7 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 ```json
 {
-  "saveVersion": 16,
+  "saveVersion": 17,
   "savedAt": 1700000000000,
   "gameState": {
     "imo": "gn1:0:0:0",
@@ -22,6 +24,9 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
     "researchRanks": { "geology": 0, "resonance": 0 },
     "equipmentCounts": { "worker": 0, "cart": 0, "harvester": 0, "deepDrill": 0, "refinery": 0, "veinExtractor": 0, "concentrator": 0, "rootRelay": 0, "coreChamber": 0, "originMiner": 0, "imoReactor": 0 },
     "permanent": {
+      "lifetimePrestigeCount": 0,
+      "rootAutomationUnlocked": false,
+      "legacyRootProgress": false,
       "rootCycleMaxUnlockedStage": 0,
       "lifetimePrestigePointsEarned": 0,
       "pointsLostByDeepResearch": 0,
@@ -64,7 +69,7 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 v7以降の金額は `GameNumber.toString()` の正規形文字列だけを受理します。通常の数値JSONや `"1e6"`、非正規な成分、NaN/Infinity・負金額は拒否します。価格はGameNumberで検証し、旧形式v1〜v6だけは従来通り次価格が安全整数を超える所有状態も拒否します。v15でも所有数・ランク・段階・回数・時刻はnumberで、安全整数と権限・上限・残高整合性を維持します。
 
-v1〜v6の既存値は従来の補完と検証後に巨大数へ変換します。v5/v6の `automationRemainder` は符号を保持して `productionRemainder` へ移し、v1〜v4はゼロを補います。端数は符号付き巨大数文字列で、絶対値が `現上限 × 32 × Number.EPSILON` を超えるものを拒否します。負の補償を含めたSCOREも0〜上限内に制限します。省略時はゼロですが、明示されたnull・欠落成分・不正値は拒否します。詳細・許容誤差・旧結果との比較は [巨大数移行](number-migration.md)。
+v1〜v6の既存値は従来の補完と検証後に巨大数へ変換します。v5/v6の `automationRemainder` は符号を保持して `productionRemainder` へ移し、v1〜v4はゼロを補います。端数は符号付き巨大数文字列で、絶対値が `現上限 × 64 × Number.EPSILON` を超えるものを拒否します。負の補償を含めたSCOREも0〜上限内に制限します。省略時はゼロですが、明示されたnull・欠落成分・不正値は拒否します。詳細・許容誤差・旧結果との比較は [巨大数移行](number-migration.md)。
 
 v1〜v3 は既存の設備・残高・SCORE・保存時刻を維持し、`scoreCapStage = 0` と `breakthrough = 0` を補完して v4 へ移行します。v1はさらに開始時支給0・恒久データ未取得を補完します。v1/v2は欠けた追加設備 `deepDrill` / `refinery` だけを0で補完し、v3/v4は全5設備を必須とします。v2以降の既存スキル・転生回数・ポイント・支給額を検証して維持します。既存3設備や既存恒久データの欠落は補完しません。旧形式の非ゼロ段階、v2/v3の非ゼロ心得は拒否します。v1の恒久フィールドは未知フィールドとして採用しません。
 
@@ -158,3 +163,11 @@ GitHub Pages のサブパス・公開ワークフローは維持しています�
 ## ポイント経済（v16）
 
 新規解析で使用済みptを返還せず、総獲得・使用中・未使用・消失の台帳を照合します。[旧保存の初期化と安全性](prestige-economy.md)を参照。
+
+## ROOT下位リセット（v17）
+
+`lifetimePrestigeCount` は通常転生時だけ増加し、ROOTでは保持します。`prestigeCount` は現ROOT内の通常転生回数としてROOTで0になります。ポイント獲得履歴と解析履歴の上限は生涯回数で検証します。`rootAutomationUnlocked` はROOT回数が正ならtrueで、通常自動スキルとは独立した権利です。
+
+現在の権利と割当上限は `rootCycleMaxUnlockedStage`、表示の生涯発見は `maxDiscoveredStage` によります。v1〜v16のROOT済み保存だけ `legacyRootProgress=true` として旧権利・高ランクを保持し、次のROOTでfalseにします。ROOT後に解析累計が正であっても、現ROOT未解析・上限段階0・全通常ランク0を正しい状態として保存します。生涯台帳はROOT消失額を含めて収支一致を要求します。
+
+生産端数の上限は64×EPSILONです。ROOT・モードを合わせた1e18経路で、巨大数の差分と残高クリップの丸めによる端数7598が従来の32×EPSILON（約7105）を超えるため変更しました。金額・購入可否・台帳の整数照合には許容幅を追加しません。

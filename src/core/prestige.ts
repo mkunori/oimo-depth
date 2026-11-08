@@ -19,10 +19,11 @@ export function getNextPrestigeReward(state: GameState) {
 export function prestigeGame(state: GameState): GameState {
   const reward = getPrestigeReward(state);
   if (reward === 0) return state;
-  if (!Number.isSafeInteger(state.permanent.prestigeCount + 1) || !Number.isSafeInteger(state.permanent.unspentPoints + reward) || !Number.isSafeInteger(state.permanent.lifetimePrestigePointsEarned + reward)) throw new NumericProgressError('Prestige counters would exceed the safe integer range.');
+  if (!Number.isSafeInteger(state.permanent.lifetimePrestigeCount + 1) || !Number.isSafeInteger(state.permanent.prestigeCount + 1) || !Number.isSafeInteger(state.permanent.unspentPoints + reward) || !Number.isSafeInteger(state.permanent.lifetimePrestigePointsEarned + reward)) throw new NumericProgressError('Prestige counters would exceed the safe integer range.');
   const permanent = {
     ...state.permanent,
     prestigeCount: state.permanent.prestigeCount + 1,
+    lifetimePrestigeCount: state.permanent.lifetimePrestigeCount + 1,
     unspentPoints: state.permanent.unspentPoints + reward,
     lifetimePrestigePointsEarned: state.permanent.lifetimePrestigePointsEarned + reward,
   };

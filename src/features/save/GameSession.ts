@@ -248,16 +248,16 @@ export class GameSession {
       if (!getRootRebirth(state).canRebirth) return false;
       const next = performRootRebirth(state);
       return this.commitProgress(next, state.permanent.rootRebirthCount === 0
-        ? '初回ROOTを実行しました。ROOT結晶1個・恒久収穫×3を獲得し、装備システムを解禁しました。装備欄で利用可能SCOREを使えます。通常ポイントは変わりません。'
-        : 'ROOTを実行しました。ROOT結晶1個を獲得し、段階0から再開しました。通常ポイントは変わりません。');
+        ? '初回ROOTを実行しました。ROOT結晶1個・恒久収穫×3を獲得し、装備システムを解禁しました。装備欄で利用可能SCOREを使えます。下位回数・全通常スキル・未使用ptと現ROOTの解析成果を初期化し、自動購入権と設定を保持します。'
+        : 'ROOTを実行しました。ROOT結晶1個を獲得し、段階0から再開しました。下位回数・全通常スキル・未使用ptと現ROOTの解析成果を初期化し、自動購入権と設定を保持します。');
     } catch (error) { this.fail(error); return false; }
   };
   buyRootUpgrade = (id: RootUpgradeId): boolean => this.researchAction((state) => purchaseRootUpgrade(state, id), `${ROOT_UPGRADES[id].name}を恒久強化しました。ROOT結晶を使用しました。`);
   deepResearch = (choice: DeepMemoryChoice = 'discount'): boolean => this.researchAction((state) => performDeepResearch(state, choice), '深層解析を実行し、深層記憶の保持・使用済みポイントの消失を適用しました。SCORE上限は1E12です。');
-  rootConnection = (): boolean => this.researchAction(performRootConnection, this.snapshot.gameState.permanent.rootConnectionUnlocked
+  rootConnection = (): boolean => this.researchAction(performRootConnection, this.snapshot.gameState.permanent.maxDiscoveredStage >= 3
     ? '根脈接続を再実行しました。上限1E15で同じ周回を継続します。'
     : '根脈接続を解析しました。根脈中継塔・芋核培養槽を発見！ 上限1E15で同じ周回を継続します。');
-  originAnalysis = (): boolean => this.researchAction(performOriginAnalysis, this.snapshot.gameState.permanent.originAnalysisUnlocked
+  originAnalysis = (): boolean => this.researchAction(performOriginAnalysis, this.snapshot.gameState.permanent.maxDiscoveredStage >= 4
     ? '地底核心を再解析しました。上限1E18で同じ周回を継続します。'
     : '地底核心を解析しました。根源採掘機・芋核炉と根源研究を発見！ 上限1E18で同じ周回を継続します。');
   buyOriginResearch = (id: OriginResearchId): boolean => this.researchAction((state) => purchaseOriginResearch(state, id), `${ORIGIN_RESEARCH[id].name}を強化しました。`);

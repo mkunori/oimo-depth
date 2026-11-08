@@ -1,3 +1,4 @@
+import { simulateRootRebuild } from './rootRebuild';
 import type { BuiltinGearPreset } from '../data/gearModes';
 import { performRootRebirth, purchaseRootUpgrade } from '../core/root';
 import { performBreakthrough } from '../core/breakthrough';
@@ -27,7 +28,8 @@ export function simulateGear(origins: ReturnType<typeof simulateOrigins>, maxSec
       state = parseSave(serializeSave(createSave(investSkills(state, 'breakthrough'), 0))).gameState;
       const initialState = state, startsAtSeconds = elapsedSeconds, stages = [];
       for (let stage = 0; stage <= 4 && elapsedSeconds < maxSeconds; stage += 1) {
-        const result = simulateRun(state, scenario, maxSeconds - elapsedSeconds);
+        const result = stage === 0 ? simulateRootRebuild(state, scenario, maxSeconds - elapsedSeconds)
+          : simulateRun(state, scenario, maxSeconds - elapsedSeconds);
         stages.push({ stage, startsAtSeconds: elapsedSeconds, result });
         trace.push(...result.trace.map((point) => ({ ...point, elapsedSeconds: elapsedSeconds + point.elapsedSeconds, run: cycle })));
         state = result.state; elapsedSeconds += result.elapsedSeconds;
