@@ -9,23 +9,26 @@ import { assertExcavation } from './excavation';
 export function assertPermanentProgress(permanent: PermanentProgress, allowHistoricalUnlocks = true): void {
   assertRootProgress(permanent);
   assertExcavation(permanent);
+  const legacy = permanent.legacyRootProgress;
+  const permissionStage = legacy ? permanent.maxDiscoveredStage : permanent.rootCycleMaxUnlockedStage;
   if (![0, 1, 2, 3, 4].includes(permanent.maxDiscoveredStage)
     || typeof permanent.originAnalysisUnlocked !== 'boolean'
-    || permanent.originAnalysisUnlocked !== (permanent.maxDiscoveredStage === 4)
+    || permanent.originAnalysisUnlocked !== (permissionStage === 4)
     || typeof permanent.rootConnectionUnlocked !== 'boolean'
-    || permanent.rootConnectionUnlocked !== (permanent.maxDiscoveredStage >= 3)
-    || (permanent.maxDiscoveredStage >= 1 && permanent.skillRanks.breakthrough < 1)
-    || (permanent.maxDiscoveredStage >= 2) !== permanent.deepResearchUnlocked) throw new RangeError('Invalid discovery or root connection permission.');
+    || permanent.rootConnectionUnlocked !== (permissionStage >= 3)
+    || (permissionStage >= 1 && permanent.skillRanks.breakthrough < 1)
+    || (permissionStage >= 2) !== permanent.deepResearchUnlocked) throw new RangeError('Invalid discovery or current permission.');
   if (typeof permanent.deepAnalysisActiveThisRoot !== 'boolean'
     || (permanent.deepAnalysisActiveThisRoot && (!permanent.deepResearchUnlocked || permanent.deepResearchCount <= permanent.rootRebirthCount))
     || (permanent.rootRebirthCount === 0 && permanent.deepResearchCount > 0 && !permanent.deepAnalysisActiveThisRoot)) throw new RangeError('Invalid current ROOT analysis.');
   // Preserve the bound on legacy repeated analyses; normal prestige no longer adds an analysis.
   if (!Number.isSafeInteger(permanent.deepResearchCount) || permanent.deepResearchCount < 0
-    || permanent.deepResearchUnlocked !== (permanent.deepResearchCount > 0)
-    || permanent.deepResearchCount - permanent.rootRebirthCount > Math.max(0, permanent.prestigeCount - 4)) throw new RangeError('Invalid deep research history.');
+    || (permanent.deepResearchUnlocked && permanent.deepResearchCount === 0)
+    || permanent.deepResearchCount - permanent.rootRebirthCount > Math.max(0, permanent.lifetimePrestigeCount - 4)) throw new RangeError('Invalid deep research history.');
   if (typeof permanent.deepResearchUnlocked !== 'boolean'
     || (permanent.deepResearchUnlocked && permanent.skillRanks.breakthrough < 1)) throw new RangeError('Invalid deep research permission.');
-  if (!Number.isSafeInteger(permanent.prestigeCount) || permanent.prestigeCount < 0
+  if (!Number.isSafeInteger(permanent.lifetimePrestigeCount) || permanent.lifetimePrestigeCount < permanent.prestigeCount
+    || !Number.isSafeInteger(permanent.prestigeCount) || permanent.prestigeCount < 0
     || !Number.isSafeInteger(permanent.unspentPoints) || permanent.unspentPoints < 0) {
     throw new RangeError('Invalid prestige count or points.');
   }
@@ -37,11 +40,11 @@ export function assertPermanentProgress(permanent: PermanentProgress, allowHisto
     const rank = permanent.skillRanks[id];
     const definition = SKILLS[id];
     if (!Number.isSafeInteger(rank) || rank < 0 || rank > skillRankLimit(id, permanent.maxDiscoveredStage)
-      || (rank > skillRankLimit(id, cycleStage) && permanent.rootRebirthCount === 0)) {
+      || (rank > skillRankLimit(id, cycleStage) && !legacy)) {
       throw new RangeError('Invalid skill rank.');
     }
     if (rank > 0 && (permanent.prestigeCount < definition.minimumPrestigeCount
-      || ((!allowHistoricalUnlocks || isEnhancementSkill(id) || permanent.deepResearchCount === 0)
+      || ((!allowHistoricalUnlocks || isEnhancementSkill(id) || !permanent.deepResearchUnlocked)
         && definition.prerequisites.some((required) => permanent.skillRanks[required.id] < required.rank)))) {
       throw new RangeError('Skill prerequisites are not satisfied.');
     }
@@ -61,10 +64,9 @@ export function getSkillBonuses(permanent: PermanentProgress) {
     if (effect.type === 'startingImo') bonuses.startingImo = bonuses.startingImo.add(amount);
   }
   const root = getRootBonuses(permanent);
-  bonuses.productionMultiplier *= root.production;
   bonuses.startingImo = bonuses.startingImo.add(root.startingImo);
   bonuses.equipmentPriceMultiplier = (1 - bonuses.equipmentDiscountPercent / 100) * root.priceMultiplier;
-  return bonuses;
+  return { ...bonuses, productionMultiplier: gn(bonuses.productionMultiplier).multiply(root.production) };
 }
 
 export function getSkillPurchase(permanent: PermanentProgress, id: SkillId, postDeepResearchSkillLock = false) {
@@ -74,7 +76,8 @@ export function getSkillPurchase(permanent: PermanentProgress, id: SkillId, post
   const rank = permanent.skillRanks[id];
   const maxRank = skillRankLimit(id, permanent.rootCycleMaxUnlockedStage);
   const cost = rank >= maxRank ? null : definition.costs[rank] ?? null;
-  const reason = postDeepResearchSkillLock && isEnhancementSkill(id) ? '深層解析後の強化スキルは、この周回では再購入できません。'
+  const reason = id === 'automation' && permanent.rootAutomationUnlocked ? 'ROOTで自動購入を恒久解禁済みです。スキルの再購入は不要です。'
+    : postDeepResearchSkillLock && isEnhancementSkill(id) ? '深層解析後の強化スキルは、この周回では再購入できません。'
     : rank >= maxRank ? '最大ランクに到達しています。'
     : definition.prerequisites.some((required) => permanent.skillRanks[required.id] < required.rank)
       ? '前提スキルが未取得です。'

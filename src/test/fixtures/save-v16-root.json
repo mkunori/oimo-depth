@@ -1,0 +1,133 @@
+{
+  "saveVersion": 16,
+  "savedAt": 1700000000000,
+  "gameState": {
+    "runStartingScoreCapStage": 0,
+    "scoreSpentThisRun": "gn1:0:0:0",
+    "gearPurchasedThisRun": [],
+    "postDeepResearchSkillLock": false,
+    "imo": "gn1:0:0:0",
+    "runEarnedScore": "gn1:0:0:0",
+    "runStartingImo": "gn1:0:0:0",
+    "scoreCapStage": 0,
+    "originResearchRanks": {
+      "harvest": 0,
+      "link": 0
+    },
+    "researchRanks": {
+      "geology": 0,
+      "resonance": 0
+    },
+    "equipmentCounts": {
+      "worker": 0,
+      "cart": 0,
+      "harvester": 0,
+      "deepDrill": 0,
+      "refinery": 0,
+      "veinExtractor": 0,
+      "concentrator": 0,
+      "rootRelay": 0,
+      "coreChamber": 0,
+      "originMiner": 0,
+      "imoReactor": 0
+    },
+    "permanent": {
+      "rootRebirthCount": 1,
+      "unspentRootCrystals": 1,
+      "totalRootCrystalsEarned": 1,
+      "totalRootCrystalsSpent": 0,
+      "equipmentSystemUnlocked": true,
+      "rootUpgradeRanks": {
+        "blessing": 0,
+        "memory": 0,
+        "adaptation": 0
+      },
+      "gearModes": {
+        "shovel": "standard",
+        "lens": "standard",
+        "drillBit": "standard",
+        "compass": "standard",
+        "rootCore": "standard"
+      },
+      "gearCustomPresets": [
+        null,
+        null,
+        null
+      ],
+      "selectedGearPreset": "standard",
+      "gearUnlocked": {
+        "shovel": false,
+        "lens": false,
+        "drillBit": false,
+        "compass": false,
+        "rootCore": false
+      },
+      "gearDiscovered": {
+        "shovel": true,
+        "lens": false,
+        "drillBit": false,
+        "compass": false,
+        "rootCore": false
+      },
+      "rootCycleMaxUnlockedStage": 0,
+      "lifetimePrestigePointsEarned": 12,
+      "pointsLostByDeepResearch": 7,
+      "pointsLostByRoot": 0,
+      "deepAnalysisActiveThisRoot": false,
+      "prestigeCount": 6,
+      "unspentPoints": 1,
+      "skillRanks": {
+        "harvest": 0,
+        "discount": 0,
+        "startingImo": 0,
+        "breakthrough": 1,
+        "automation": 1
+      },
+      "depthMeters": 100336.613884,
+      "depthRemainder": 4.78828088291e-12,
+      "digResearchRanks": {
+        "basic": 0,
+        "vein": 0
+      },
+      "originAnalysisUnlocked": true,
+      "rootConnectionUnlocked": true,
+      "maxDiscoveredStage": 4,
+      "deepResearchCount": 1,
+      "deepResearchUnlocked": true
+    },
+    "automation": {
+      "enabled": true,
+      "policy": "efficient",
+      "equipment": {
+        "worker": true,
+        "cart": true,
+        "harvester": true,
+        "deepDrill": true,
+        "refinery": true,
+        "veinExtractor": true,
+        "concentrator": true,
+        "rootRelay": true,
+        "coreChamber": true,
+        "originMiner": true,
+        "imoReactor": true
+      },
+      "priority": [
+        "worker",
+        "cart",
+        "harvester",
+        "deepDrill",
+        "refinery",
+        "veinExtractor",
+        "concentrator",
+        "rootRelay",
+        "coreChamber",
+        "originMiner",
+        "imoReactor"
+      ]
+    },
+    "productionRemainder": {
+      "score": "gn1:0:0:0",
+      "imo": "gn1:0:0:0"
+    }
+  }
+}

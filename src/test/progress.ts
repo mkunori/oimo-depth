@@ -7,6 +7,8 @@ import { prestigeGame, purchaseSkill } from '../core/prestige';
 import { createInitialState } from '../core/state';
 import { performBreakthrough } from '../core/breakthrough';
 import { performDeepResearch } from '../core/research';
+import { parseSave } from '../core/save';
+import { readFileSync } from 'node:fs';
 
 /** 本番と同じ転生・支出を経由した、初回突破の確認直前の状態。 */
 export function createBreakthroughReadyState() {
@@ -65,4 +67,19 @@ export function withLegacyRefunds(state: GameState): GameState {
   return { ...state, permanent: { ...state.permanent,
     unspentPoints: state.permanent.unspentPoints + state.permanent.pointsLostByDeepResearch,
     pointsLostByDeepResearch: 0 } };
+}
+
+/** Rebuild the lower loop with real capped prestiges and paid prerequisites. */
+export function createNextRootAnalysisReadyState(initial: GameState): GameState {
+  let state = buyTestEnhancements(initial, { harvest: 3, discount: 1, startingImo: 0 });
+  for (let step = 0; state.permanent.skillRanks.breakthrough === 0; step += 1) {
+    if (step > 20) throw new Error('ROOT rebuild cannot acquire breakthrough.');
+    const next = purchaseSkill(state, 'breakthrough');
+    state = next === state ? prestigeGame(advanceGame(state, Number.MAX_VALUE)) : next;
+  }
+  return advanceGame(performBreakthrough(advanceGame(state, Number.MAX_VALUE)), Number.MAX_VALUE);
+}
+
+export function createLegacyRootState(): GameState {
+  return parseSave(readFileSync(new URL('./fixtures/save-v16-root.json', import.meta.url), 'utf8')).gameState;
 }

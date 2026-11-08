@@ -36,7 +36,7 @@ export function getDeepResearch(state: GameState) {
 export function performDeepResearch(state: GameState, choice: DeepMemoryChoice = 'discount'): GameState {
   if (!getDeepResearch(state).canResearch) return state;
   const reset = getDeepResearchReset(state, choice);
-  if (reset.count - state.permanent.rootRebirthCount > state.permanent.prestigeCount - 4) throw new NumericProgressError('Deep research count exceeds the prestige history.');
+  if (reset.count - state.permanent.rootRebirthCount > state.permanent.lifetimePrestigeCount - 4) throw new NumericProgressError('Deep research count exceeds the prestige history.');
   const pointsLostByDeepResearch = state.permanent.pointsLostByDeepResearch + reset.pointsLost;
   if (!Number.isSafeInteger(pointsLostByDeepResearch)) throw new NumericProgressError('Lost points exceed the safe integer range.');
   const skillRanks = { ...state.permanent.skillRanks };

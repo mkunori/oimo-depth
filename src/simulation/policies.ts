@@ -1,3 +1,4 @@
+import { hasAutomationAccess } from '../core/automationAccess';
 import { GameNumber } from '../core/numbers';
 import { configureAutomation, getEquipmentAvailability, getEquipmentPrice, getEquipmentPurchaseGain, purchaseEquipment } from '../core/game';
 import type { AutomationPolicy } from '../data/automation';
@@ -31,7 +32,7 @@ export function investSkills(state: GameState, plan: SkillPlan, automation?: Aut
     if (next === state) break;
     state = next;
   }
-  return automation && state.permanent.skillRanks.automation > 0
+  return automation && hasAutomationAccess(state.permanent)
     ? configureAutomation(state, { ...state.automation, enabled: true, policy: automation }) : state;
 }
 

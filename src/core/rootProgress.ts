@@ -1,9 +1,13 @@
-import { ROOT_FIRST_PRODUCTION_MULTIPLIER, ROOT_UPGRADES, ROOT_UPGRADE_IDS } from '../data/root';
+import { gn } from './numbers';
+import type { GameNumber } from './numbers';
+import { ROOT_UPGRADES, ROOT_UPGRADE_IDS, ROOT_PRODUCTION_PER_REBIRTH } from '../data/root';
 import type { PermanentProgress } from './state';
 
 export function assertRootProgress(permanent: PermanentProgress): void {
   const { rootRebirthCount: count, unspentRootCrystals: balance, totalRootCrystalsEarned: earned,
     totalRootCrystalsSpent: spent, rootUpgradeRanks: ranks, equipmentSystemUnlocked: unlocked } = permanent;
+  if (typeof permanent.rootAutomationUnlocked !== 'boolean' || permanent.rootAutomationUnlocked !== (count > 0)
+    || typeof permanent.legacyRootProgress !== 'boolean' || (permanent.legacyRootProgress && count === 0)) throw new RangeError('Invalid permanent ROOT permission.');
   // The common pre-ROOT state has an exact, fully validated zero ledger. Avoid
   // allocating/scanning arrays on every fractional production tick in this case.
   if (count === 0 && balance === 0 && earned === 0 && spent === 0 && unlocked === false
@@ -17,7 +21,8 @@ export function assertRootProgress(permanent: PermanentProgress): void {
   if (spent !== paid) throw new RangeError('ROOT crystal ledger does not match upgrades.');
 }
 
-const NO_ROOT_BONUSES = Object.freeze({ production: 1, startingImo: 0, lateAndDig: 1, priceMultiplier: 1 });
+const NO_ROOT_BONUSES = Object.freeze({ production: gn(1), startingImo: 0, lateAndDig: 1, priceMultiplier: 1 });
+export function getRootCountMultiplier(count: number | GameNumber) { return gn(count).multiply(ROOT_PRODUCTION_PER_REBIRTH).add(1); }
 
 /** Like researchMultiplier, evaluate already validated progress. Core actions
  * and save loading validate the ledger at their state boundary; recalculating
@@ -25,10 +30,10 @@ const NO_ROOT_BONUSES = Object.freeze({ production: 1, startingImo: 0, lateAndDi
  * No imports from game/skills/excavation (avoids cycles). */
 export function getRootBonuses(permanent: PermanentProgress) {
   if (permanent.rootRebirthCount === 0) return NO_ROOT_BONUSES;
-  const values = { production: permanent.rootRebirthCount > 0 ? ROOT_FIRST_PRODUCTION_MULTIPLIER : 1, startingImo: 0, lateAndDig: 1, priceMultiplier: 1 };
+  const values = { production: getRootCountMultiplier(permanent.rootRebirthCount), startingImo: 0, lateAndDig: 1, priceMultiplier: 1 };
   for (const id of ROOT_UPGRADE_IDS) {
     const effect = ROOT_UPGRADES[id].effect, value = effect.values[permanent.rootUpgradeRanks[id]]!;
-    if (effect.type === 'production') values.production *= value;
+    if (effect.type === 'production') values.production = values.production.multiply(value);
     if (effect.type === 'startingImo') { values.startingImo += value; values.priceMultiplier *= effect.priceMultipliers[permanent.rootUpgradeRanks[id]]!; }
     if (effect.type === 'lateAndDig') values.lateAndDig *= value;
   }

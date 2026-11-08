@@ -23,7 +23,7 @@ import { assertPermanentProgress } from './skills';
 import { createEmptyDigResearch, DIG_RESEARCH_IDS } from '../data/depth';
 import type { DigResearchRanks } from '../data/depth';
 
-export const SAVE_VERSION = 16;
+export const SAVE_VERSION = 17;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -59,7 +59,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 = SAVE_VERSION, internal = false): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 = SAVE_VERSION, internal = false): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (state.imo === undefined || state.runEarnedScore === undefined) {
@@ -105,6 +105,9 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
       ...(version < 14 ? createGearSettings() : { gearModes: structuredClone(savedPermanent.gearModes) as PermanentProgress['gearModes'], gearCustomPresets: structuredClone(savedPermanent.gearCustomPresets) as PermanentProgress['gearCustomPresets'], selectedGearPreset: savedPermanent.selectedGearPreset as PermanentProgress['selectedGearPreset'] }),
       gearUnlocked: version < 13 ? createEmptyGear() : (() => { const gear = record(savedPermanent.gearUnlocked); return Object.fromEntries(GEAR_IDS.map((id) => [id, gear[id]])) as GearFlags; })(),
       gearDiscovered: version < 13 ? createEmptyGear() : (() => { const gear = record(savedPermanent.gearDiscovered); return Object.fromEntries(GEAR_IDS.map((id) => [id, gear[id]])) as GearFlags; })(),
+      lifetimePrestigeCount: version >= 17 ? savedPermanent.lifetimePrestigeCount as number : savedPermanent.prestigeCount,
+      rootAutomationUnlocked: version >= 17 ? savedPermanent.rootAutomationUnlocked as boolean : version >= 12 && (savedPermanent.rootRebirthCount as number) > 0,
+      legacyRootProgress: version >= 17 ? savedPermanent.legacyRootProgress as boolean : version >= 12 && (savedPermanent.rootRebirthCount as number) > 0,
       rootCycleMaxUnlockedStage: version >= 16 ? savedPermanent.rootCycleMaxUnlockedStage as ScoreCapStage : 0,
       lifetimePrestigePointsEarned: version >= 16 ? savedPermanent.lifetimePrestigePointsEarned as number : 0,
       pointsLostByDeepResearch: version >= 16 ? savedPermanent.pointsLostByDeepResearch as number : 0,
@@ -133,6 +136,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     if (version < 16) permanent = { ...permanent, ...migrateLegacyPrestigePoints(permanent),
       rootCycleMaxUnlockedStage: permanent.rootRebirthCount === 0 ? permanent.maxDiscoveredStage
         : Math.max(typeof state.scoreCapStage === 'number' ? state.scoreCapStage : 0, permanent.deepAnalysisActiveThisRoot ? 2 : 0) as ScoreCapStage };
+    if (version < 17 && permanent.pointsLostByRoot !== 0) throw new SaveDataError('Invalid legacy ROOT point loss.');
     // Legacy formats could not reset skill prerequisites. Validate their original
     // acquisition rules before granting the new history-based exception.
     if (version < 8) assertPermanentProgress(permanent, false);
@@ -201,8 +205,8 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
       const price = getEquipmentPrice(id, equipmentCounts[id], permanent);
       if (version < 7 && !isOriginEquipment(id) && price.gt(Number.MAX_SAFE_INTEGER)) throw new SaveDataError('旧セーブの設備価格が範囲外です。');
     }
-  } catch {
-    throw new SaveDataError('セーブの数値が範囲外です。');
+  } catch (cause) {
+    throw new SaveDataError('セーブの数値が範囲外です。', { cause });
   }
   return result;
 }
@@ -218,7 +222,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== 10 && data.saveVersion !== 11 && data.saveVersion !== 12 && data.saveVersion !== 13 && data.saveVersion !== 14 && data.saveVersion !== 15 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== 10 && data.saveVersion !== 11 && data.saveVersion !== 12 && data.saveVersion !== 13 && data.saveVersion !== 14 && data.saveVersion !== 15 && data.saveVersion !== 16 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   try { return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt)); }

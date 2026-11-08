@@ -1,3 +1,4 @@
+import { hasAutomationAccess } from './automationAccess';
 import { getGearModeEffects, gearModeKey } from './gearModeEffects';
 import { assertGearProgress, getGearMultiplier } from './gearProgress';
 import { getRootBonuses } from './rootProgress';
@@ -67,11 +68,13 @@ export function assertGameState(state: GameState) {
   if (state.permanent.rootCycleMaxUnlockedStage < state.scoreCapStage || state.permanent.maxDiscoveredStage < state.scoreCapStage
     || (state.scoreCapStage >= 3 && !state.permanent.rootConnectionUnlocked)) throw new RangeError('Invalid discovery or root connection.');
   readAutomation(state.automation);
-  if (state.automation.enabled && state.permanent.skillRanks.automation === 0) throw new RangeError('Automation skill is required.');
+  if (state.automation.enabled && !hasAutomationAccess(state.permanent)) throw new RangeError('Automation skill is required.');
   const carry = state.productionRemainder;
   if (carry !== undefined) {
     if (carry === null || typeof carry !== 'object') throw new RangeError('Invalid production remainder.');
-    const bound = cap.max(1).multiply(32 * Number.EPSILON);
+    // Layered-number subtraction and the balance clamp each contribute rounding.
+    // ROOT/mode combinations at 1e18 can exceed 32 eps (observed 7598 < 64 eps).
+    const bound = cap.max(1).multiply(64 * Number.EPSILON);
     for (const value of [carry.score, carry.imo]) {
       if (!(value instanceof GameNumber) || value.abs().gt(bound)) throw new RangeError('Invalid production remainder.');
     }
@@ -93,7 +96,7 @@ export function assertGameState(state: GameState) {
   // The starting grant records an actual payment. A reset cannot undo it; only this
   // locked run may retain a grant above the current normal-skill bonus
   // including nonlinear higher-rank grants and ROOT grants paid at earlier ranks.
-  const normalRank = locked ? skillRankLimit('startingImo', state.permanent.maxDiscoveredStage) : ranks.startingImo;
+  const normalRank = locked ? skillRankLimit('startingImo', state.permanent.legacyRootProgress ? state.permanent.maxDiscoveredStage : state.permanent.rootCycleMaxUnlockedStage) : ranks.startingImo;
   if (!hasStartingGrant(state, normalRank)
     || state.imo.gt(state.runEarnedScore.add(state.runStartingImo)) || state.runEarnedScore.gt(cap)
     || state.imo.add(getResearchSpent(state.researchRanks)).add(getOriginResearchSpent(state.originResearchRanks)).gt(state.runEarnedScore.add(state.runStartingImo).add(0.001))
@@ -334,5 +337,5 @@ export function advanceGame(state: GameState, elapsedSeconds: number): GameState
 export function configureAutomation(state: GameState, settings: AutomationSettings): GameState {
   getProductionPerSecond(state);
   const automation = readAutomation(settings);
-  return state.permanent.skillRanks.automation === 0 ? state : { ...state, automation };
+  return !hasAutomationAccess(state.permanent) ? state : { ...state, automation };
 }

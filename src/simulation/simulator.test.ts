@@ -158,9 +158,10 @@ describe('event-driven simulation', () => {
       expect(trial.completed).toBe(true);
       expect(trial.elapsedSeconds).toBeLessThan(trial.firstRootSeconds);
       expect(trial.afterRoot.permanent.unspentRootCrystals).toBe(1);
-      expect(trial.afterRoot.permanent.prestigeCount).toBe(trial.firstState.permanent.prestigeCount);
-      expect(trial.afterRoot.permanent.unspentPoints).toBe(trial.firstState.permanent.unspentPoints);
-      expect(trial.state.permanent.prestigeCount).toBe(trial.firstState.permanent.prestigeCount);
+      expect(trial.afterRoot.permanent.prestigeCount).toBe(0);
+      expect(trial.afterRoot.permanent.lifetimePrestigeCount).toBe(trial.firstState.permanent.lifetimePrestigeCount);
+      expect(trial.afterRoot.permanent.unspentPoints).toBe(0);
+      expect(trial.state.permanent.prestigeCount).toBe(5);
       expect(trial.afterSecondRoot?.permanent.rootRebirthCount).toBe(2);
       expect(trial.afterSecondRoot?.permanent.totalRootCrystalsEarned).toBe(2);
       expect(trial.afterSecondRoot?.permanent.unspentRootCrystals).toBe(1);

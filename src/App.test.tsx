@@ -14,7 +14,7 @@ import { SAVE_STORAGE_KEY } from './features/save/SaveRepository';
 import { advanceGame } from './core/game';
 import { prestigeGame, purchaseSkill } from './core/prestige';
 import type { GameState } from './core/state';
-import { createRootRebirthReadyState, completeAnalyzedRootCycle, buyTestEnhancements, createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from './test/progress';
+import { createRootRebirthReadyState, completeAnalyzedRootCycle, buyTestEnhancements, createNextRootAnalysisReadyState, createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from './test/progress';
 import { performRootConnection } from './core/rootConnection';
 import { performDeepResearch } from './core/research';
 import { performBreakthrough } from './core/breakthrough';
@@ -94,11 +94,11 @@ describe('research UI', () => {
     expect(screen.getByLabelText('所持芋').textContent).toBe('123');
     expect(screen.getByLabelText('有効な装備数').textContent).toBe('1');
     view.unmount();
-    seedGame(performBreakthrough(advanceGame(bought, Number.MAX_VALUE))); view = renderGame();
+    seedGame(advanceGame(performBreakthrough(createNextRootAnalysisReadyState(bought)), Number.MAX_VALUE)); view = renderGame();
     expect(screen.getByRole('button', { name: '自動選別レンズを恒久解禁' })).toBeTruthy();
     expect(view.container.innerHTML).not.toMatch(/古代ドリルビット|地脈コンパス|根源コア/);
     fireEvent.click(screen.getByRole('button', { name: '転生する' }));
-    fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
+    fireEvent.click(screen.getByRole('button', { name: '転生を実行（3pt）' }));
     expect(screen.getByLabelText('装備支出SCORE').textContent).toBe('0');
     expect(screen.getByLabelText('有効な装備数').textContent).toBe('1');
     expect((screen.getByRole('button', { name: '自動選別レンズを恒久解禁' }) as HTMLButtonElement).disabled).toBe(true);
@@ -118,8 +118,9 @@ describe('research UI', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ROOT REBIRTHする' }));
     fireEvent.click(screen.getByRole('button', { name: 'ROOTを実行（結晶1個）' }));
     const reborn = parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState;
-    expect(reborn.permanent.prestigeCount).toBe(ready.permanent.prestigeCount);
-    expect(reborn.permanent.unspentPoints).toBe(ready.permanent.unspentPoints);
+    expect(reborn.permanent.prestigeCount).toBe(0);
+    expect(reborn.permanent.lifetimePrestigeCount).toBe(ready.permanent.lifetimePrestigeCount);
+    expect(reborn.permanent.unspentPoints).toBe(0);
     expect(screen.getByLabelText('ROOT結晶').textContent).toBe('1');
     expect(screen.getByLabelText('ROOT回数').textContent).toBe('1');
     expect(screen.getByLabelText('現在SCORE').textContent).toBe('0');
@@ -236,7 +237,7 @@ describe('research UI', () => {
     for (let count = 0; count < 2; count += 1) {
       ready = performRootRebirth(ready);
       ready = buyTestEnhancements(ready, { harvest: 3, discount: 1, startingImo: 1 });
-      ready = advanceGame(performBreakthrough(advanceGame(ready, Number.MAX_VALUE)), Number.MAX_VALUE);
+      ready = createNextRootAnalysisReadyState(ready);
       if (count === 0) ready = completeAnalyzedRootCycle(performDeepResearch(ready));
     }
     seedGame(ready); renderGame();

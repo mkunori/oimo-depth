@@ -1,38 +1,38 @@
-import { withLegacyRefunds } from '../test/progress';
+import { withLegacyRefunds, createLegacyRootState } from '../test/progress';
 import { describe, expect, it } from 'vitest';
-import { createRootRebirthReadyState } from '../test/progress';
+import { createRootRebirthReadyState, createNextRootAnalysisReadyState, completeAnalyzedRootCycle } from '../test/progress';
 import { createInitialState } from './state';
 import type { GameState } from './state';
-import { advanceGame, advanceWithAutomation, getEquipmentPurchaseGain, getProductionPerSecond, purchaseEquipment, getEquipmentPrice } from './game';
+import { advanceGame, advanceWithAutomation, getEquipmentPurchaseGain, getProductionPerSecond, getEquipmentPrice } from './game';
 import { getRootRebirth, getRootUpgradePurchase, performRootRebirth, purchaseRootUpgrade } from './root';
 import { prestigeGame } from './prestige';
-import { performBreakthrough } from './breakthrough';
 import { performDeepResearch } from './research';
-import { performRootConnection } from './rootConnection';
-import { performOriginAnalysis } from './origin';
 import { createSave, parseSave, serializeSave, settleOffline } from './save';
 import { getDigPower } from './excavation';
 import { gn } from './numbers';
 
 function revisit(initial: GameState) {
-  let state = advanceGame(initial, Number.MAX_VALUE);
-  state = advanceGame(performBreakthrough(state), Number.MAX_VALUE);
-  state = advanceGame(performDeepResearch(state), Number.MAX_VALUE);
-  state = advanceGame(performRootConnection(state), Number.MAX_VALUE);
-  state = performOriginAnalysis(state);
-  return advanceGame(purchaseEquipment(advanceGame(state, 1e15), 'originMiner', 1), Number.MAX_VALUE);
+  return completeAnalyzedRootCycle(performDeepResearch(createNextRootAnalysisReadyState(initial)));
 }
 
 describe('ROOT rebirth', () => {
-  it('keeps permanent assets and normal points, resets only the run, and cannot double claim or deadlock on later deep analyses', () => {
+  it('resets lower assets atomically, keeps lifetime history and rebuilds across multiple ROOTs', () => {
     const empty = createInitialState();
     expect(getRootRebirth(empty).canRebirth).toBe(false); expect(performRootRebirth(empty)).toBe(empty);
     const before = createRootRebirthReadyState(), normal = prestigeGame(before), root = performRootRebirth(before);
     expect(normal.permanent.rootRebirthCount).toBe(0);
     expect(normal.permanent.prestigeCount).toBe(before.permanent.prestigeCount + 1);
     expect(normal.permanent.unspentPoints).toBe(before.permanent.unspentPoints + 6);
-    expect(root).toEqual({ ...createInitialState(), automation: before.automation, permanent: { ...before.permanent,
-      deepAnalysisActiveThisRoot: false, rootCycleMaxUnlockedStage: 0, rootRebirthCount: 1, totalRootCrystalsEarned: 1, unspentRootCrystals: 1, equipmentSystemUnlocked: true, gearDiscovered: { ...before.permanent.gearDiscovered, shovel: true } } });
+    expect(root.permanent.prestigeCount).toBe(0); expect(root.permanent.unspentPoints).toBe(0);
+    expect(root.permanent.skillRanks).toEqual(empty.permanent.skillRanks);
+    expect(root.permanent.rootAutomationUnlocked).toBe(true);
+    expect(root.automation).toEqual(before.automation);
+    expect(root.permanent.deepResearchUnlocked).toBe(false);
+    expect(root.permanent.rootConnectionUnlocked).toBe(false); expect(root.permanent.originAnalysisUnlocked).toBe(false);
+    expect(root.permanent.lifetimePrestigeCount).toBe(before.permanent.lifetimePrestigeCount);
+    expect(root.permanent.lifetimePrestigePointsEarned).toBe(before.permanent.lifetimePrestigePointsEarned);
+    expect(root.permanent.pointsLostByRoot).toBe(before.permanent.unspentPoints + 4);
+    expect(root.permanent.depthMeters).toBe(before.permanent.depthMeters);
     expect(getProductionPerSecond(root)).toBeAmount(3);
     expect(performRootRebirth(root)).toBe(root);
     let next = root;
@@ -41,12 +41,33 @@ describe('ROOT rebirth', () => {
       expect(next.permanent.rootRebirthCount).toBe(count);
       expect(next.permanent.deepResearchCount).toBe(count);
       expect(next.permanent.unspentRootCrystals).toBe(count);
-      expect(next.permanent.prestigeCount).toBe(before.permanent.prestigeCount);
-      expect(next.permanent.unspentPoints).toBe(before.permanent.unspentPoints);
+      expect(next.permanent.prestigeCount).toBe(0);
+      expect(next.permanent.lifetimePrestigeCount).toBe(before.permanent.lifetimePrestigeCount + 5 * (count - 1));
+      expect(next.permanent.unspentPoints).toBe(0);
       expect(next.permanent.depthMeters).toBeGreaterThanOrEqual(before.permanent.depthMeters);
       expect(next.postDeepResearchSkillLock).toBe(false);
-      expect(getProductionPerSecond(next)).toBeAmount(3); // first bonus is not 3^count
+      expect(getProductionPerSecond(next)).toBeAmount(1 + 2 * count);
     }
+  });
+
+  it('preserves v16 ROOT assets on migration and resets them only on the next explicit ROOT', () => {
+    const migrated = createLegacyRootState();
+    expect(migrated.permanent.legacyRootProgress).toBe(true);
+    expect(migrated.permanent.rootAutomationUnlocked).toBe(true);
+    expect(migrated.permanent.prestigeCount).toBe(6);
+    expect(migrated.permanent.lifetimePrestigeCount).toBe(6);
+    expect(migrated.permanent.unspentPoints).toBe(1);
+    expect(migrated.permanent.pointsLostByRoot).toBe(0);
+    expect(migrated.permanent.skillRanks.breakthrough).toBe(1);
+    expect(migrated.permanent.deepResearchUnlocked).toBe(true);
+    expect(parseSave(serializeSave(createSave(migrated, 123))).gameState).toEqual(migrated);
+    const next = performRootRebirth(revisit(migrated));
+    expect(next.permanent.legacyRootProgress).toBe(false);
+    expect(next.permanent.prestigeCount).toBe(0);
+    expect(next.permanent.skillRanks).toEqual(createInitialState().permanent.skillRanks);
+    expect(next.permanent.pointsLostByRoot).toBeGreaterThan(0);
+    expect(() => createSave({ ...next, permanent: { ...next.permanent, deepResearchUnlocked: true } }, 0)).toThrow();
+    expect(() => createSave({ ...next, permanent: { ...next.permanent, rootAutomationUnlocked: false } }, 0)).toThrow();
   });
 
   it('spends only crystals, distinguishes the first choices, and uses persistent production/discount/late/dig effects in core caches', () => {
@@ -66,8 +87,8 @@ describe('ROOT rebirth', () => {
     const second = performRootRebirth(revisit(harvest)), adapted = purchaseRootUpgrade(second, 'adaptation');
     expect(adapted.permanent.rootUpgradeRanks.adaptation).toBe(1);
     expect(getDigPower(adapted)).toBeCloseTo(getDigPower(second) * 1.5, 10);
-    const late = performDeepResearch(advanceGame(performBreakthrough(advanceGame(adapted, Number.MAX_VALUE)), Number.MAX_VALUE));
-    expect(getEquipmentPurchaseGain('veinExtractor', late)).toBeAmount(gn(500000).multiply(4.5 * 1.5));
+    const late = performDeepResearch(createNextRootAnalysisReadyState(adapted));
+    expect(getEquipmentPurchaseGain('veinExtractor', late)).toBeAmount(gn(500000).multiply(2.5 * 5 * 1.5 * 1.5));
     expect(parseSave(serializeSave(createSave(adapted, 0))).gameState).toEqual(adapted);
   });
 

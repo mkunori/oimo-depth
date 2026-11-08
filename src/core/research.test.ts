@@ -2,7 +2,7 @@ import { performRootRebirth } from './root';
 import { testAmount as gn, stringifyTestSave } from '../test/amounts';
 
 import { describe, expect, it } from 'vitest';
-import { createResearchReadyState, createBreakthroughReadyState, completeAnalyzedRootCycle, buyTestEnhancements } from '../test/progress';
+import { createResearchReadyState, createBreakthroughReadyState, completeAnalyzedRootCycle, buyTestEnhancements, createNextRootAnalysisReadyState } from '../test/progress';
 import { getDeepResearch, getDeepResearchReset, performDeepResearch, getResearchPurchase, purchaseResearch, resetResearch } from './research';
 import { advanceGame, advanceWithAutomation, configureAutomation, getEquipmentPrice, getProductionPerSecond, getPurchaseQuote, purchaseEquipment, MAX_AUTOMATIC_PURCHASES } from './game';
 import { createInitialState } from './state';
@@ -30,11 +30,11 @@ describe('deep research breakthrough', () => {
       expect(quote.pointsLost).toBe(expected.refund);
       if (index === 2) {
         const alternative = performDeepResearch(state, 'discount');
-        expect(alternative.permanent.skillRanks).toEqual({ harvest: 3, discount: 2, startingImo: 0, breakthrough: 1, automation: 1 });
+        expect(alternative.permanent.skillRanks).toEqual({ harvest: 3, discount: 2, startingImo: 0, breakthrough: 1, automation: before.permanent.skillRanks.automation });
       }
       state = performDeepResearch(state, 'startingImo');
       expect(state.permanent.deepResearchCount).toBe(index + 1);
-      expect(state.permanent.skillRanks).toEqual({ harvest: expected.ranks[0], discount: expected.ranks[1], startingImo: expected.ranks[2], breakthrough: 1, automation: 1 });
+      expect(state.permanent.skillRanks).toEqual({ harvest: expected.ranks[0], discount: expected.ranks[1], startingImo: expected.ranks[2], breakthrough: 1, automation: before.permanent.skillRanks.automation });
       expect(state.permanent.unspentPoints).toBe(before.permanent.unspentPoints);
       expect(state.permanent.pointsLostByDeepResearch).toBe(before.permanent.pointsLostByDeepResearch + expected.refund);
       expect(state.postDeepResearchSkillLock).toBe(index < 3);
@@ -50,6 +50,8 @@ describe('deep research breakthrough', () => {
       expect(state.permanent.skillRanks).toEqual(before.permanent.skillRanks);
       if (index < 3) {
         state = performRootRebirth(completeAnalyzedRootCycle(state));
+        state = createNextRootAnalysisReadyState(state);
+        state = buyTestEnhancements(state);
         state = advanceGame(performBreakthrough(advanceGame(state, Number.MAX_VALUE)), Number.MAX_VALUE);
       }
     }

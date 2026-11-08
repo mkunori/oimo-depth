@@ -1,3 +1,4 @@
+import { hasAutomationAccess } from '../../core/automationAccess';
 import { AUTOMATION_POLICIES } from '../../data/automation';
 import type { AutomationPolicy, AutomationSettings } from '../../data/automation';
 import { EQUIPMENT, EQUIPMENT_IDS } from '../../data/equipment';
@@ -15,7 +16,7 @@ interface Props {
 
 export function AutomationPanel({ state, isPaused, automaticPurchases, onChange }: Props) {
   const settings = state.automation;
-  const unlocked = state.permanent.skillRanks.automation > 0;
+  const unlocked = hasAutomationAccess(state.permanent);
   const visibleIds = EQUIPMENT_IDS.filter((id) => isEquipmentDiscovered(id, state));
   const reorder = (index: number, id: EquipmentId) => {
     const priority = [...settings.priority];
@@ -26,6 +27,7 @@ export function AutomationPanel({ state, isPaused, automaticPurchases, onChange 
   return <details className="automation-panel">
     <summary>自動購入: {settings.enabled ? 'ON' : 'OFF'} <span>{AUTOMATION_POLICIES[settings.policy]}</span></summary>
     <div className="automation-content">
+      {state.permanent.rootAutomationUnlocked && <p>ROOTで自動購入を恒久解禁済みです。自動管理スキルの再取得は不要です。</p>}
       <p>{unlocked ? '表示中も放置中（最大24時間）も同じ方針で購入します。設定は転生後も引き継ぎます。' : '「自動設備管理」（豊かな収穫ランク1・転生1回以上・1pt）で解禁します。初期設定はOFFです。'}</p>
       {isPaused && <p>セーブの確認が必要なため設定変更を停止しています。</p>}
       <fieldset disabled={!unlocked || isPaused}>
