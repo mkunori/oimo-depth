@@ -1,4 +1,4 @@
-# 保存・オフライン進行（v15）
+# 保存・オフライン進行（v16）
 
 ## 保存形式と検証
 
@@ -6,7 +6,7 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
 
 ```json
 {
-  "saveVersion": 15,
+  "saveVersion": 16,
   "savedAt": 1700000000000,
   "gameState": {
     "imo": "gn1:0:0:0",
@@ -22,6 +22,10 @@ localStorage の `oimo-depth.save` キーに次の JSON を保存します。時
     "researchRanks": { "geology": 0, "resonance": 0 },
     "equipmentCounts": { "worker": 0, "cart": 0, "harvester": 0, "deepDrill": 0, "refinery": 0, "veinExtractor": 0, "concentrator": 0, "rootRelay": 0, "coreChamber": 0, "originMiner": 0, "imoReactor": 0 },
     "permanent": {
+      "rootCycleMaxUnlockedStage": 0,
+      "lifetimePrestigePointsEarned": 0,
+      "pointsLostByDeepResearch": 0,
+      "pointsLostByRoot": 0,
       "deepAnalysisActiveThisRoot": false,
       "gearModes": { "shovel": "standard", "lens": "standard", "drillBit": "standard", "compass": "standard", "rootCore": "standard" },
       "gearCustomPresets": [null, null, null],
@@ -150,3 +154,7 @@ GitHub Pages のサブパス・公開ワークフローは維持しています�
 ## 解析済み通常転生（v15）
 
 `permanent.deepAnalysisActiveThisRoot` と `runStartingScoreCapStage`（0/2）を必須保存します。通常転生では解析済みの上限1e12を維持し、ROOTで解除します。開始段階2は完了状態・解析累計・通常転生履歴・ロック解除を必要とします。段階3/4には引き続き所定SCOREへの到達が必要です。移行時は旧資産を保持し、段階・ROOT履歴から確定できる完了だけ補います。[推定条件と不明ケース](deep-memory.md)。
+
+## ポイント経済（v16）
+
+新規解析で使用済みptを返還せず、総獲得・使用中・未使用・消失の台帳を照合します。[旧保存の初期化と安全性](prestige-economy.md)を参照。

@@ -20,7 +20,7 @@ export function performRootRebirth(state: GameState): GameState {
   const before = state.permanent;
   const count = before.rootRebirthCount + 1, earned = before.totalRootCrystalsEarned + reward.crystals, balance = before.unspentRootCrystals + reward.crystals;
   if (![count, earned, balance].every(Number.isSafeInteger)) throw new NumericProgressError('ROOT counters exceed the safe integer range.');
-  const permanent = { ...before, deepAnalysisActiveThisRoot: false, rootRebirthCount: count, totalRootCrystalsEarned: earned, unspentRootCrystals: balance, equipmentSystemUnlocked: true };
+  const permanent = { ...before, deepAnalysisActiveThisRoot: false, rootCycleMaxUnlockedStage: 0 as const, rootRebirthCount: count, totalRootCrystalsEarned: earned, unspentRootCrystals: balance, equipmentSystemUnlocked: true };
   const startingImo = getSkillBonuses(permanent).startingImo;
   return discoverGear({ ...createInitialState(), imo: startingImo, runStartingImo: startingImo, permanent, automation: state.automation });
 }

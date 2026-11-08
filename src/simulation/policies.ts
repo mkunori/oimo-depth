@@ -16,6 +16,8 @@ export const SKILL_PLANS = {
   breakthrough: ['harvest', 'harvest', 'harvest', 'discount', 'breakthrough'],
   'late-breakthrough': ['harvest', 'harvest', 'harvest', 'discount', 'discount', 'startingImo', 'startingImo', 'breakthrough'],
   'automation-first': ['harvest', 'automation', 'harvest', 'harvest', 'discount', 'breakthrough'],
+  growth: ['harvest', 'startingImo', 'harvest', 'discount', 'startingImo', 'startingImo', 'harvest',
+    'startingImo', 'harvest', 'harvest', 'harvest', 'harvest', 'discount', 'discount', 'discount', 'discount', 'startingImo', 'startingImo'],
 } as const satisfies Record<string, readonly SkillId[]>;
 export type SkillPlan = keyof typeof SKILL_PLANS;
 

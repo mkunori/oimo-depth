@@ -1,3 +1,4 @@
+import { withLegacyRefunds } from '../test/progress';
 import { createGearSettings } from '../data/gearModes';
 import { createEmptyGear } from '../data/gear';
 import { createInitialRootProgress } from '../data/root';
@@ -14,14 +15,41 @@ import { performBreakthrough } from './breakthrough';
 import { prestigeGame, purchaseSkill } from './prestige';
 import { createBreakthroughReadyState } from '../test/progress';
 import { GameSession } from '../features/save/GameSession';
+import { getSkillPointsSpent } from './prestigePoints';
 
 const legacyText = readFileSync(new URL('../test/fixtures/save-v6.json', import.meta.url), 'utf8');
 const legacy = JSON.parse(legacyText);
 
+describe('v16 prestige point ledger migration', () => {
+  it('keeps legacy refunds/assets without retroactive rewards, initializes the ledger and rejects forged ranks or losses', () => {
+    const source = withLegacyRefunds(createRootRebirthReadyState());
+    for (const version of [14, 15]) {
+      const raw = JSON.parse(serializeSave(createSave(source, 4321)));
+      raw.saveVersion = version;
+      for (const key of ['lifetimePrestigePointsEarned', 'pointsLostByDeepResearch', 'pointsLostByRoot', 'rootCycleMaxUnlockedStage']) delete raw.gameState.permanent[key];
+      const loaded = parseSave(JSON.stringify(raw)), p = loaded.gameState.permanent;
+      expect(loaded.savedAt).toBe(4321); expect(loaded.gameState).toEqual(source);
+      expect(p.lifetimePrestigePointsEarned).toBe(getSkillPointsSpent(source.permanent.skillRanks) + source.permanent.unspentPoints);
+      expect(p.pointsLostByDeepResearch).toBe(0); expect(p.pointsLostByRoot).toBe(0);
+      expect(parseSave(serializeSave(loaded))).toEqual(loaded);
+      const forged = structuredClone(raw);
+      forged.gameState.permanent.prestigeCount = 10;
+      forged.gameState.permanent.skillRanks.harvest = 4;
+      forged.gameState.permanent.unspentPoints = 0;
+      expect(() => parseSave(JSON.stringify(forged))).toThrow();
+    }
+    const next = performDeepResearch(createResearchReadyState(true));
+    for (const patch of [{ lifetimePrestigePointsEarned: next.permanent.lifetimePrestigePointsEarned + 1 },
+      { pointsLostByDeepResearch: 0 }, { pointsLostByRoot: 1 }, { rootCycleMaxUnlockedStage: 1 }]) {
+      expect(() => createSave({ ...next, permanent: { ...next.permanent, ...patch } } as typeof next, 0)).toThrow();
+    }
+  });
+});
+
 describe('v15 current ROOT analysis migration', () => {
   it('preserves v14 assets, infers only provable completion, and never grants a forged low-SCORE breakthrough', () => {
-    const analyzed = performDeepResearch(createResearchReadyState(true));
-    const late = createRootRebirthReadyState(), root = performRootRebirth(late);
+    const analyzed = withLegacyRefunds(performDeepResearch(createResearchReadyState(true)));
+    const late = withLegacyRefunds(createRootRebirthReadyState()), root = performRootRebirth(late);
     const oldSave = (state: typeof analyzed) => {
       const data = JSON.parse(serializeSave(createSave(state, 1234)));
       data.saveVersion = 14;
@@ -35,7 +63,8 @@ describe('v15 current ROOT analysis migration', () => {
       expect(loaded.gameState).toEqual(state);
       expect(prestigeGame(loaded.gameState).scoreCapStage).toBe(state.permanent.deepAnalysisActiveThisRoot ? 2 : 0);
     }
-    const oldPrestige = oldSave(prestigeGame(analyzed));
+    const oldNormal = prestigeGame(analyzed);
+    const oldPrestige = oldSave({ ...oldNormal, permanent: { ...oldNormal.permanent, unspentPoints: oldNormal.permanent.unspentPoints - 1, lifetimePrestigePointsEarned: oldNormal.permanent.lifetimePrestigePointsEarned - 1 } });
     oldPrestige.gameState.scoreCapStage = 0; // actual v14 prestige returned to stage0
     const certain = parseSave(JSON.stringify(oldPrestige)).gameState;
     expect(certain.scoreCapStage).toBe(0); // do not retroactively change its run
@@ -62,7 +91,7 @@ describe('v7 amount migration', () => {
     expect(migrated.savedAt).toBe(legacy.savedAt);
     for (const key of ['imo', 'runEarnedScore', 'runStartingImo'] as const) expect(migrated.gameState[key]).toBeAmount(legacy.gameState[key]);
     expect(migrated.gameState.equipmentCounts).toEqual({ ...legacy.gameState.equipmentCounts, originMiner: 0, imoReactor: 0, rootRelay: 0, coreChamber: 0 });
-    expect(migrated.gameState.permanent).toEqual({ deepAnalysisActiveThisRoot: true, ...createGearSettings(), gearUnlocked: createEmptyGear(), gearDiscovered: createEmptyGear(), ...createInitialRootProgress(), ...legacy.gameState.permanent, depthMeters: 0, depthRemainder: 0, digResearchRanks: { basic: 0, vein: 0 }, deepResearchCount: 1, maxDiscoveredStage: 2, originAnalysisUnlocked: false, rootConnectionUnlocked: false });
+    expect(migrated.gameState.permanent).toEqual({ rootCycleMaxUnlockedStage: 2, lifetimePrestigePointsEarned: 12, pointsLostByDeepResearch: 0, pointsLostByRoot: 0, deepAnalysisActiveThisRoot: true, ...createGearSettings(), gearUnlocked: createEmptyGear(), gearDiscovered: createEmptyGear(), ...createInitialRootProgress(), ...legacy.gameState.permanent, depthMeters: 0, depthRemainder: 0, digResearchRanks: { basic: 0, vein: 0 }, deepResearchCount: 1, maxDiscoveredStage: 2, originAnalysisUnlocked: false, rootConnectionUnlocked: false });
     expect(migrated.gameState.researchRanks).toEqual(legacy.gameState.researchRanks);
     expect(migrated.gameState.automation).toEqual({ ...legacy.gameState.automation, equipment: { ...legacy.gameState.automation.equipment, originMiner: true, imoReactor: true, rootRelay: true, coreChamber: true }, priority: [...legacy.gameState.automation.priority, "rootRelay", "coreChamber", "originMiner", "imoReactor"] });
     const raw = JSON.parse(serializeSave(migrated));
@@ -207,7 +236,7 @@ describe('giant prices and bounded progress', () => {
 
   it('keeps native prestige counters safe and preserves the save when a counter cannot advance', () => {
     const state = { ...createInitialState(), imo: gn(1e6), runEarnedScore: gn(1e6),
-      permanent: { ...createInitialPermanent(), prestigeCount: Number.MAX_SAFE_INTEGER - 1, unspentPoints: Number.MAX_SAFE_INTEGER - 1 } };
+      permanent: { ...createInitialPermanent(), lifetimePrestigePointsEarned: Number.MAX_SAFE_INTEGER - 1, prestigeCount: Number.MAX_SAFE_INTEGER - 1, unspentPoints: Number.MAX_SAFE_INTEGER - 1 } };
     expect(() => prestigeGame(state)).toThrow(NumericProgressError);
     let raw = serializeSave(createSave(state, 0));
     const original = raw;

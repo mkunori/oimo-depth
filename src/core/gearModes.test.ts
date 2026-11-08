@@ -1,3 +1,4 @@
+import { withLegacyRefunds } from '../test/progress';
 import { describe, expect, it } from 'vitest';
 import { createRootRebirthReadyState } from '../test/progress';
 import { GEAR_IDS } from '../data/gear';
@@ -85,7 +86,7 @@ describe('gear mode boundaries', () => {
     expect(offline.permanent.depthMeters).toBeCloseTo(online.permanent.depthMeters, 6);
   });
   it('migrates v13 to neutral modes and rejects unknown, mismatched, unowned or malformed presets', () => {
-    const state = first(), raw = JSON.parse(serializeSave(createSave(state, 0)));
+    const state = withLegacyRefunds(first()), raw = JSON.parse(serializeSave(createSave(state, 0)));
     raw.saveVersion = 13;
     delete raw.gameState.permanent.gearModes; delete raw.gameState.permanent.gearCustomPresets; delete raw.gameState.permanent.selectedGearPreset;
     const migrated = parseSave(JSON.stringify(raw));

@@ -1,3 +1,4 @@
+import { withLegacyRefunds } from '../test/progress';
 import { describe, expect, it } from 'vitest';
 import { GEAR_IDS, createEmptyGear } from '../data/gear';
 import { createRootRebirthReadyState } from '../test/progress';
@@ -82,7 +83,7 @@ describe('permanent gear and SCORE spending', () => {
   });
 
   it('migrates v12 without inventing purchases/history and rejects invalid receipts, flags or spend', () => {
-    const source = root(), raw = JSON.parse(serializeSave(createSave(source, 1234)));
+    const source = withLegacyRefunds(root()), raw = JSON.parse(serializeSave(createSave(source, 1234)));
     raw.saveVersion = 12; delete raw.gameState.scoreSpentThisRun; delete raw.gameState.gearPurchasedThisRun;
     delete raw.gameState.permanent.gearUnlocked; delete raw.gameState.permanent.gearDiscovered;
     const migrated = parseSave(JSON.stringify(raw));

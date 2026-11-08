@@ -2,7 +2,13 @@ import { testAmount as gn } from '../test/amounts';
 
 import { describe, expect, it } from 'vitest';
 import { advanceGame, getEquipmentPrice, getProductionPerSecond, getPurchaseQuote, purchaseEquipment } from './game';
-import { getPrestigeReward, prestigeGame, purchaseSkill } from './prestige';
+import { getPrestigeReward, getNextPrestigeReward, prestigeGame, purchaseSkill } from './prestige';
+import { getSkillPointsSpent } from './prestigePoints';
+import { createResearchReadyState, createRootConnectionReadyState, createRootRebirthReadyState, buyTestEnhancements, completeAnalyzedRootCycle } from '../test/progress';
+import { performBreakthrough } from './breakthrough';
+import { performDeepResearch } from './research';
+import { performRootRebirth } from './root';
+import { createSave, parseSave, serializeSave } from './save';
 import { getSkillBonuses, getSkillPurchase } from './skills';
 import { createInitialState } from './state';
 import type { GameState } from './state';
@@ -19,6 +25,49 @@ function earnedPoints(runs: number): GameState {
 }
 
 describe('prestige loop', () => {
+  it('uses actual SCORE at higher reward boundaries and balances the ledger without double claiming', () => {
+    const cases = [
+      [atScore(1e6), 2], [createResearchReadyState(), 3],
+      [createRootConnectionReadyState(), 4], [createRootRebirthReadyState(), 6],
+    ] as const;
+    for (const [state, reward] of cases) {
+      const below = { ...state, imo: gn(0), runEarnedScore: state.runEarnedScore.multiply(1 - 1e-12) };
+      expect(getPrestigeReward(below)).toBe(reward - 1);
+      expect(getNextPrestigeReward(below)?.score).toBeAmount(state.runEarnedScore);
+      const emptyBalance = { ...state, imo: gn(0) }, next = prestigeGame(emptyBalance);
+      expect(getPrestigeReward(emptyBalance)).toBe(reward);
+      expect(next.permanent.lifetimePrestigePointsEarned).toBe(state.permanent.lifetimePrestigePointsEarned + reward);
+      expect(next.permanent.unspentPoints).toBe(state.permanent.unspentPoints + reward);
+      expect(getSkillPointsSpent(next.permanent.skillRanks) + next.permanent.unspentPoints + next.permanent.pointsLostByDeepResearch).toBe(next.permanent.lifetimePrestigePointsEarned);
+      expect(getPrestigeReward(next)).toBe(0); expect(prestigeGame(next)).toBe(next);
+    }
+  });
+
+  it('unlocks higher ranks per ROOT cycle, pays nonlinear grants only on reset, and keeps paid grants through analysis', () => {
+    let state = createRootRebirthReadyState();
+    state = prestigeGame(state);
+    state = buyTestEnhancements(state, { harvest: 7, discount: 5, startingImo: 6 });
+    const paid = prestigeGame(advanceGame(state, Number.MAX_VALUE));
+    expect(paid.runStartingImo).toBeAmount(500000); expect(paid.runEarnedScore).toBeAmount(0);
+    expect(getSkillBonuses(paid.permanent).productionMultiplier).toBe(4.5);
+    expect(getSkillBonuses(paid.permanent).equipmentDiscountPercent).toBe(50);
+    expect(parseSave(serializeSave(createSave(paid, 0))).gameState).toEqual(paid);
+    const root = performRootRebirth(completeAnalyzedRootCycle(paid));
+    expect(root.permanent.rootCycleMaxUnlockedStage).toBe(0);
+    expect(root.permanent.skillRanks.startingImo).toBe(6);
+    expect(getSkillPurchase(root.permanent, 'startingImo').canPurchase).toBe(false);
+    expect(root.runStartingImo).toBeAmount(500000);
+    const ready = advanceGame(performBreakthrough(advanceGame(root, Number.MAX_VALUE)), Number.MAX_VALUE);
+    const analyzed = performDeepResearch(ready);
+    expect(analyzed.runStartingImo).toBeAmount(500000);
+    expect(analyzed.imo).toBeAmount(ready.imo);
+    expect(analyzed.permanent.pointsLostByDeepResearch).toBe(ready.permanent.pointsLostByDeepResearch + 36);
+    expect(parseSave(serializeSave(createSave(analyzed, 0))).gameState).toEqual(analyzed);
+    expect(() => createSave({ ...paid, permanent: { ...paid.permanent, unspentPoints: paid.permanent.unspentPoints + 1 } }, 0)).toThrow();
+    const first = performDeepResearch(createResearchReadyState());
+    expect(first.permanent.pointsLostByDeepResearch).toBe(7);
+    expect(first.permanent.unspentPoints).toBe(0);
+  });
   it.each([[0, 0], [99_999.9, 0], [100_000, 1], [999_999.9, 1], [1_000_000, 2]])(
     'previews and grants %s SCORE -> %s points', (score, points) => {
       const state = atScore(score);

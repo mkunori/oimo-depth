@@ -1,3 +1,4 @@
+import { withLegacyRefunds } from '../test/progress';
 import { describe, expect, it } from 'vitest';
 import { createRootRebirthReadyState } from '../test/progress';
 import { createInitialState } from './state';
@@ -29,9 +30,9 @@ describe('ROOT rebirth', () => {
     const before = createRootRebirthReadyState(), normal = prestigeGame(before), root = performRootRebirth(before);
     expect(normal.permanent.rootRebirthCount).toBe(0);
     expect(normal.permanent.prestigeCount).toBe(before.permanent.prestigeCount + 1);
-    expect(normal.permanent.unspentPoints).toBe(before.permanent.unspentPoints + 2);
+    expect(normal.permanent.unspentPoints).toBe(before.permanent.unspentPoints + 6);
     expect(root).toEqual({ ...createInitialState(), automation: before.automation, permanent: { ...before.permanent,
-      deepAnalysisActiveThisRoot: false, rootRebirthCount: 1, totalRootCrystalsEarned: 1, unspentRootCrystals: 1, equipmentSystemUnlocked: true, gearDiscovered: { ...before.permanent.gearDiscovered, shovel: true } } });
+      deepAnalysisActiveThisRoot: false, rootCycleMaxUnlockedStage: 0, rootRebirthCount: 1, totalRootCrystalsEarned: 1, unspentRootCrystals: 1, equipmentSystemUnlocked: true, gearDiscovered: { ...before.permanent.gearDiscovered, shovel: true } } });
     expect(getProductionPerSecond(root)).toBeAmount(3);
     expect(performRootRebirth(root)).toBe(root);
     let next = root;
@@ -85,7 +86,7 @@ describe('ROOT rebirth', () => {
   });
 
   it('migrates v11 without changing assets/history/time and rejects forged crystal ledgers or unlocks', () => {
-    const ready = createRootRebirthReadyState();
+    const ready = withLegacyRefunds(createRootRebirthReadyState());
     const old = JSON.parse(serializeSave(createSave(ready, 1234)));
     old.saveVersion = 11;
     for (const key of ['rootRebirthCount', 'unspentRootCrystals', 'totalRootCrystalsEarned', 'totalRootCrystalsSpent', 'rootUpgradeRanks', 'equipmentSystemUnlocked']) delete old.gameState.permanent[key];

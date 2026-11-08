@@ -15,7 +15,8 @@ import type { AutomationSettings } from '../data/automation';
 import { createEmptyResearch, getResearchSpent, RESEARCH, RESEARCH_IDS, researchMultiplier } from '../data/research';
 import type { ResearchRanks } from '../data/research';
 import { GameNumber, gn, nonNegativeGameNumber, toElapsedSeconds } from './numbers';
-import { SKILLS } from '../data/skills';
+import { SKILLS, skillRankLimit } from '../data/skills';
+import { ROOT_UPGRADES } from '../data/root';
 import { advanceExcavation, DepthProgressError } from './excavation';
 
 export type PurchaseMode = 1 | 10 | 'MAX';
@@ -27,6 +28,18 @@ export class NumericProgressError extends AutomationLimitError {}
 const priceCache = new Map<string, GameNumber>();
 const productionCache = new Map<string, GameNumber>();
 const targetCache = new Map<string, EquipmentId | undefined>();
+const grantCache = new Map<string, ReadonlySet<number>>();
+function hasStartingGrant(state: GameState, normalRank: number): boolean {
+  const rootRank = state.permanent.rootUpgradeRanks.memory, key = `${normalRank}:${rootRank}`;
+  let grants = grantCache.get(key);
+  if (!grants) {
+    grants = new Set(SKILLS.startingImo.effect.values.slice(0, normalRank + 1)
+      .flatMap((normal) => ROOT_UPGRADES.memory.effect.values.slice(0, rootRank + 1).map((root) => normal + root)));
+    grantCache.set(key, grants); // 7 normal ranks × 4 ROOT ranks
+  }
+  // Explicitly bounded native conversion: grants are small integers, never SCORE.
+  return state.runStartingImo.lte(500500) && grants.has(state.runStartingImo.toFiniteNumber());
+}
 
 function assertCount(value: number): void {
   if (!Number.isSafeInteger(value) || value < 0) throw new RangeError('Equipment count must be a non-negative safe integer.');
@@ -51,7 +64,7 @@ export function assertGameState(state: GameState) {
     || state.originResearchRanks[id] < 0 || state.originResearchRanks[id] > ORIGIN_RESEARCH[id].costs.length
     || (state.scoreCapStage < 4 && state.originResearchRanks[id] !== 0))) throw new RangeError('Invalid origin research.');
   if (state.scoreCapStage === 4 && !state.permanent.originAnalysisUnlocked) throw new RangeError('Origin permission required.');
-  if (state.permanent.maxDiscoveredStage < state.scoreCapStage
+  if (state.permanent.rootCycleMaxUnlockedStage < state.scoreCapStage || state.permanent.maxDiscoveredStage < state.scoreCapStage
     || (state.scoreCapStage >= 3 && !state.permanent.rootConnectionUnlocked)) throw new RangeError('Invalid discovery or root connection.');
   readAutomation(state.automation);
   if (state.automation.enabled && state.permanent.skillRanks.automation === 0) throw new RangeError('Automation skill is required.');
@@ -79,11 +92,9 @@ export function assertGameState(state: GameState) {
     || (count === 3 && ranks.discount > 0 && ranks.startingImo > 0)))) throw new RangeError('Invalid post-research skill lock.');
   // The starting grant records an actual payment. A reset cannot undo it; only this
   // locked run may retain a grant above the current normal-skill bonus
-  // (max rank 2 × 50), in addition to the persistent ROOT starting grant.
-  const grantStep = SKILLS.startingImo.effect.perRank;
-  const grantLimit = locked ? gn(SKILLS.startingImo.maxRank * grantStep).add(getRootBonuses(state.permanent).startingImo) : bonuses.startingImo;
-  if (!state.runStartingImo.floor().equals(state.runStartingImo) || state.runStartingImo.gt(grantLimit)
-    || (locked && !state.runStartingImo.divide(grantStep).floor().equals(state.runStartingImo.divide(grantStep)))
+  // including nonlinear higher-rank grants and ROOT grants paid at earlier ranks.
+  const normalRank = locked ? skillRankLimit('startingImo', state.permanent.maxDiscoveredStage) : ranks.startingImo;
+  if (!hasStartingGrant(state, normalRank)
     || state.imo.gt(state.runEarnedScore.add(state.runStartingImo)) || state.runEarnedScore.gt(cap)
     || state.imo.add(getResearchSpent(state.researchRanks)).add(getOriginResearchSpent(state.originResearchRanks)).gt(state.runEarnedScore.add(state.runStartingImo).add(0.001))
     || state.permanent.skillRanks.breakthrough < SCORE_CAP_STAGES[state.scoreCapStage].requiredSkillRank

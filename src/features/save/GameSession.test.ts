@@ -45,7 +45,7 @@ describe('research session transactions', () => {
     expect(game.session.deepResearch()).toBe(false);
     expect(game.session.getSnapshot().gameState.permanent.deepResearchCount).toBe(1);
     expect(game.session.getSnapshot().gameState.permanent.skillRanks.harvest).toBe(0);
-    expect(game.session.getSnapshot().gameState.permanent.unspentPoints).toBe(7);
+    expect(game.session.getSnapshot().gameState.permanent.unspentPoints).toBe(0);
     expect(game.session.getSnapshot().gameState.imo).toBeAmount(before.imo);
     expect(game.session.buyResearch('geology')).toBe(true);
     expect(parseSave(game.storage.value!).gameState.researchRanks.geology).toBe(1);
@@ -202,7 +202,7 @@ describe('breakthrough session transactions', () => {
     game.session.start();
     const before = game.session.getSnapshot().gameState;
     expect(game.session.breakthrough()).toBe(true);
-    expect(game.session.getSnapshot().gameState).toEqual({ ...before, scoreCapStage: 1, permanent: { ...before.permanent, maxDiscoveredStage: 1 } });
+    expect(game.session.getSnapshot().gameState).toEqual({ ...before, scoreCapStage: 1, permanent: { ...before.permanent, rootCycleMaxUnlockedStage: 1, maxDiscoveredStage: 1 } });
     expect(parseSave(game.storage.value!).gameState.scoreCapStage).toBe(1);
     expect(game.session.breakthrough()).toBe(false);
     const restored = game.nextSession(); restored.start();
@@ -326,6 +326,14 @@ describe('prestige persistence and migration', () => {
     expect(game.session.getSnapshot().gameState.permanent.prestigeCount).toBe(0);
     expect(game.session.prestige(2)).toBe(true);
     expect(game.session.getSnapshot().gameState.permanent.unspentPoints).toBe(2);
+    const higher = setup(), unlocked = createResearchReadyState();
+    higher.storage.value = serializeSave(createSave({ ...unlocked, imo: gn(0), runEarnedScore: gn(1e9 - 1) }, START));
+    higher.session.start(); higher.elapse(2);
+    expect(higher.session.prestige(2)).toBe(false);
+    expect(higher.session.prestige(3)).toBe(true);
+    const paid = higher.session.getSnapshot().gameState.permanent;
+    expect(paid.lifetimePrestigePointsEarned).toBe(unlocked.permanent.lifetimePrestigePointsEarned + 3);
+    expect(higher.session.prestige(3)).toBe(false);
   });
 
   it('retains the run and points if the prestige write fails', () => {

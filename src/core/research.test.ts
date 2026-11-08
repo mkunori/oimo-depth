@@ -2,7 +2,7 @@ import { performRootRebirth } from './root';
 import { testAmount as gn, stringifyTestSave } from '../test/amounts';
 
 import { describe, expect, it } from 'vitest';
-import { createResearchReadyState, createBreakthroughReadyState, completeAnalyzedRootCycle } from '../test/progress';
+import { createResearchReadyState, createBreakthroughReadyState, completeAnalyzedRootCycle, buyTestEnhancements } from '../test/progress';
 import { getDeepResearch, getDeepResearchReset, performDeepResearch, getResearchPurchase, purchaseResearch, resetResearch } from './research';
 import { advanceGame, advanceWithAutomation, configureAutomation, getEquipmentPrice, getProductionPerSecond, getPurchaseQuote, purchaseEquipment, MAX_AUTOMATIC_PURCHASES } from './game';
 import { createInitialState } from './state';
@@ -15,7 +15,7 @@ import { RESEARCH_IDS } from '../data/research';
 import type { AutomationPolicy } from '../data/automation';
 
 describe('deep research breakthrough', () => {
-  it('progresses through four analyses, refunds only lost ranks, preserves grants/rights and unlocks purchases after prestige', () => {
+  it('progresses through four ROOT analyses, loses only removed skill costs, preserves grants/rights and unlocks purchases after prestige', () => {
     let state = purchaseSkill(createResearchReadyState(true), 'startingImo');
     state = purchaseSkill(prestigeGame(state), 'discount');
     state = advanceGame(performBreakthrough(advanceGame(state, 1e6)), 1e9);
@@ -27,7 +27,7 @@ describe('deep research breakthrough', () => {
     for (const [index, expected] of cases.entries()) {
       const before = state;
       const quote = getDeepResearchReset(state, 'startingImo');
-      expect(quote.refund).toBe(expected.refund);
+      expect(quote.pointsLost).toBe(expected.refund);
       if (index === 2) {
         const alternative = performDeepResearch(state, 'discount');
         expect(alternative.permanent.skillRanks).toEqual({ harvest: 3, discount: 2, startingImo: 0, breakthrough: 1, automation: 1 });
@@ -35,21 +35,18 @@ describe('deep research breakthrough', () => {
       state = performDeepResearch(state, 'startingImo');
       expect(state.permanent.deepResearchCount).toBe(index + 1);
       expect(state.permanent.skillRanks).toEqual({ harvest: expected.ranks[0], discount: expected.ranks[1], startingImo: expected.ranks[2], breakthrough: 1, automation: 1 });
-      expect(state.permanent.unspentPoints).toBe(before.permanent.unspentPoints + expected.refund);
+      expect(state.permanent.unspentPoints).toBe(before.permanent.unspentPoints);
+      expect(state.permanent.pointsLostByDeepResearch).toBe(before.permanent.pointsLostByDeepResearch + expected.refund);
       expect(state.postDeepResearchSkillLock).toBe(index < 3);
       expect(state).toEqual({ ...before, scoreCapStage: 2, postDeepResearchSkillLock: index < 3, permanent: state.permanent });
       expect(parseSave(serializeSave(createSave(state, 123))).gameState).toEqual(state);
       expect(performDeepResearch(state, 'discount')).toBe(state);
       if (index < 3) for (const id of ['harvest', 'discount', 'startingImo'] as const) expect(purchaseSkill(state, id)).toBe(state);
-      else expect(purchaseSkill(state, 'startingImo').permanent.skillRanks.startingImo).toBe(2);
       const next = prestigeGame(state);
       expect(next.postDeepResearchSkillLock).toBe(false);
       expect(next.permanent.deepResearchCount).toBe(index + 1);
       state = next;
-      for (const id of ['harvest', 'harvest', 'harvest', 'discount', 'discount', 'startingImo'] as const) {
-        const target = id === 'harvest' ? 3 : id === 'discount' ? 2 : 1;
-        if (state.permanent.skillRanks[id] < target) state = purchaseSkill(state, id);
-      }
+      state = buyTestEnhancements(state);
       expect(state.permanent.skillRanks).toEqual(before.permanent.skillRanks);
       if (index < 3) {
         state = performRootRebirth(completeAnalyzedRootCycle(state));
@@ -63,7 +60,7 @@ describe('deep research breakthrough', () => {
       permanent: { ...createResearchReadyState(true).permanent, deepResearchUnlocked: true } };
     const migrated = parseSave(stringifyTestSave({ saveVersion: 7, savedAt: 321, gameState: old }));
     expect(migrated.savedAt).toBe(321);
-    expect(migrated.gameState).toEqual({ ...old, permanent: { ...old.permanent, deepAnalysisActiveThisRoot: true, deepResearchCount: 1, maxDiscoveredStage: 2, depthMeters: 0, depthRemainder: 0 } });
+    expect(migrated.gameState).toEqual({ ...old, permanent: { ...old.permanent, deepAnalysisActiveThisRoot: true, deepResearchCount: 1, maxDiscoveredStage: 2, rootCycleMaxUnlockedStage: 2, depthMeters: 0, depthRemainder: 0 } });
     expect(migrated.gameState.postDeepResearchSkillLock).toBe(false);
     const reset = performDeepResearch(createResearchReadyState(true));
     for (const change of [
@@ -89,7 +86,7 @@ describe('deep research breakthrough', () => {
     Object.freeze(before.permanent); Object.freeze(before.equipmentCounts); Object.freeze(before);
     const after = performDeepResearch(before);
     expect(after).toEqual({ ...before, scoreCapStage: 2, postDeepResearchSkillLock: true,
-      permanent: { ...before.permanent, deepAnalysisActiveThisRoot: true, deepResearchUnlocked: true, deepResearchCount: 1, maxDiscoveredStage: 2, unspentPoints: 7,
+      permanent: { ...before.permanent, deepAnalysisActiveThisRoot: true, deepResearchUnlocked: true, deepResearchCount: 1, maxDiscoveredStage: 2, rootCycleMaxUnlockedStage: 2, pointsLostByDeepResearch: 7,
         skillRanks: { ...before.permanent.skillRanks, harvest: 0, discount: 0 } } });
     expect(after.equipmentCounts).toBe(before.equipmentCounts);
     expect(after.automation).toBe(before.automation);
@@ -114,7 +111,7 @@ describe('deep research breakthrough', () => {
     const repeat = advanceGame(performBreakthrough(advanceGame(next, 1e6)), 1e9);
     expect(performDeepResearch(repeat)).toBe(repeat);
     expect(repeat.permanent.deepResearchCount).toBe(1);
-    expect(getDeepResearchReset(repeat).refund).toBe(0);
+    expect(getDeepResearchReset(repeat).pointsLost).toBe(0);
     expect(purchaseSkill(next, 'harvest').permanent.skillRanks.harvest).toBe(1);
     expect(parseSave(serializeSave(createSave(next, 0))).gameState).toEqual(next);
     const online = advanceWithAutomation(next, 60).state;

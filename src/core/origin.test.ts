@@ -1,3 +1,4 @@
+import { withLegacyRefunds } from '../test/progress';
 import { describe, expect, it } from 'vitest';
 import { createRootConnectionReadyState } from '../test/progress';
 import { performRootConnection } from './rootConnection';
@@ -30,7 +31,7 @@ describe('origin analysis', () => {
       expect(isEquipmentDiscovered('imoReactor', state)).toBe(false);
     }
     const after = performOriginAnalysis(before);
-    expect(after).toEqual({ ...before, scoreCapStage: 4, permanent: { ...before.permanent, originAnalysisUnlocked: true, maxDiscoveredStage: 4 } });
+    expect(after).toEqual({ ...before, scoreCapStage: 4, permanent: { ...before.permanent, rootCycleMaxUnlockedStage: 4, originAnalysisUnlocked: true, maxDiscoveredStage: 4 } });
     expect(performOriginAnalysis(after)).toBe(after);
     expect(advanceGame(after, 60).permanent.depthMeters).toBeGreaterThan(0);
     const next = prestigeGame(after);
@@ -97,7 +98,7 @@ describe('origin analysis', () => {
   });
 
   it('preserves v10 depth/history/assets/settings, adds undiscovered defaults and rejects forged stage4 progress', () => {
-    const base = originReady();
+    const base = withLegacyRefunds(originReady());
     const old = JSON.parse(serializeSave(createSave(base, 1234)));
     old.saveVersion = 10; delete old.gameState.originResearchRanks; delete old.gameState.permanent.originAnalysisUnlocked;
     for (const id of ['originMiner', 'imoReactor']) { delete old.gameState.equipmentCounts[id]; delete old.gameState.automation.equipment[id]; }

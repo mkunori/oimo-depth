@@ -240,7 +240,7 @@ describe('event-driven simulation', () => {
       expect(campaign.trace.every((point) => point.equipmentCounts.deepDrill === 0 && point.equipmentCounts.refinery === 0)).toBe(true);
       expect(campaign.runs.every((run) => getProductionPerSecond(run.result.state).gt(0))).toBe(true);
     }
-  }, 60_000); // 装備3周回を含む全方策を2回比較するため、共有CI向けに個別の実行時間を確保する。
+  }, 120_000); // 台帳・再成長3周回を含む全方策を2回比較。共有CIで約73秒のため、このテストだけ時間枠を確保する。
 
   it.each([0, -1, NaN, Infinity])('rejects invalid horizon %s', (seconds) => {
     expect(() => simulateRun(createInitialState(), idle, seconds)).toThrow(RangeError);
@@ -357,8 +357,8 @@ describe('equipment growth comparison', () => {
       expect(journey.completed).toBe(true);
       expect(journey.beforeBreakthrough?.scoreCapStage).toBe(0);
       expect(journey.beforeBreakthrough?.runEarnedScore).toBeAmount(1e6);
-      expect(journey.afterBreakthrough).toEqual({ ...journey.beforeBreakthrough, scoreCapStage: 1, permanent: { ...journey.beforeBreakthrough!.permanent, maxDiscoveredStage: 1 } });
-      expect(withoutDepth(journey.state.permanent)).toEqual(withoutDepth({ ...journey.beforeBreakthrough!.permanent, maxDiscoveredStage: 1 }));
+      expect(journey.afterBreakthrough).toEqual({ ...journey.beforeBreakthrough, scoreCapStage: 1, permanent: { ...journey.beforeBreakthrough!.permanent, rootCycleMaxUnlockedStage: 1, maxDiscoveredStage: 1 } });
+      expect(withoutDepth(journey.state.permanent)).toEqual(withoutDepth({ ...journey.beforeBreakthrough!.permanent, rootCycleMaxUnlockedStage: 1, maxDiscoveredStage: 1 }));
       expect(journey.state.runEarnedScore).toBeAmount(1e9);
       expect(journey.expansion!.state.equipmentCounts.deepDrill).toBeGreaterThan(0);
       expect(journey.expansion!.trace.at(-1)?.actualProduction).toBeAmount(0);
@@ -375,7 +375,7 @@ describe('equipment growth comparison', () => {
       expect(trial.actualSaveSupported).toBe(true);
       expect(trial.result.completed).toBe(true);
       expect(trial.result.state.runEarnedScore).toBeAmount(1e9);
-      expect(withoutDepth(trial.result.state.permanent)).toEqual(withoutDepth({ ...seed.permanent, maxDiscoveredStage: 1 }));
+      expect(withoutDepth(trial.result.state.permanent)).toEqual(withoutDepth({ ...seed.permanent, rootCycleMaxUnlockedStage: 1, maxDiscoveredStage: 1 }));
       expect(trial.result.trace.every((point) => point.score.lte(1e9))).toBe(true);
       if (trial.policy === 'expanded') {
         expect(trial.result.state.equipmentCounts.deepDrill).toBeGreaterThan(0);

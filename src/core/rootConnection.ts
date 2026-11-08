@@ -14,5 +14,6 @@ export function getRootConnection(state: GameState) {
 export function performRootConnection(state: GameState): GameState {
   if (!getRootConnection(state).canConnect) return state;
   return discoverGear({ ...state, scoreCapStage: 3,
-    permanent: { ...state.permanent, rootConnectionUnlocked: true, maxDiscoveredStage: state.permanent.maxDiscoveredStage < 3 ? 3 : state.permanent.maxDiscoveredStage } });
+    permanent: { ...state.permanent, rootCycleMaxUnlockedStage: state.permanent.rootCycleMaxUnlockedStage < 3 ? 3 : state.permanent.rootCycleMaxUnlockedStage,
+      rootConnectionUnlocked: true, maxDiscoveredStage: state.permanent.maxDiscoveredStage < 3 ? 3 : state.permanent.maxDiscoveredStage } });
 }

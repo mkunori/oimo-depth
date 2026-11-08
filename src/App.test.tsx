@@ -14,7 +14,7 @@ import { SAVE_STORAGE_KEY } from './features/save/SaveRepository';
 import { advanceGame } from './core/game';
 import { prestigeGame, purchaseSkill } from './core/prestige';
 import type { GameState } from './core/state';
-import { createRootRebirthReadyState, completeAnalyzedRootCycle, createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from './test/progress';
+import { createRootRebirthReadyState, completeAnalyzedRootCycle, buyTestEnhancements, createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from './test/progress';
 import { performRootConnection } from './core/rootConnection';
 import { performDeepResearch } from './core/research';
 import { performBreakthrough } from './core/breakthrough';
@@ -158,7 +158,7 @@ describe('research UI', () => {
     expect(screen.getByRole('button', { name: /芋核共鳴を強化/ })).toBeTruthy();
     expect((screen.getByRole('button', { name: 'ROOT REBIRTHする' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: '転生する' }));
-    fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
+    fireEvent.click(screen.getByRole('button', { name: '転生を実行（5pt）' }));
     expect(screen.getByRole('article', { name: '芋核炉' })).toBeTruthy();
     expect((screen.getByRole('button', { name: '芋核炉を購入' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: /根源収穫学を強化/ }) as HTMLButtonElement).disabled).toBe(true);
@@ -220,7 +220,7 @@ describe('research UI', () => {
     fireEvent.click(screen.getByRole('button', { name: '根脈中継塔を1台購入' }));
     fireEvent.click(screen.getByRole('button', { name: '芋核培養槽を1台購入' }));
     expect(screen.getByLabelText('設備連携の組数').textContent).toBe('1');
-    fireEvent.click(screen.getByRole('button', { name: '転生する' })); fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
+    fireEvent.click(screen.getByRole('button', { name: '転生する' })); fireEvent.click(screen.getByRole('button', { name: '転生を実行（4pt）' }));
     expect(screen.getByRole('article', { name: '芋核培養槽' })).toBeTruthy();
     expect(screen.getByText('この周回は上限段階の再突破が必要です。')).toBeTruthy();
     expect((screen.getByRole('button', { name: '根脈中継塔を購入' }) as HTMLButtonElement).disabled).toBe(true);
@@ -235,7 +235,7 @@ describe('research UI', () => {
     let ready = createRootRebirthReadyState();
     for (let count = 0; count < 2; count += 1) {
       ready = performRootRebirth(ready);
-      for (const id of ['harvest', 'harvest', 'harvest', 'discount', 'startingImo'] as const) ready = purchaseSkill(ready, id);
+      ready = buyTestEnhancements(ready, { harvest: 3, discount: 1, startingImo: 1 });
       ready = advanceGame(performBreakthrough(advanceGame(ready, Number.MAX_VALUE)), Number.MAX_VALUE);
       if (count === 0) ready = completeAnalyzedRootCycle(performDeepResearch(ready));
     }
@@ -275,7 +275,7 @@ describe('research UI', () => {
     expect(screen.getByLabelText('収穫速度').textContent).toBe('1');
     fireEvent.click(screen.getByRole('button', { name: '転生する' }));
     expect(screen.getByRole('dialog').textContent).toContain('SCORE 0・上限1E12（段階2）から再開');
-    fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
+    fireEvent.click(screen.getByRole('button', { name: '転生を実行（3pt）' }));
     const inherited = parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState;
     expect(inherited.scoreCapStage).toBe(2); expect(inherited.runEarnedScore).toBeAmount(0);
     expect(inherited.permanent.deepResearchCount).toBe(1);
@@ -771,7 +771,7 @@ describe('breakthrough UI', () => {
     expect(screen.getByLabelText('現在SCORE').textContent).toBe('1E9');
     expect(screen.getByLabelText('収穫速度').textContent).toBe('0');
     expect(within(screen.getByRole('region', { name: '採掘' })).getByText(/SCORE 1E9到達/)).toBeTruthy();
-    confirmPrestige(2);
+    confirmPrestige(3);
     expect((screen.getByRole('progressbar', { name: 'SCORE' }) as HTMLProgressElement).max).toBe(1);
     expect(screen.getByLabelText('限界突破の心得のランク').textContent).toBe('1');
     expect(screen.getByLabelText('深層掘削機の所有数').textContent).toBe('0');
@@ -843,6 +843,8 @@ describe('prestige and skill UI', () => {
     renderGame();
     expect(within(screen.getByRole('article', { name: '豊かな収穫' })).getByText('最大ランクに到達しています。')).toBeTruthy();
     expect((screen.getByRole('button', { name: '豊かな収穫を強化' }) as HTMLButtonElement).disabled).toBe(true);
+    const cappedSkill = screen.getByRole('article', { name: '豊かな収穫' });
+    expect(cappedSkill.textContent).not.toMatch(/4pt|次の効果|×3|\/ 7/);
   });
 
   it('retains permanent growth through reload and manual export/import', () => {

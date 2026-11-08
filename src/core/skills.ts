@@ -1,5 +1,6 @@
+import { assertPrestigePoints } from './prestigePoints';
 import { assertRootProgress, getRootBonuses } from './rootProgress';
-import { SKILLS, SKILL_IDS, isEnhancementSkill } from '../data/skills';
+import { SKILLS, SKILL_IDS, isEnhancementSkill, skillRankLimit } from '../data/skills';
 import type { SkillId } from '../data/skills';
 import type { PermanentProgress } from './state';
 import { gn } from './numbers';
@@ -28,11 +29,15 @@ export function assertPermanentProgress(permanent: PermanentProgress, allowHisto
     || !Number.isSafeInteger(permanent.unspentPoints) || permanent.unspentPoints < 0) {
     throw new RangeError('Invalid prestige count or points.');
   }
+  const cycleStage = permanent.rootCycleMaxUnlockedStage;
+  if (![0, 1, 2, 3, 4].includes(cycleStage) || cycleStage > permanent.maxDiscoveredStage
+    || (cycleStage >= 2) !== permanent.deepAnalysisActiveThisRoot) throw new RangeError('Invalid ROOT cycle stage.');
   let spent = 0;
   for (const id of SKILL_IDS) {
     const rank = permanent.skillRanks[id];
     const definition = SKILLS[id];
-    if (!Number.isSafeInteger(rank) || rank < 0 || rank > definition.maxRank) {
+    if (!Number.isSafeInteger(rank) || rank < 0 || rank > skillRankLimit(id, permanent.maxDiscoveredStage)
+      || (rank > skillRankLimit(id, cycleStage) && permanent.rootRebirthCount === 0)) {
       throw new RangeError('Invalid skill rank.');
     }
     if (rank > 0 && (permanent.prestigeCount < definition.minimumPrestigeCount
@@ -42,13 +47,7 @@ export function assertPermanentProgress(permanent: PermanentProgress, allowHisto
     }
     spent += definition.costs.slice(0, rank).reduce<number>((sum, cost) => sum + cost, 0);
   }
-  const total = spent + permanent.unspentPoints;
-  // At least harvest3 (6pt), discount1 (1pt), breakthrough (3pt) were acquired
-  // before the first analysis. Refunding ranks cannot reduce that lifetime total.
-  if (!Number.isSafeInteger(total) || total < permanent.prestigeCount || total > permanent.prestigeCount * 2
-    || (permanent.deepResearchCount > 0 && total < 10 + permanent.skillRanks.automation)) {
-    throw new RangeError('Points do not match the prestige history.');
-  }
+  assertPrestigePoints(permanent, spent);
 }
 
 export function getSkillBonuses(permanent: PermanentProgress) {
@@ -56,7 +55,7 @@ export function getSkillBonuses(permanent: PermanentProgress) {
   const bonuses = { productionMultiplier: 1, equipmentPriceMultiplier: 1, equipmentDiscountPercent: 0, startingImo: gn(0) };
   for (const id of SKILL_IDS) {
     const effect = SKILLS[id].effect;
-    const amount = permanent.skillRanks[id] * effect.perRank;
+    const amount = effect.type === 'startingImo' ? effect.values[permanent.skillRanks[id]]! : permanent.skillRanks[id] * effect.perRank;
     if (effect.type === 'harvest') bonuses.productionMultiplier += amount;
     if (effect.type === 'discount') bonuses.equipmentDiscountPercent += amount;
     if (effect.type === 'startingImo') bonuses.startingImo = bonuses.startingImo.add(amount);
@@ -73,12 +72,13 @@ export function getSkillPurchase(permanent: PermanentProgress, id: SkillId, post
   if (!Object.hasOwn(SKILLS, id)) throw new RangeError('Unknown skill.');
   const definition = SKILLS[id];
   const rank = permanent.skillRanks[id];
-  const cost = definition.costs[rank] ?? null;
+  const maxRank = skillRankLimit(id, permanent.rootCycleMaxUnlockedStage);
+  const cost = rank >= maxRank ? null : definition.costs[rank] ?? null;
   const reason = postDeepResearchSkillLock && isEnhancementSkill(id) ? '深層解析後の強化スキルは、この周回では再購入できません。'
-    : rank >= definition.maxRank ? '最大ランクに到達しています。'
+    : rank >= maxRank ? '最大ランクに到達しています。'
     : definition.prerequisites.some((required) => permanent.skillRanks[required.id] < required.rank)
       ? '前提スキルが未取得です。'
       : permanent.prestigeCount < definition.minimumPrestigeCount ? `累計転生${definition.minimumPrestigeCount}回が必要です。`
         : cost !== null && permanent.unspentPoints < cost ? '転生ポイントが足りません。' : null;
-  return { cost, nextRank: Math.min(rank + 1, definition.maxRank), reason, canPurchase: reason === null };
+  return { cost, maxRank, nextRank: rank >= maxRank ? rank : rank + 1, reason, canPurchase: reason === null };
 }

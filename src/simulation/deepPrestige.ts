@@ -11,11 +11,18 @@ export function simulateDeepPrestige(origins: ReturnType<typeof simulateOrigins>
     && (trial.automated && [60, 21600].includes(trial.scenario.visitSeconds!) || !trial.automated && trial.scenario.visitSeconds === 43200))
     .map((source) => {
       const beforePrestige = source.result.state;
-      const afterPrestige = parseSave(serializeSave(createSave(prestigeGame(beforePrestige), 0))).gameState;
-      const initialState = investSkills(afterPrestige, 'breakthrough', source.automated ? 'efficient' : undefined);
       const scenario = { ...source.scenario, id: `deep-prestige-${source.scenario.visitSeconds}-${source.automated ? 'auto' : 'manual'}`,
         label: `${source.scenario.label} / 解析済み通常転生`, prestigeAt: 'cap' as const };
-      const result = simulateRun(initialState, scenario, maxSeconds);
-      return { scenario, automated: source.automated, beforePrestige, afterPrestige, initialState, result };
+      const cycles = [];
+      let previous = beforePrestige, totalSeconds = 0;
+      for (let cycle = 1; cycle <= 3 && totalSeconds < maxSeconds; cycle += 1) {
+        const afterPrestige = parseSave(serializeSave(createSave(prestigeGame(previous), 0))).gameState;
+        const initialState = investSkills(afterPrestige, 'growth', source.automated ? 'efficient' : undefined);
+        const result = simulateRun(initialState, scenario, maxSeconds - totalSeconds);
+        cycles.push({ cycle, afterPrestige, initialState, result });
+        totalSeconds += result.elapsedSeconds; previous = result.state;
+        if (!result.completed) break;
+      }
+      return { scenario, automated: source.automated, beforePrestige, ...cycles[0]!, cycles, totalSeconds };
     });
 }

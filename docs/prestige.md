@@ -1,5 +1,7 @@
 # 初期転生と基本スキル（v0）
 
+#46 / v16: [現行の報酬・ランク上限・ポイント非返還・台帳](prestige-economy.md)。以下の旧仕様・校正記録より現行ルールを優先します。
+
 ## 転生のルール
 
 `src/core/prestige.ts` の `getPrestigeReward` / `prestigeGame` は、現在の周回の累計収穫 `runEarnedScore` だけで判定します。所持芋を設備購入で消費しても報酬は減りません。
