@@ -15,6 +15,10 @@ export function assertPermanentProgress(permanent: PermanentProgress, allowHisto
     || permanent.rootConnectionUnlocked !== (permanent.maxDiscoveredStage >= 3)
     || (permanent.maxDiscoveredStage >= 1 && permanent.skillRanks.breakthrough < 1)
     || (permanent.maxDiscoveredStage >= 2) !== permanent.deepResearchUnlocked) throw new RangeError('Invalid discovery or root connection permission.');
+  if (typeof permanent.deepAnalysisActiveThisRoot !== 'boolean'
+    || (permanent.deepAnalysisActiveThisRoot && (!permanent.deepResearchUnlocked || permanent.deepResearchCount <= permanent.rootRebirthCount))
+    || (permanent.rootRebirthCount === 0 && permanent.deepResearchCount > 0 && !permanent.deepAnalysisActiveThisRoot)) throw new RangeError('Invalid current ROOT analysis.');
+  // Preserve the bound on legacy repeated analyses; normal prestige no longer adds an analysis.
   if (!Number.isSafeInteger(permanent.deepResearchCount) || permanent.deepResearchCount < 0
     || permanent.deepResearchUnlocked !== (permanent.deepResearchCount > 0)
     || permanent.deepResearchCount - permanent.rootRebirthCount > Math.max(0, permanent.prestigeCount - 4)) throw new RangeError('Invalid deep research history.');

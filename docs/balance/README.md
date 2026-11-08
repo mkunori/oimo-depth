@@ -15,7 +15,7 @@ npm run simulate -- --scenario active-60-cap --scenario offline-6h-cap --runs 12
 
 既定は15方策・各6回の転生・実経過90日で打切り、出力先は `docs/balance/generated/` です。`--out` は明示的に指定したディレクトリへ出力します。`--runs` は1〜100、`--max-days` は0超〜365です。打切り・未到達は未到達のまま記録し、0秒や無限時間に置き換えません。オフライン方策は打切り時に予定外の復帰を行いません。
 
-`simulate:check` はファイルを書かずに再計算し、コミット済みの27成果物との一致を確認します。CI でも実行するため、定数・コア・方策を変えた場合は `npm run simulate` で結果を更新し、採用根拠も見直してください。`src/simulation/baseline.ts` は #4 / PR #18 の15方策・6周回の比較用スナップショットで、再生成対象ではありません。別の周回数・途中打切りでは同条件でない前後比較を省略します。
+`simulate:check` はファイルを書かずに再計算し、コミット済みの40成果物との一致を確認します。CI でも実行するため、定数・コア・方策を変えた場合は `npm run simulate` で結果を更新し、採用根拠も見直してください。`src/simulation/baseline.ts` は #4 / PR #18 の15方策・6周回の比較用スナップショットで、再生成対象ではありません。別の周回数・途中打切りでは同条件でない前後比較を省略します。
 
 ## 計算と方策
 
@@ -89,4 +89,4 @@ SVG は [Observable Plot の document オプション](https://observablehq.com/
 
 #29は深層記憶後の正規1e12終点から1e15へ進む13比較を追加します。新しい `root-connection.csv` / `root-connection-timeline.csv` / `root-connection.svg` に時間・購入・連携・生産・上限停止を出力します。既存21成果物を含め24件を決定的に生成します。[校正結果](../root-connection.md) を参照してください。
 
-#30は1分/6h/12hの6周回と正規段階3で、掘削研究あり/なしの計12比較を追加します。`depth.csv` / `depth-timeline.csv` / `depth.svg` に恒久深度・地層・速度・SCORE待機を出力し、計27成果物を検証します。通常転生後も深度を保持することを比較し、ROOT自体はモデル化しません。[計算・校正と保存](../depth.md) を参照してください。
+#30は1分/6h/12hの6周回と正規段階3で、掘削研究あり/なしの計12比較を追加します。`depth.csv` / `depth-timeline.csv` / `depth.svg` に恒久深度・地層・速度・SCORE待機を出力し、計40成果物を検証します。通常転生後も深度を保持することを比較し、ROOT自体はモデル化しません。[計算・校正と保存](../depth.md) を参照してください。

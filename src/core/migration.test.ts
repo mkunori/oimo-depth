@@ -7,7 +7,8 @@ import { gn, encodeGameNumbers, approximatelyEqual, progressRatio } from './numb
 import { advanceGame, configureAutomation, getEquipmentPrice, getPurchaseQuote, getProductionPerSecond, getNextAutomaticPurchaseSeconds, quoteEquipmentPurchase, NumericProgressError } from './game';
 import { createInitialState, createInitialPermanent } from './state';
 import { createSave, parseSave, serializeSave, settleOffline, SAVE_VERSION } from './save';
-import { createAutomationReadyState, createResearchReadyState } from '../test/progress';
+import { createAutomationReadyState, createResearchReadyState, createRootRebirthReadyState } from '../test/progress';
+import { performRootRebirth } from './root';
 import { performDeepResearch } from './research';
 import { performBreakthrough } from './breakthrough';
 import { prestigeGame, purchaseSkill } from './prestige';
@@ -17,6 +18,43 @@ import { GameSession } from '../features/save/GameSession';
 const legacyText = readFileSync(new URL('../test/fixtures/save-v6.json', import.meta.url), 'utf8');
 const legacy = JSON.parse(legacyText);
 
+describe('v15 current ROOT analysis migration', () => {
+  it('preserves v14 assets, infers only provable completion, and never grants a forged low-SCORE breakthrough', () => {
+    const analyzed = performDeepResearch(createResearchReadyState(true));
+    const late = createRootRebirthReadyState(), root = performRootRebirth(late);
+    const oldSave = (state: typeof analyzed) => {
+      const data = JSON.parse(serializeSave(createSave(state, 1234)));
+      data.saveVersion = 14;
+      delete data.gameState.permanent.deepAnalysisActiveThisRoot;
+      delete data.gameState.runStartingScoreCapStage;
+      return data;
+    };
+    for (const state of [analyzed, late, root]) {
+      const data = oldSave(state), loaded = parseSave(JSON.stringify(data));
+      expect(loaded.savedAt).toBe(1234);
+      expect(loaded.gameState).toEqual(state);
+      expect(prestigeGame(loaded.gameState).scoreCapStage).toBe(state.permanent.deepAnalysisActiveThisRoot ? 2 : 0);
+    }
+    const oldPrestige = oldSave(prestigeGame(analyzed));
+    oldPrestige.gameState.scoreCapStage = 0; // actual v14 prestige returned to stage0
+    const certain = parseSave(JSON.stringify(oldPrestige)).gameState;
+    expect(certain.scoreCapStage).toBe(0); // do not retroactively change its run
+    expect(certain.permanent.deepAnalysisActiveThisRoot).toBe(true);
+    const resumed = prestigeGame(advanceGame(certain, 1e5));
+    expect(resumed.scoreCapStage).toBe(2); expect(resumed.permanent.deepResearchCount).toBe(1);
+    const ambiguous = oldSave(root);
+    ambiguous.gameState.permanent.deepResearchCount = 2; // may be repeated analyses before ROOT1
+    const unknown = parseSave(JSON.stringify(ambiguous)).gameState;
+    expect(unknown.permanent.deepAnalysisActiveThisRoot).toBe(false);
+    expect(unknown.permanent.deepResearchCount).toBe(2);
+    expect(unknown.imo).toBeAmount(root.imo);
+    expect(unknown.permanent.skillRanks).toEqual(root.permanent.skillRanks);
+    const forged = oldSave(analyzed);
+    forged.gameState.runEarnedScore = gn(0).toString(); forged.gameState.imo = gn(0).toString();
+    expect(() => parseSave(JSON.stringify(forged))).toThrow();
+  });
+});
+
 describe('v7 amount migration', () => {
   it('preserves a real v6 research save and uses canonical strings only for amounts', () => {
     const migrated = parseSave(legacyText);
@@ -24,7 +62,7 @@ describe('v7 amount migration', () => {
     expect(migrated.savedAt).toBe(legacy.savedAt);
     for (const key of ['imo', 'runEarnedScore', 'runStartingImo'] as const) expect(migrated.gameState[key]).toBeAmount(legacy.gameState[key]);
     expect(migrated.gameState.equipmentCounts).toEqual({ ...legacy.gameState.equipmentCounts, originMiner: 0, imoReactor: 0, rootRelay: 0, coreChamber: 0 });
-    expect(migrated.gameState.permanent).toEqual({ ...createGearSettings(), gearUnlocked: createEmptyGear(), gearDiscovered: createEmptyGear(), ...createInitialRootProgress(), ...legacy.gameState.permanent, depthMeters: 0, depthRemainder: 0, digResearchRanks: { basic: 0, vein: 0 }, deepResearchCount: 1, maxDiscoveredStage: 2, originAnalysisUnlocked: false, rootConnectionUnlocked: false });
+    expect(migrated.gameState.permanent).toEqual({ deepAnalysisActiveThisRoot: true, ...createGearSettings(), gearUnlocked: createEmptyGear(), gearDiscovered: createEmptyGear(), ...createInitialRootProgress(), ...legacy.gameState.permanent, depthMeters: 0, depthRemainder: 0, digResearchRanks: { basic: 0, vein: 0 }, deepResearchCount: 1, maxDiscoveredStage: 2, originAnalysisUnlocked: false, rootConnectionUnlocked: false });
     expect(migrated.gameState.researchRanks).toEqual(legacy.gameState.researchRanks);
     expect(migrated.gameState.automation).toEqual({ ...legacy.gameState.automation, equipment: { ...legacy.gameState.automation.equipment, originMiner: true, imoReactor: true, rootRelay: true, coreChamber: true }, priority: [...legacy.gameState.automation.priority, "rootRelay", "coreChamber", "originMiner", "imoReactor"] });
     const raw = JSON.parse(serializeSave(migrated));

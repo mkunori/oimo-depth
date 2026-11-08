@@ -34,7 +34,17 @@ describe('origin analysis', () => {
     expect(performOriginAnalysis(after)).toBe(after);
     expect(advanceGame(after, 60).permanent.depthMeters).toBeGreaterThan(0);
     const next = prestigeGame(after);
-    expect(next.scoreCapStage).toBe(0); expect(next.originResearchRanks).toEqual({ harvest: 0, link: 0 });
+    expect(next.scoreCapStage).toBe(2); expect(next.originResearchRanks).toEqual({ harvest: 0, link: 0 });
+    expect(next.runEarnedScore).toBeAmount(0); expect(next.imo).toBeAmount(0);
+    expect(next.researchRanks).toEqual({ geology: 0, resonance: 0 });
+    expect(next.equipmentCounts).toEqual(createInitialState().equipmentCounts);
+    expect(next.postDeepResearchSkillLock).toBe(false);
+    expect(next.permanent.deepResearchCount).toBe(after.permanent.deepResearchCount);
+    expect(performRootConnection(next)).toBe(next); expect(performOriginAnalysis(next)).toBe(next);
+    expect(purchaseEquipment(next, 'rootRelay', 1)).toBe(next);
+    expect(purchaseEquipment(next, 'originMiner', 1)).toBe(next);
+    expect(() => createSave({ ...next, scoreCapStage: 3 }, 0)).toThrow();
+    expect(() => createSave({ ...next, equipmentCounts: { ...next.equipmentCounts, rootRelay: 1 } }, 0)).toThrow();
     expect(next.permanent.originAnalysisUnlocked).toBe(true); expect(isEquipmentDiscovered('imoReactor', next)).toBe(true);
     const repeated = performOriginAnalysis(advanceGame(performRootConnection(advanceGame(performDeepResearch(advanceGame(performBreakthrough(advanceGame(next, 1e6)), 1e9)), Number.MAX_VALUE)), Number.MAX_VALUE));
     expect(repeated.scoreCapStage).toBe(4); expect(repeated.permanent.maxDiscoveredStage).toBe(4);
@@ -82,7 +92,7 @@ describe('origin analysis', () => {
       expect(purchaseEquipment(whole.state, 'originMiner', 'MAX')).toBe(whole.state);
       expect(purchaseOriginResearch(whole.state, 'harvest')).toBe(whole.state);
       expect(resetResearch(whole.state)).toBe(whole.state);
-      expect(prestigeGame(whole.state).scoreCapStage).toBe(0);
+      expect(prestigeGame(whole.state).scoreCapStage).toBe(2);
     }
   });
 

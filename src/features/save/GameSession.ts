@@ -193,7 +193,7 @@ export class GameSession {
     if (reward === 0 || reward !== expectedReward) return false;
     try {
       const gameState = prestigeGame(this.snapshot.gameState);
-      return this.commitProgress(gameState, `転生しました。${reward}pt を獲得しました（累計 ${gameState.permanent.prestigeCount}回）。`);
+      return this.commitProgress(gameState, `転生しました。${reward}pt を獲得しました（累計 ${gameState.permanent.prestigeCount}回）。${gameState.permanent.deepAnalysisActiveThisRoot ? '深層解析済みの上限1E12を維持し、SCORE 0から再開します。解析累計は増えません。' : '上限1E6・SCORE 0から再開します。'}`);
     } catch (error) { this.fail(error); return false; }
   };
 

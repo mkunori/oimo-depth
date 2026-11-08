@@ -23,7 +23,8 @@ export function prestigeGame(state: GameState): GameState {
     unspentPoints: state.permanent.unspentPoints + reward,
   };
   const startingImo = getSkillBonuses(permanent).startingImo;
-  return discoverGear({ ...createInitialState(), imo: startingImo, runStartingImo: startingImo, permanent, automation: state.automation });
+  return discoverGear({ ...createInitialState(), imo: startingImo, runStartingImo: startingImo,
+    scoreCapStage: permanent.deepAnalysisActiveThisRoot ? 2 : 0, runStartingScoreCapStage: permanent.deepAnalysisActiveThisRoot ? 2 : 0, permanent, automation: state.automation });
 }
 
 export function purchaseSkill(state: GameState, id: SkillId): GameState {

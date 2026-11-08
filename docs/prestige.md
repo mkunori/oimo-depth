@@ -19,9 +19,10 @@
 | 範囲 | フィールド | 転生時 |
 | --- | --- | --- |
 | 周回 | `imo`, `runEarnedScore`, `equipmentCounts`, `runStartingImo` | 設備・累計は0、残高と支給額は取得済スキルによる開始値 |
-| 周回 | `scoreCapStage` | 0（上限1e6）に戻る |
+| 周回 | `scoreCapStage`, `runStartingScoreCapStage` | 現ROOT内で解析済みなら2（上限1e12）、未完了なら0（上限1e6） |
 | 周回 | `researchRanks` | 両研究0に戻る |
 | 周回 | `postDeepResearchSkillLock` | 通常転生でfalseに戻る |
+| ROOT周回 | `permanent.deepAnalysisActiveThisRoot` | 通常転生で保持、ROOTでfalseに戻る |
 | 恒久 | `permanent.depthMeters`, `permanent.depthRemainder`, `permanent.digResearchRanks` | 深度と任意の掘削研究を維持 |
 | 恒久 | `permanent.rootConnectionUnlocked`, `permanent.maxDiscoveredStage` | 接続権と発見履歴を維持 |
 | 恒久 | `permanent.deepResearchCount` | 解析実行でのみ増加し、転生で維持 |

@@ -50,7 +50,7 @@ export function PrestigePanel({ state, isPaused, notice, onPrestige, onBuySkill 
           <div><dt>未使用ポイント</dt><dd><output aria-label="未使用ポイント" aria-live="off">{formatNumber(state.permanent.unspentPoints)}</output> pt</dd></div>
         </dl>
         <p>SCORE {formatNumber(PRESTIGE_BALANCE.unlockScore)} で転生解禁。SCORE {formatNumber(INITIAL_BALANCE.scoreCap)} 未満なら1pt、以上なら2ptを獲得します。突破後も報酬は2ptです。</p>
-        <p>転生すると所持芋・今周回のSCORE・設備をリセットし、上限を1,000,000に戻します。転生回数・未使用ポイント・スキル・突破権は引き継ぎます。</p>
+        <p>転生すると所持芋・今周回のSCORE・設備・周回研究をリセットします。{state.permanent.deepAnalysisActiveThisRoot ? '深層解析済みのため上限1E12を維持します。' : '深層解析未完了のため上限1,000,000から再開します。'}転生回数・未使用ポイント・スキル・突破権は引き継ぎます。</p>
         <p className="shop-note">深層記憶: 解析累計 {formatNumber(state.permanent.deepResearchCount)}回 / 保持枠 {getDeepMemorySlots(state.permanent.deepResearchCount)}/3。{state.permanent.deepResearchCount < 4 ? `あと${4 - state.permanent.deepResearchCount}回の解析で強化スキルを全保持。` : '強化スキルを全保持できます。'} 通常転生で強化スキルの再購入制限を解除します。</p>
         <p className="prestige-reward">獲得見込み: <output aria-label="獲得見込みポイント" aria-live="off">{reward}</output> pt</p>
         <button type="button" ref={trigger} className="secondary-button" disabled={isPaused || reward === 0} onClick={() => { setConfirmationError(null); setConfirming(true); }} aria-describedby="prestige-reason">転生する</button>
@@ -79,11 +79,11 @@ export function PrestigePanel({ state, isPaused, notice, onPrestige, onBuySkill 
       {confirming && (
         <dialog ref={dialog} className="prestige-dialog" aria-labelledby="prestige-dialog-title" aria-describedby="prestige-dialog-description" onCancel={() => setConfirming(false)}>
           <h2 id="prestige-dialog-title">転生して次の周回へ進みますか？</h2>
-          <p id="prestige-dialog-description">現在の所持芋・SCORE・設備がリセットされ、SCORE上限は1,000,000に戻ります。取り消せません。転生回数・ポイント・スキル・突破権は引き継ぎます。上限に再到達すれば追加ポイントなしで再突破できます。</p>
+          <p id="prestige-dialog-description">現在の所持芋・SCORE・設備・周回研究をリセットします。{state.permanent.deepAnalysisActiveThisRoot ? '現ROOT周回で深層解析済みのため、SCORE 0・上限1E12（段階2）から再開します。段階3・4は所定SCOREへ再到達して手動で再突破します。' : '現ROOT周回では深層解析が未完了のため、SCORE上限は1,000,000に戻ります。'}取り消せません。転生回数・ポイント・スキル・突破権は引き継ぎます。</p>
           <p>獲得する転生ポイント: <strong>{reward} pt</strong></p>
           <p>再開時の所持芋 {formatNumber(bonuses.startingImo)} / SCORE 0</p>
           {state.permanent.equipmentSystemUnlocked && <p>利用可能SCOREと支出内訳を0へ戻し、恒久装備・装備の発見履歴を保持します。</p>}
-          <p>深層記憶の解析累計 {formatNumber(state.permanent.deepResearchCount)}回を保持し、強化スキルの再購入制限を解除します。</p>
+          <p>深層記憶の解析累計 {formatNumber(state.permanent.deepResearchCount)}回を増やさず保持し、強化スキルの再購入制限を解除します。</p>
           {confirmationError && <p role="alert">{confirmationError}</p>}
           <div className="confirmation-actions">
             <button type="button" className="secondary-button" onClick={() => setConfirming(false)} autoFocus>キャンセル</button>

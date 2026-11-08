@@ -20,6 +20,8 @@ import type { DigResearchRanks } from '../data/depth';
 
 /** 転生で引き継ぐデータ。将来の恒久データはこの境界に追加する。 */
 export interface PermanentProgress {
+  /** Completion within the current ROOT cycle, independent of lifetime count. */
+  readonly deepAnalysisActiveThisRoot: boolean;
   readonly gearModes: GearModes;
   readonly gearCustomPresets: readonly (CustomGearPreset | null)[];
   readonly selectedGearPreset: GearPresetId;
@@ -45,11 +47,13 @@ export interface PermanentProgress {
 }
 
 export function createInitialPermanent(): PermanentProgress {
-  return { ...createGearSettings(), gearUnlocked: createEmptyGear(), gearDiscovered: createEmptyGear(), ...createInitialRootProgress(), depthMeters: 0, depthRemainder: 0, digResearchRanks: createEmptyDigResearch(), originAnalysisUnlocked: false, rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
+  return { deepAnalysisActiveThisRoot: false, ...createGearSettings(), gearUnlocked: createEmptyGear(), gearDiscovered: createEmptyGear(), ...createInitialRootProgress(), depthMeters: 0, depthRemainder: 0, digResearchRanks: createEmptyDigResearch(), originAnalysisUnlocked: false, rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
 }
 
 /** 転生時に初期化するデータ。初期所持芋は収穫累計とは別に管理する。 */
 export interface RunState {
+  /** Records the cap inherited by normal prestige; manual breakthroughs still need SCORE. */
+  readonly runStartingScoreCapStage: 0 | 2;
   readonly scoreSpentThisRun: GameNumber;
   readonly gearPurchasedThisRun: readonly GearId[];
   readonly postDeepResearchSkillLock: boolean;
@@ -73,6 +77,7 @@ export interface GameState extends RunState {
 
 export function createInitialState(): GameState {
   return {
+    runStartingScoreCapStage: 0,
     scoreSpentThisRun: gn(0),
     gearPurchasedThisRun: [],
     postDeepResearchSkillLock: false,

@@ -23,7 +23,7 @@ export function OriginAnalysisControl({ state, isPaused, onAnalyze }: {
     {confirming && <dialog ref={dialog} className="prestige-dialog" aria-labelledby="origin-title" onCancel={() => setConfirming(false)}>
       <h2 id="origin-title">地底核心の解析：リセットなし / SCORE 1E15→1E18</h2>
       <p>SCORE・所持芋・設備・全研究・DEPTH・スキル・ポイント・自動購入設定を保持し、無料で上限だけを拡張します。</p>
-      <p>通常転生では上限1E6へ戻り、設備と周回研究をリセットします。発見履歴と解析権は残り、再到達時に無料で再突破できます。</p>
+      <p>通常転生では深層解析済みの上限1E12（段階2）へ戻り、設備と周回研究をリセットします。発見履歴と解析権は残り、SCORE 1E12・1E15へ再到達して手動で再突破できます。</p>
       {error && <p role="alert">解析できませんでした。最新のSCOREとセーブ状態を確認してください。</p>}
       <div className="confirmation-actions">
         <button type="button" className="secondary-button" autoFocus onClick={() => setConfirming(false)}>キャンセル</button>

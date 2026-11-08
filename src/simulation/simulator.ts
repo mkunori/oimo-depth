@@ -295,7 +295,7 @@ export function simulateCampaign(scenario: Scenario, runCount = 6, maxSeconds = 
     if (afterPrestige === null) break;
     trace.push({ ...depthTrace(state), elapsedSeconds: elapsed, run, kind: 'prestige', score: state.runEarnedScore, imo: state.imo,
       production: getProductionPerSecond(state), actualProduction: getProductionPerSecond(state),
-      prestigeCount: state.permanent.prestigeCount, scoreCap: INITIAL_BALANCE.scoreCap, equipmentCounts: state.equipmentCounts, researchRanks: state.researchRanks });
+      prestigeCount: state.permanent.prestigeCount, scoreCap: getScoreCap(state), equipmentCounts: state.equipmentCounts, researchRanks: state.researchRanks });
   }
   return { scenario, requestedRuns: runCount, completedRuns: runs.filter((run) => run.result.completed).length, elapsedSeconds: elapsed, state, runs, trace };
 }

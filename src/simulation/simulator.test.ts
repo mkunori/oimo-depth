@@ -135,6 +135,18 @@ describe('event-driven simulation', () => {
     expect(first.origins).toHaveLength(10);
     expect(first.rootCycles).toHaveLength(8);
     expect(first.gear).toHaveLength(4);
+    expect(first.deepPrestige).toHaveLength(3);
+    for (const trial of first.deepPrestige) {
+      expect(trial.beforePrestige.scoreCapStage).toBe(4);
+      expect(trial.afterPrestige.scoreCapStage).toBe(2);
+      expect(trial.afterPrestige.runEarnedScore).toBeAmount(0);
+      expect(trial.afterPrestige.postDeepResearchSkillLock).toBe(false);
+      expect(trial.result.completed).toBe(true);
+      expect(trial.result.state.runEarnedScore).toBeAmount(1e12);
+      expect(trial.result.state.permanent.deepResearchCount).toBe(trial.beforePrestige.permanent.deepResearchCount);
+      expect(trial.result.state.equipmentCounts.rootRelay).toBe(0);
+      expect(trial.result.state.equipmentCounts.originMiner).toBe(0);
+    }
     for (const trial of first.gear) {
       expect(trial.completed).toBe(true);
       expect(trial.cycles.map((cycle) => cycle.unlocked.length)).toEqual([3, 4, 5]);

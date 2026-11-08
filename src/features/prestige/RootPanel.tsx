@@ -68,7 +68,7 @@ export function RootPanel({ state, isPaused, notice, onRebirth, onPurchase }: {
 
 function RootResetScope({ equipmentKnown }: { readonly equipmentKnown: boolean }) {
   return <>
-    <p><strong>リセット:</strong> 現周回SCORE・利用可能SCORE・支出内訳・所持芋・設備・SCORE上限段階（0へ）・周回研究4種・生産端数・当周回の強化スキル再購入制限。</p>
+    <p><strong>リセット:</strong> 現周回SCORE・利用可能SCORE・支出内訳・所持芋・設備・SCORE上限段階（0へ）・現ROOT周回の深層解析完了状態・周回研究4種・生産端数・当周回の強化スキル再購入制限。</p>
     <p><strong>保持:</strong> 通常転生回数・通常ポイント・取得スキル・全突破/解析権・自動購入の解禁と全設定・DEPTHと端数・地層発見・恒久掘削研究・ROOT回数/結晶/恒久進行{equipmentKnown ? '・恒久装備と装備の発見履歴・装備システム解禁権' : ''}。</p>
   </>;
 }
