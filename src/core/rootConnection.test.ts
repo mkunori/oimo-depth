@@ -1,3 +1,4 @@
+import { withLegacyRefunds } from '../test/progress';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createRootConnectionReadyState, createResearchReadyState } from '../test/progress';
@@ -27,7 +28,7 @@ describe('root connection and equipment links', () => {
     }
     const before = createRootConnectionReadyState();
     const after = performRootConnection(before);
-    expect(after).toEqual({ ...before, scoreCapStage: 3, permanent: { ...before.permanent, rootConnectionUnlocked: true, maxDiscoveredStage: 3 } });
+    expect(after).toEqual({ ...before, scoreCapStage: 3, permanent: { ...before.permanent, rootCycleMaxUnlockedStage: 3, rootConnectionUnlocked: true, maxDiscoveredStage: 3 } });
     expect(performRootConnection(after)).toBe(after);
     expect(after.postDeepResearchSkillLock).toBe(true);
     expect(performDeepResearch(after)).toBe(after);
@@ -83,7 +84,7 @@ describe('root connection and equipment links', () => {
   });
 
   it('preserves v8 history/settings/assets, infers only proven discoveries, round trips v9 and rejects forged stage3/ownership', () => {
-    const current = createRootConnectionReadyState(true);
+    const current = withLegacyRefunds(createRootConnectionReadyState(true));
     const old = JSON.parse(serializeSave(createSave(current, 1234)));
     old.saveVersion = 8; delete old.gameState.permanent.rootConnectionUnlocked; delete old.gameState.permanent.maxDiscoveredStage;
     for (const id of ['rootRelay', 'coreChamber', 'originMiner', 'imoReactor']) { delete old.gameState.equipmentCounts[id]; delete old.gameState.automation.equipment[id]; }

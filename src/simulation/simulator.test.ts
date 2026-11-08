@@ -357,8 +357,8 @@ describe('equipment growth comparison', () => {
       expect(journey.completed).toBe(true);
       expect(journey.beforeBreakthrough?.scoreCapStage).toBe(0);
       expect(journey.beforeBreakthrough?.runEarnedScore).toBeAmount(1e6);
-      expect(journey.afterBreakthrough).toEqual({ ...journey.beforeBreakthrough, scoreCapStage: 1, permanent: { ...journey.beforeBreakthrough!.permanent, maxDiscoveredStage: 1 } });
-      expect(withoutDepth(journey.state.permanent)).toEqual(withoutDepth({ ...journey.beforeBreakthrough!.permanent, maxDiscoveredStage: 1 }));
+      expect(journey.afterBreakthrough).toEqual({ ...journey.beforeBreakthrough, scoreCapStage: 1, permanent: { ...journey.beforeBreakthrough!.permanent, rootCycleMaxUnlockedStage: 1, maxDiscoveredStage: 1 } });
+      expect(withoutDepth(journey.state.permanent)).toEqual(withoutDepth({ ...journey.beforeBreakthrough!.permanent, rootCycleMaxUnlockedStage: 1, maxDiscoveredStage: 1 }));
       expect(journey.state.runEarnedScore).toBeAmount(1e9);
       expect(journey.expansion!.state.equipmentCounts.deepDrill).toBeGreaterThan(0);
       expect(journey.expansion!.trace.at(-1)?.actualProduction).toBeAmount(0);
@@ -375,7 +375,7 @@ describe('equipment growth comparison', () => {
       expect(trial.actualSaveSupported).toBe(true);
       expect(trial.result.completed).toBe(true);
       expect(trial.result.state.runEarnedScore).toBeAmount(1e9);
-      expect(withoutDepth(trial.result.state.permanent)).toEqual(withoutDepth({ ...seed.permanent, maxDiscoveredStage: 1 }));
+      expect(withoutDepth(trial.result.state.permanent)).toEqual(withoutDepth({ ...seed.permanent, rootCycleMaxUnlockedStage: 1, maxDiscoveredStage: 1 }));
       expect(trial.result.trace.every((point) => point.score.lte(1e9))).toBe(true);
       if (trial.policy === 'expanded') {
         expect(trial.result.state.equipmentCounts.deepDrill).toBeGreaterThan(0);

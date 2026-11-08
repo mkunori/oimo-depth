@@ -34,9 +34,9 @@ export function MiningPanel({ state, production, isCapped, isPaused, onBreakthro
       : state.scoreCapStage === 1 ? 'SCORE 1E9到達。地層研究の深層解析で、転生せずに上限1E12へ進めます。'
         : state.scoreCapStage === 2 ? 'SCORE 1E12到達。根脈接続解析で、転生せずに上限1E15へ進めます。'
           : state.scoreCapStage === 3 ? 'SCORE 1E15到達。地底核心の解析で、転生せずに上限1E18へ進めます。'
-            : state.scoreCapStage === 4 ? 'ROOT REBIRTH可能。SCORE 1E18で収穫・購入・掘削は停止します。ROOTで結晶1個を獲得するか、通常転生で2ptを獲得するか選べます。'
+            : state.scoreCapStage === 4 ? 'ROOT REBIRTH可能。SCORE 1E18で収穫・購入・掘削は停止します。ROOTで結晶1個を獲得するか、通常転生で6ptを獲得するか選べます。'
         : '転生で2ptを獲得し、スキルを強化して限界突破を解禁しましょう。'
-    : getPrestigeReward(state) > 0 ? state.scoreCapStage === 4 ? '設備・根脈リンク・任意研究を組み合わせてSCORE 1E18へ進みましょう。' : state.scoreCapStage === 3 ? '設備連携と研究強化で収穫を加速し、SCORE 1E15へ進みましょう。' : state.scoreCapStage === 2 ? '新設備と研究強化で収穫を加速し、SCORE 1E12へ進みましょう。' : state.scoreCapStage === 1 ? '上位設備を増やしてSCORE 1E9へ進みましょう。通常転生も2ptで選べます。' : '転生できます。SCORE 1,000,000以上なら2ptになります。' : affordable
+    : getPrestigeReward(state) > 0 ? state.scoreCapStage === 4 ? '設備・根脈リンク・任意研究を組み合わせてSCORE 1E18へ進みましょう。' : state.scoreCapStage === 3 ? '設備連携と研究強化で収穫を加速し、SCORE 1E15へ進みましょう。' : state.scoreCapStage === 2 ? '新設備と研究強化で収穫を加速し、SCORE 1E12へ進みましょう。' : state.scoreCapStage === 1 ? '上位設備を増やしてSCORE 1E9へ進みましょう。通常転生の報酬は実到達SCOREで決まります。' : '転生できます。SCORE 1,000,000以上なら2ptになります。' : affordable
       ? `${EQUIPMENT[affordable].name}を購入できます。設備を増やして、収穫を速くしましょう。`
       : `芋を貯めて、次の設備を購入しましょう。SCORE ${formatNumber(scoreCap)} が今回の目標です。`;
 

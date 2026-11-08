@@ -50,7 +50,7 @@ describe('first SCORE breakthrough', () => {
       equipmentCounts: { ...createInitialState().equipmentCounts, worker: 50, cart: 25, harvester: 10 } };
     Object.freeze(state.equipmentCounts); Object.freeze(state.permanent.skillRanks); Object.freeze(state.permanent); Object.freeze(state);
     const after = performBreakthrough(state);
-    expect(after).toEqual({ ...state, scoreCapStage: 1, permanent: { ...state.permanent, maxDiscoveredStage: 1 } });
+    expect(after).toEqual({ ...state, scoreCapStage: 1, permanent: { ...state.permanent, rootCycleMaxUnlockedStage: 1, maxDiscoveredStage: 1 } });
     expect(after.equipmentCounts).toBe(state.equipmentCounts);
     expect(after.permanent.skillRanks).toBe(state.permanent.skillRanks);
     expect(after.runEarnedScore).toBeAmount(1e6);
@@ -77,7 +77,7 @@ describe('first SCORE breakthrough', () => {
     expect(advanceGame(capped, 1e9)).toBe(capped);
     expect(getPurchaseQuote(capped, 'deepDrill', 'MAX').quantity).toBe(0);
     expect(canBreakthrough(capped)).toBe(false);
-    expect(getPrestigeReward(capped)).toBe(2);
+    expect(getPrestigeReward(capped)).toBe(3);
   });
 
   it('resets the cap on ordinary prestige while keeping permission and a free repeat path', () => {

@@ -20,6 +20,10 @@ import type { DigResearchRanks } from '../data/depth';
 
 /** 転生で引き継ぐデータ。将来の恒久データはこの境界に追加する。 */
 export interface PermanentProgress {
+  readonly rootCycleMaxUnlockedStage: ScoreCapStage;
+  readonly lifetimePrestigePointsEarned: number;
+  readonly pointsLostByDeepResearch: number;
+  readonly pointsLostByRoot: number;
   /** Completion within the current ROOT cycle, independent of lifetime count. */
   readonly deepAnalysisActiveThisRoot: boolean;
   readonly gearModes: GearModes;
@@ -47,7 +51,7 @@ export interface PermanentProgress {
 }
 
 export function createInitialPermanent(): PermanentProgress {
-  return { deepAnalysisActiveThisRoot: false, ...createGearSettings(), gearUnlocked: createEmptyGear(), gearDiscovered: createEmptyGear(), ...createInitialRootProgress(), depthMeters: 0, depthRemainder: 0, digResearchRanks: createEmptyDigResearch(), originAnalysisUnlocked: false, rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
+  return { rootCycleMaxUnlockedStage: 0, lifetimePrestigePointsEarned: 0, pointsLostByDeepResearch: 0, pointsLostByRoot: 0, deepAnalysisActiveThisRoot: false, ...createGearSettings(), gearUnlocked: createEmptyGear(), gearDiscovered: createEmptyGear(), ...createInitialRootProgress(), depthMeters: 0, depthRemainder: 0, digResearchRanks: createEmptyDigResearch(), originAnalysisUnlocked: false, rootConnectionUnlocked: false, maxDiscoveredStage: 0, deepResearchCount: 0, deepResearchUnlocked: false, prestigeCount: 0, unspentPoints: 0, skillRanks: { harvest: 0, discount: 0, startingImo: 0, breakthrough: 0, automation: 0 } };
 }
 
 /** 転生時に初期化するデータ。初期所持芋は収穫累計とは別に管理する。 */

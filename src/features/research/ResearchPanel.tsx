@@ -41,7 +41,7 @@ export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onO
     <p>{introduced ? '深層の地脈を解析し、同じ周回のSCORE上限を1E9から1E12へ拡張します。費用は無料です。' : '初回限界突破のあと、SCORE 1E9到達で深層解析を解禁します。'}</p>
     <button className="secondary-button" type="button" ref={trigger} disabled={isPaused || !quote.canResearch} aria-describedby="research-reason" onClick={() => { setError(false); setConfirming(true); }}>研究による突破</button>
     <p id="research-reason">{isPaused ? 'セーブ確認のため研究を停止しています。' : quote.reason ?? 'SCORE 1E9到達。強化スキルの保持・返還を確認して、無料で次の段階へ進めます。'}</p>
-    <p>深層解析では、深層記憶の保持枠に入らない強化スキルをランク0へ戻し、使用ポイントを全額返還します。保持枠は解析累計1回で0/3、2回で1/3、3回で2/3、4回以降で3/3です。3回目は2種類目を選べます。</p>
+    <p>深層解析では、深層記憶の保持枠に入らない強化スキルをランク0へ戻します。使用ポイントは消失し、返還しません。未使用ポイントは保持します。保持枠は解析累計1回で0/3、2回で1/3、3回で2/3、4回以降で3/3です。3回目は2種類目を選べます。</p>
     <p>同じ成長サイクルで深層解析を完了すると、通常転生後も上限1E12（段階2）を維持します。設備と周回研究はリセットし、強化スキルの再購入制限は解除します。解析累計・深層記憶枠は増えません。{state.permanent.maxDiscoveredStage >= 4 && 'ROOT REBIRTH後は改めて解析が必要です。'}</p>
     <div className="research-nodes">
       {RESEARCH_IDS.map((id) => {
@@ -75,7 +75,7 @@ export function ResearchPanel({ state, isPaused, onBreakthrough, onPurchase, onO
       {reset.slots === 2 && <div className="save-field"><label htmlFor="deep-memory-choice">豊かな収穫に加えて保持する強化スキル</label><select id="deep-memory-choice" value={choice} onChange={(event) => setChoice(event.target.value as DeepMemoryChoice)}><option value="discount">設備の目利き</option><option value="startingImo">旅立ちの蓄え</option></select></div>}
       <p>保持する種類: {reset.kept.length ? reset.kept.map((id) => `${SKILLS[id].name}（ランク${state.permanent.skillRanks[id]}）`).join('、') : 'なし'}</p>
       <p>失う強化スキル: {reset.lost.some(({ rank }) => rank > 0) ? reset.lost.filter(({ rank }) => rank > 0).map(({ id, rank }) => `${SKILLS[id].name} ランク${rank}→0`).join('、') : 'なし'}</p>
-      <p>返還ポイント: <strong>{reset.refund}pt</strong>（新しいポイントは発生しません）</p>
+      <p>消失する使用済みポイント: <strong>{reset.pointsLost}pt</strong>（返還なし）。未使用{state.permanent.unspentPoints}ptは保持します。</p>
       <p>{reset.locked ? 'この周回では強化型スキルを再購入できません。次の周回で解除します。収穫倍率・設備割引は解析直後から変わります。' : '保持枠3/3のため、スキルのリセット・再購入制限はありません。'}</p>
       {error && <p role="alert">研究できませんでした。最新の条件とセーブ状態を確認してください。</p>}
       <div className="confirmation-actions">

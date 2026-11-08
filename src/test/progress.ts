@@ -45,3 +45,24 @@ export function completeAnalyzedRootCycle(initial: GameState): GameState {
   state = advanceGame(state, seconds);
   return advanceGame(purchaseEquipment(state, 'originMiner', 1), Number.MAX_VALUE);
 }
+
+/** Fund test allocations through actual manual prestiges, never inventing ledger entries. */
+export function buyTestEnhancements(initial: GameState, targets = { harvest: 3, discount: 2, startingImo: 1 }): GameState {
+  let state = initial;
+  for (const id of ['harvest', 'discount', 'startingImo'] as const) {
+    for (let step = 0; state.permanent.skillRanks[id] < targets[id]; step += 1) {
+      if (step > 40) throw new Error('Test allocation cannot be funded.');
+      const next = purchaseSkill(state, id);
+      state = next === state ? prestigeGame(advanceGame(state, Number.MAX_VALUE)) : next;
+    }
+  }
+  return state;
+}
+
+/** Build old-format fixtures under the old refund rule, before serializing them
+ * with a legacy version. Production migration must never repair invalid ledgers. */
+export function withLegacyRefunds(state: GameState): GameState {
+  return { ...state, permanent: { ...state.permanent,
+    unspentPoints: state.permanent.unspentPoints + state.permanent.pointsLostByDeepResearch,
+    pointsLostByDeepResearch: 0 } };
+}

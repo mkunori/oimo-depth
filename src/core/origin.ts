@@ -14,5 +14,5 @@ export function getOriginAnalysis(state: GameState) {
 export function performOriginAnalysis(state: GameState): GameState {
   if (!getOriginAnalysis(state).canAnalyze) return state;
   return discoverGear({ ...state, scoreCapStage: 4,
-    permanent: { ...state.permanent, originAnalysisUnlocked: true, maxDiscoveredStage: 4 } });
+    permanent: { ...state.permanent, rootCycleMaxUnlockedStage: 4, originAnalysisUnlocked: true, maxDiscoveredStage: 4 } });
 }
