@@ -22,7 +22,7 @@ import { assertPermanentProgress } from './skills';
 import { createEmptyDigResearch, DIG_RESEARCH_IDS } from '../data/depth';
 import type { DigResearchRanks } from '../data/depth';
 
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 export const OFFLINE_LIMIT_SECONDS = 24 * 60 * 60;
 
 export interface SaveData {
@@ -58,7 +58,7 @@ function timestamp(value: unknown): number {
 }
 
 /** 外部データから既知の項目だけをコピーし、コアと画面で扱える数値か検証する。 */
-function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 = SAVE_VERSION, internal = false): GameState {
+function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 = SAVE_VERSION, internal = false): GameState {
   const state = record(value);
   const counts = record(state.equipmentCounts);
   if (state.imo === undefined || state.runEarnedScore === undefined) {
@@ -104,6 +104,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
       ...(version < 14 ? createGearSettings() : { gearModes: structuredClone(savedPermanent.gearModes) as PermanentProgress['gearModes'], gearCustomPresets: structuredClone(savedPermanent.gearCustomPresets) as PermanentProgress['gearCustomPresets'], selectedGearPreset: savedPermanent.selectedGearPreset as PermanentProgress['selectedGearPreset'] }),
       gearUnlocked: version < 13 ? createEmptyGear() : (() => { const gear = record(savedPermanent.gearUnlocked); return Object.fromEntries(GEAR_IDS.map((id) => [id, gear[id]])) as GearFlags; })(),
       gearDiscovered: version < 13 ? createEmptyGear() : (() => { const gear = record(savedPermanent.gearDiscovered); return Object.fromEntries(GEAR_IDS.map((id) => [id, gear[id]])) as GearFlags; })(),
+      deepAnalysisActiveThisRoot: version >= 15 ? savedPermanent.deepAnalysisActiveThisRoot as boolean : false,
       prestigeCount: savedPermanent.prestigeCount, unspentPoints: savedPermanent.unspentPoints, skillRanks,
       depthMeters: version >= 10 ? savedPermanent.depthMeters as number : 0,
       depthRemainder: version >= 10 ? savedPermanent.depthRemainder as number : 0,
@@ -118,6 +119,12 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
         : version >= 6 && savedPermanent.deepResearchUnlocked ? 2 : version >= 4 && state.scoreCapStage === 1 ? 1 : 0,
       deepResearchCount: version >= 8 ? savedPermanent.deepResearchCount as number : version >= 6 && savedPermanent.deepResearchUnlocked ? 1 : 0,
       deepResearchUnlocked: version >= 6 ? savedPermanent.deepResearchUnlocked as boolean : false };
+    // Before v15, current stage >=2 proves completion. Before the first ROOT,
+    // any analysis belongs to this ROOT cycle. Surplus lifetime counts after
+    // ROOT may belong to older cycles, so stage0/1 alone cannot prove completion.
+    if (version < 15) permanent = { ...permanent, deepAnalysisActiveThisRoot:
+      typeof state.scoreCapStage === 'number' && state.scoreCapStage >= 2
+      || (permanent.rootRebirthCount === 0 && permanent.deepResearchCount > 0) };
     // Legacy formats could not reset skill prerequisites. Validate their original
     // acquisition rules before granting the new history-based exception.
     if (version < 8) assertPermanentProgress(permanent, false);
@@ -159,6 +166,7 @@ function readGameState(value: unknown, version: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     return result;
   };
   let result: GameState = {
+    runStartingScoreCapStage: version < 15 ? 0 : state.runStartingScoreCapStage as 0 | 2,
     scoreSpentThisRun: version < 13 ? gn(0) : amount(state.scoreSpentThisRun),
     gearPurchasedThisRun: version < 13 ? [] : (() => { if (!Array.isArray(state.gearPurchasedThisRun) || state.gearPurchasedThisRun.length > GEAR_IDS.length) throw new SaveDataError('装備の支出内訳が正しくありません。'); return [...state.gearPurchasedThisRun] as GearId[]; })(),
     postDeepResearchSkillLock: version >= 8 ? state.postDeepResearchSkillLock as boolean : false,
@@ -202,7 +210,7 @@ export function parseSave(text: string): SaveData {
   } catch {
     throw new SaveDataError('セーブを読み込めません。JSON 形式のテキストを確認してください。');
   }
-  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== 10 && data.saveVersion !== 11 && data.saveVersion !== 12 && data.saveVersion !== 13 && data.saveVersion !== SAVE_VERSION) {
+  if (data.saveVersion !== 1 && data.saveVersion !== 2 && data.saveVersion !== 3 && data.saveVersion !== 4 && data.saveVersion !== 5 && data.saveVersion !== 6 && data.saveVersion !== 7 && data.saveVersion !== 8 && data.saveVersion !== 9 && data.saveVersion !== 10 && data.saveVersion !== 11 && data.saveVersion !== 12 && data.saveVersion !== 13 && data.saveVersion !== 14 && data.saveVersion !== SAVE_VERSION) {
     throw new SaveDataError('未対応のセーブバージョンです。元のテキストを保管してください。');
   }
   try { return createSave(readGameState(data.gameState, data.saveVersion), timestamp(data.savedAt)); }

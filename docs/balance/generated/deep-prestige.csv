@@ -1,0 +1,4 @@
+"scenario","visit_seconds","automated","starting_stage","starting_score","starting_imo","analysis_count","skill_lock","completed","seconds","final_score","depth_meters"
+"deep-prestige-60-auto","60","true","2","gn1:0:0:0","gn1:0:0:0","1","false","true","169440","gn1:1:0:1000000000000","100342.648102"
+"deep-prestige-21600-auto","21600","true","2","gn1:0:0:0","gn1:0:0:0","1","false","true","194400","gn1:1:0:1000000000000","104531.214543"
+"deep-prestige-43200-manual","43200","false","2","gn1:0:0:0","gn1:0:0:0","1","false","true","172800","gn1:1:0:1000000000000","103301.860009"

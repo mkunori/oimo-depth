@@ -14,7 +14,7 @@ import { SAVE_STORAGE_KEY } from './features/save/SaveRepository';
 import { advanceGame } from './core/game';
 import { prestigeGame, purchaseSkill } from './core/prestige';
 import type { GameState } from './core/state';
-import { createRootRebirthReadyState, createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from './test/progress';
+import { createRootRebirthReadyState, completeAnalyzedRootCycle, createAutomationReadyState, createBreakthroughReadyState, createResearchReadyState, createRootConnectionReadyState } from './test/progress';
 import { performRootConnection } from './core/rootConnection';
 import { performDeepResearch } from './core/research';
 import { performBreakthrough } from './core/breakthrough';
@@ -232,11 +232,12 @@ describe('research UI', () => {
   });
 
   it('lets the third analysis retain starting supplies and updates the preview before confirmation', () => {
-    let ready = createResearchReadyState(true);
+    let ready = createRootRebirthReadyState();
     for (let count = 0; count < 2; count += 1) {
-      ready = prestigeGame(performDeepResearch(ready));
+      ready = performRootRebirth(ready);
       for (const id of ['harvest', 'harvest', 'harvest', 'discount', 'startingImo'] as const) ready = purchaseSkill(ready, id);
-      ready = advanceGame(performBreakthrough(advanceGame(ready, 1e6)), 1e9);
+      ready = advanceGame(performBreakthrough(advanceGame(ready, Number.MAX_VALUE)), Number.MAX_VALUE);
+      if (count === 0) ready = completeAnalyzedRootCycle(performDeepResearch(ready));
     }
     seedGame(ready); renderGame();
     fireEvent.click(screen.getByRole('button', { name: '研究による突破' }));
@@ -272,6 +273,17 @@ describe('research UI', () => {
     tickAfter(1);
     expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.imo).toBeAmount(ready.imo);
     expect(screen.getByLabelText('収穫速度').textContent).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: '転生する' }));
+    expect(screen.getByRole('dialog').textContent).toContain('SCORE 0・上限1E12（段階2）から再開');
+    fireEvent.click(screen.getByRole('button', { name: '転生を実行（2pt）' }));
+    const inherited = parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState;
+    expect(inherited.scoreCapStage).toBe(2); expect(inherited.runEarnedScore).toBeAmount(0);
+    expect(inherited.permanent.deepResearchCount).toBe(1);
+    expect(inherited.postDeepResearchSkillLock).toBe(false);
+    expect(screen.getByLabelText('SCORE上限').textContent).toBe('1E12');
+    expect((screen.getByRole('button', { name: '研究による突破' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: '豊かな収穫を強化' }));
+    expect(parseSave(localStorage.getItem(SAVE_STORAGE_KEY)!).gameState.permanent.skillRanks.harvest).toBe(1);
   });
 
   it('purchases and refunds research, unlocks new devices, and explains the 1e12 stop', () => {

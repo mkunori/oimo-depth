@@ -28,7 +28,7 @@ export const COVERAGE = [
   { feature: '自動設備管理・3購入方針・オンライン/放置', status: 'core', detail: '取得コストを含む12経路と、同じ取得済み状態からの24比較。購入イベントと実際の上限到達を記録' },
   { feature: 'DEPTH・地層・任意掘削研究', status: 'modeled', detail: 'SCORE稼働区間の地層境界を精算。1分/6h/12hの6周回と正規段階3、研究あり/なし・通常転生後を比較' },
   { feature: '自動転生・自動突破・掘削優先購入', status: 'not-modeled', detail: '購入は引き続き芋効率。研究/転生/突破は確認時の手動操作' },
-  { feature: '第2限界突破・地層研究', status: 'modeled', detail: '正規の1e9到達→無料深層解析→1e12、新設備2種と手動研究2種、1分/6h/12h・手動/自動の18比較' },
+  { feature: '第2限界突破・地層研究', status: 'modeled', detail: '正規の1e9到達→無料深層解析→1e12の18比較。解析済み通常転生は段階2・SCORE0で再開する1分/6h自動・12h手動3経路も検証' },
   { feature: '第3限界突破・設備連携', status: 'modeled', detail: '深層記憶後の正規1e12→1e15。1分/6h/12h・自動ON/OFF・新設備あり/なし12比較＋手動貯蓄1比較' },
   { feature: '第4限界突破・根源領域', status: 'modeled', detail: '初期から正規の1e15→1e18へ継続。1分/6h/12h×自動ON/OFFと6hの追加購入なし・新研究なし、計10比較。DEPTHと各段階の停止待ちも記録' },
   { feature: 'ROOT REBIRTH・結晶・恒久強化', status: 'modeled', detail: '正規初回ROOTから1分/6h/12h×自動ON/OFFの再周回6経路と結晶選択2比較。通常転生なしで第2回ROOTまで検証' },

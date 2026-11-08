@@ -33,9 +33,9 @@ describe('root connection and equipment links', () => {
     expect(performDeepResearch(after)).toBe(after);
     const next = prestigeGame(after);
     expect(next.permanent.rootConnectionUnlocked).toBe(true); expect(next.permanent.maxDiscoveredStage).toBe(3);
-    expect(next.scoreCapStage).toBe(0); expect(next.postDeepResearchSkillLock).toBe(false);
+    expect(next.scoreCapStage).toBe(2); expect(next.postDeepResearchSkillLock).toBe(false);
     const repeated = performRootConnection(advanceGame(performDeepResearch(advanceGame(performBreakthrough(advanceGame(next, 1e6)), 1e9)), Number.MAX_VALUE));
-    expect(repeated.scoreCapStage).toBe(3); expect(repeated.permanent.deepResearchCount).toBe(2);
+    expect(repeated.scoreCapStage).toBe(3); expect(repeated.permanent.deepResearchCount).toBe(1);
     expect(repeated.permanent.unspentPoints).toBe(next.permanent.unspentPoints);
   });
 

@@ -29,7 +29,7 @@ export function BreakthroughControl({ state, isPaused, onBreakthrough }: Props) 
       <h2 id="breakthrough-dialog-title">転生せずに限界突破しますか？</h2>
       <p id="breakthrough-dialog-description">取得済みの「限界突破の心得」を使い、現在のSCORE上限を1,000,000から1E9へ変更します。SCOREは加算されません。</p>
       <p>リセットはありません。所持芋・SCORE・設備・スキル・転生回数・未使用ポイントをすべて保持し、追加ポイントは消費しません。</p>
-      <p>通常転生を選ぶと周回上限は1,000,000に戻ります。突破権は維持され、再到達時に無料で再突破できます。</p>
+      <p>{state.permanent.deepAnalysisActiveThisRoot ? '通常転生では解析済みの上限1E12を引き継ぎます。' : '通常転生を選ぶと周回上限は1,000,000に戻ります。'}突破権は維持され、再到達時に無料で再突破できます。</p>
       {error && <p role="alert">{error}</p>}
       <div className="confirmation-actions">
         <button type="button" className="secondary-button" autoFocus onClick={() => setConfirming(false)}>キャンセル</button>

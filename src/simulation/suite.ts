@@ -1,3 +1,4 @@
+import { simulateDeepPrestige } from './deepPrestige';
 import { GEAR_MODES, GEAR_PRESETS } from '../data/gearModes';
 import type { BuiltinGearPreset } from '../data/gearModes';
 import { GEAR } from '../data/gear';
@@ -53,6 +54,7 @@ export function runSuite(scenarios: readonly Scenario[] = SCENARIOS, runCount = 
     research,
     rootConnections,
     origins,
+    deepPrestige: simulateDeepPrestige(origins, maxSeconds),
     rootCycles: simulateRootCycles(origins, maxSeconds),
     gear: simulateGear(origins, maxSeconds),
     gearModes: options.includeGearModes ? (['speed', 'growth', 'links', 'depth'] as BuiltinGearPreset[]).flatMap((preset) => simulateGear(origins, maxSeconds, preset)) : [],

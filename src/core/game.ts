@@ -64,11 +64,15 @@ export function assertGameState(state: GameState) {
     }
     if (state.runEarnedScore.subtract(carry.score).lt(0) || state.runEarnedScore.subtract(carry.score).gt(cap)) throw new RangeError('Compensated SCORE exceeds the run range.');
   }
-  if (state.scoreCapStage >= 2 && state.permanent.deepResearchCount <= state.permanent.rootRebirthCount) throw new RangeError('Current ROOT cycle requires a new deep analysis.');
+  const startingStage = state.runStartingScoreCapStage;
+  if ((startingStage !== 0 && startingStage !== 2) || startingStage > state.scoreCapStage
+    || (startingStage === 2 && (!state.permanent.deepAnalysisActiveThisRoot
+      || state.permanent.prestigeCount < SKILLS.breakthrough.minimumPrestigeCount + 1 || state.postDeepResearchSkillLock))) throw new RangeError('Invalid inherited cap.');
+  if (state.scoreCapStage >= 2 && !state.permanent.deepAnalysisActiveThisRoot) throw new RangeError('Current ROOT cycle requires a new deep analysis.');
   const locked = state.postDeepResearchSkillLock;
   const ranks = state.permanent.skillRanks;
   const count = state.permanent.deepResearchCount;
-  if (typeof locked !== 'boolean' || (state.scoreCapStage >= 2 && count >= 2 && count < 4 && !locked)
+  if (typeof locked !== 'boolean' || (state.scoreCapStage >= 2 && startingStage === 0 && count >= 2 && count < 4 && !locked)
     || (locked && (state.scoreCapStage < 2 || count < 1 || count >= 4
     || (count === 1 && (ranks.harvest > 0 || ranks.discount > 0 || ranks.startingImo > 0))
     || (count === 2 && (ranks.discount > 0 || ranks.startingImo > 0))
@@ -83,7 +87,7 @@ export function assertGameState(state: GameState) {
     || state.imo.gt(state.runEarnedScore.add(state.runStartingImo)) || state.runEarnedScore.gt(cap)
     || state.imo.add(getResearchSpent(state.researchRanks)).add(getOriginResearchSpent(state.originResearchRanks)).gt(state.runEarnedScore.add(state.runStartingImo).add(0.001))
     || state.permanent.skillRanks.breakthrough < SCORE_CAP_STAGES[state.scoreCapStage].requiredSkillRank
-    || (state.scoreCapStage > 0 && state.runEarnedScore.lt(SCORE_CAP_STAGES[state.scoreCapStage - 1]!.cap))) throw new RangeError('Invalid run balance or SCORE.');
+    || (state.scoreCapStage > startingStage && state.runEarnedScore.lt(SCORE_CAP_STAGES[state.scoreCapStage - 1]!.cap))) throw new RangeError('Invalid run balance or SCORE.');
   for (const id of EQUIPMENT_IDS) {
     assertCount(state.equipmentCounts[id]);
     if (!getEquipmentAvailability(id, state).unlocked && state.equipmentCounts[id] !== 0) throw new RangeError('Locked equipment cannot be owned.');

@@ -102,6 +102,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
   const compactResearch = suite.research.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
   const compactRoots = suite.rootConnections.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
   const compactOrigins = suite.origins.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
+  const compactDeepPrestige = suite.deepPrestige.map(({ result: { trace: _trace, ...result }, ...trial }) => ({ ...trial, result }));
   const compactRootCycles = suite.rootCycles.map(({ trace: _trace, stages, ...trial }) => ({ ...trial,
     stages: stages.map(({ result: { trace: _stageTrace, ...result }, ...stage }) => ({ ...stage, result })) }));
   const compactGear = suite.gear.map(({ trace: _trace, cycles, ...trial }) => ({ ...trial, cycles: cycles.map(({ stages, ...cycle }) => ({ ...cycle,
@@ -113,9 +114,15 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
       runs: runs.map(({ result: { trace: _runTrace, ...runResult }, ...run }) => ({ ...run, result: runResult })) } })),
     late: suite.depth.late.map(({ result: { trace: _trace, ...result }, resumed: { trace: _resumedTrace, ...resumed }, ...trial }) => ({ ...trial, result, resumed })),
   };
-  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, origins: _origins, rootCycles: _rootCycles, gear: _gear, gearModes: _gearModes, depth: _depth, ...metadata } = suite;
+  const { campaigns: _campaigns, benchmarks: _benchmarks, expansion: _expansion, breakthroughJourneys: _journeys, automation: _automation, research: _research, rootConnections: _roots, origins: _origins, rootCycles: _rootCycles, gear: _gear, gearModes: _gearModes, deepPrestige: _deepPrestige, depth: _depth, ...metadata } = suite;
   const files: Record<string, string> = {
-    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, origins: originReportValue(compactOrigins), rootCycles: originReportValue(compactRootCycles), gear: originReportValue(compactGear), gearModes: originReportValue(compactGearModes), depth: compactDepth }),
+    'results.json': json({ ...metadata, coreSha256, campaigns: compactCampaigns, benchmarks: compactBenchmarks, expansion: compactExpansion, breakthroughJourneys: compactJourneys, automation: compactAutomation, research: compactResearch, rootConnections: compactRoots, origins: originReportValue(compactOrigins), rootCycles: originReportValue(compactRootCycles), gear: originReportValue(compactGear), gearModes: originReportValue(compactGearModes), deepPrestige: originReportValue(compactDeepPrestige), depth: compactDepth }),
+    'deep-prestige.csv': csv([
+      ['scenario', 'visit_seconds', 'automated', 'starting_stage', 'starting_score', 'starting_imo', 'analysis_count', 'skill_lock', 'completed', 'seconds', 'final_score', 'depth_meters'],
+      ...suite.deepPrestige.map((trial) => [trial.scenario.id, trial.scenario.visitSeconds, String(trial.automated), trial.afterPrestige.scoreCapStage,
+        trial.afterPrestige.runEarnedScore, trial.afterPrestige.imo, trial.afterPrestige.permanent.deepResearchCount, String(trial.afterPrestige.postDeepResearchSkillLock),
+        String(trial.result.completed), trial.result.elapsedSeconds, trial.result.state.runEarnedScore, trial.result.state.permanent.depthMeters]),
+    ], true),
     'gear-modes.csv': csv([
       ['scenario', 'preset', 'cycle', 'completed', 'seconds', 'production', 'depth_meters', 'unlocked', 'unlock_order', 'modes'],
       ...suite.gearModes.flatMap((trial) => trial.cycles.map((cycle) => [trial.scenario.id, trial.scenario.gearModePreset ?? null, cycle.cycle, String(cycle.completed), cycle.elapsedSeconds,
@@ -267,7 +274,7 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '# 現行バランスのシミュレーション結果', '',
     `コア識別子（LF 正規化 SHA-256）: \`${coreSha256}\`。${suite.runCount}周回、打切り ${time(suite.maxSeconds)}。生成日時や乱数を含まない再現可能な結果です。`, '',
     'これは方策比較であり、最適解の探索やプレイヤー全体の平均ではありません。生産・価格・報酬・保存は実コアから計算しています。', '',
-    '結果形式v2・セーブv14。JSON/CSVの芋金額・SCORE支出・生産速度はgn1文字列、台数・ランク・秒数・DEPTH・掘削速度はnumberです。数値移行は [巨大数移行](../../number-migration.md)、深層解析は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md)、恒久深度は [DEPTH](../../depth.md)、第4突破は [根源領域](../../origin.md)、根源転生は [ROOT](../../root-rebirth.md)、恒久装備は [装備](../../gear.md)、構成切替は [効果モード](../../gear-modes.md) を参照してください。', '',
+    '結果形式v2・セーブv15。JSON/CSVの芋金額・SCORE支出・生産速度はgn1文字列、台数・ランク・秒数・DEPTH・掘削速度はnumberです。数値移行は [巨大数移行](../../number-migration.md)、深層解析と通常転生後の上限維持は [深層記憶](../../deep-memory.md)、第3突破は [設備連携](../../root-connection.md)、恒久深度は [DEPTH](../../depth.md)、第4突破は [根源領域](../../origin.md)、根源転生は [ROOT](../../root-rebirth.md)、恒久装備は [装備](../../gear.md)、構成切替は [効果モード](../../gear-modes.md) を参照してください。', '',
     '## 現行パラメータ', '',
     `基礎生産 ${number(suite.parameters.balance.baseProduction)}/秒、上限 ${number(suite.parameters.balance.scoreCap)}、転生解禁 ${number(suite.parameters.prestige.unlockScore)}、報酬 ${suite.parameters.prestige.earlyReward}/${suite.parameters.prestige.capReward}pt、オフライン上限 ${time(suite.parameters.offlineLimitSeconds)}。`, '',
     '| 設備 | 基礎価格 | 台数価格倍率 | 1台あたり基礎生産 | 解禁する上限 | 台数/追加倍率（乗算） |', '| --- | ---: | ---: | ---: | ---: | --- |',
@@ -384,6 +391,11 @@ export function buildArtifacts(suite: SimulationSuite, coreSha256: string): Reco
     '| --- | --- | --- | ---: | ---: | ---: | ---: |',
     ...suite.origins.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.policy === 'hold' ? '追加購入なし' : trial.policy === 'equipment' ? '新設備・新研究なし' : '新設備と新研究'} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '90日で打切り'} | ${trial.result.completed ? time(trial.totalSeconds) : '90日で打切り'} | ${number(trial.result.state.permanent.depthMeters)} m | ${time(trial.result.idleAtCapSeconds)} |`), '',
     '1分/6h/12h×自動ON/OFFの6経路を実際の初期状態から継続。対照は6hの追加購入なし・新研究なし4経路だけとし、研究順や全組合せは増やしません。研究・突破は確認時のみ手動です。各段階の停止待ちは既存campaign/breakthrough/research/rootとorigin CSVに記録します。1日2〜4回確認で追加数日、初期から1〜3週間は参考目標で、全方策や最適値の保証ではありません。詳細は [根源領域](../../origin.md)。', '',
+    '## 解析済み通常転生・段階2からの再開', '',
+    '| 確認 | 購入 | 開始段階 | 開始SCORE | 解析累計（前→後） | 上限1E12への再到達 |',
+    '| --- | --- | ---: | ---: | ---: | ---: |',
+    ...suite.deepPrestige.map((trial) => `| ${time(trial.scenario.visitSeconds)} | ${trial.automated ? '自動' : '手動'} | ${trial.afterPrestige.scoreCapStage} | ${number(trial.afterPrestige.runEarnedScore)} | ${trial.beforePrestige.permanent.deepResearchCount}→${trial.result.state.permanent.deepResearchCount} | ${trial.result.completed ? time(trial.result.elapsedSeconds) : '打切り'} |`), '',
+    '初期から段階4へ進んだ実状態を通常転生し、SCORE0・設備0・周回研究0・ロック解除・上限1E12から再開します。保持した実ポイントで収穫・割引を再取得し、追加の解析・ポイント返還・保持枠増加を行いません。段階3/4の設備は再突破まで購入候補に入りません。 [比較CSV](deep-prestige.csv) / [引継ぎと移行](../../deep-memory.md#通常転生後の解析完了維持45v15)', '',
     '## ROOT REBIRTH・初回と再到達', '',
     '| 確認 | 購入 | 最初の結晶 | 初期→初回ROOT | ROOT後→2回目 | 序盤1E6まで | 2回目までのDEPTH |',
     '| --- | --- | --- | ---: | ---: | ---: | ---: |',

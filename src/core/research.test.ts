@@ -1,7 +1,8 @@
+import { performRootRebirth } from './root';
 import { testAmount as gn, stringifyTestSave } from '../test/amounts';
 
 import { describe, expect, it } from 'vitest';
-import { createResearchReadyState, createBreakthroughReadyState } from '../test/progress';
+import { createResearchReadyState, createBreakthroughReadyState, completeAnalyzedRootCycle } from '../test/progress';
 import { getDeepResearch, getDeepResearchReset, performDeepResearch, getResearchPurchase, purchaseResearch, resetResearch } from './research';
 import { advanceGame, advanceWithAutomation, configureAutomation, getEquipmentPrice, getProductionPerSecond, getPurchaseQuote, purchaseEquipment, MAX_AUTOMATIC_PURCHASES } from './game';
 import { createInitialState } from './state';
@@ -50,7 +51,10 @@ describe('deep research breakthrough', () => {
         if (state.permanent.skillRanks[id] < target) state = purchaseSkill(state, id);
       }
       expect(state.permanent.skillRanks).toEqual(before.permanent.skillRanks);
-      state = advanceGame(performBreakthrough(advanceGame(state, 1e6)), 1e9);
+      if (index < 3) {
+        state = performRootRebirth(completeAnalyzedRootCycle(state));
+        state = advanceGame(performBreakthrough(advanceGame(state, Number.MAX_VALUE)), Number.MAX_VALUE);
+      }
     }
   });
 
@@ -59,7 +63,7 @@ describe('deep research breakthrough', () => {
       permanent: { ...createResearchReadyState(true).permanent, deepResearchUnlocked: true } };
     const migrated = parseSave(stringifyTestSave({ saveVersion: 7, savedAt: 321, gameState: old }));
     expect(migrated.savedAt).toBe(321);
-    expect(migrated.gameState).toEqual({ ...old, permanent: { ...old.permanent, deepResearchCount: 1, maxDiscoveredStage: 2, depthMeters: 0, depthRemainder: 0 } });
+    expect(migrated.gameState).toEqual({ ...old, permanent: { ...old.permanent, deepAnalysisActiveThisRoot: true, deepResearchCount: 1, maxDiscoveredStage: 2, depthMeters: 0, depthRemainder: 0 } });
     expect(migrated.gameState.postDeepResearchSkillLock).toBe(false);
     const reset = performDeepResearch(createResearchReadyState(true));
     for (const change of [
@@ -85,7 +89,7 @@ describe('deep research breakthrough', () => {
     Object.freeze(before.permanent); Object.freeze(before.equipmentCounts); Object.freeze(before);
     const after = performDeepResearch(before);
     expect(after).toEqual({ ...before, scoreCapStage: 2, postDeepResearchSkillLock: true,
-      permanent: { ...before.permanent, deepResearchUnlocked: true, deepResearchCount: 1, maxDiscoveredStage: 2, unspentPoints: 7,
+      permanent: { ...before.permanent, deepAnalysisActiveThisRoot: true, deepResearchUnlocked: true, deepResearchCount: 1, maxDiscoveredStage: 2, unspentPoints: 7,
         skillRanks: { ...before.permanent.skillRanks, harvest: 0, discount: 0 } } });
     expect(after.equipmentCounts).toBe(before.equipmentCounts);
     expect(after.automation).toBe(before.automation);
@@ -94,18 +98,30 @@ describe('deep research breakthrough', () => {
     expect(advanceGame(after, 1).runEarnedScore).toBeGreaterThanAmount(1e9);
   });
 
-  it('keeps permission and configuration through prestige, resets run upgrades and repeats for free', () => {
+  it('keeps permission and configuration through prestige, resets run upgrades and never repeats analysis or refunds', () => {
     const researched = purchaseResearch(performDeepResearch(createResearchReadyState()), 'geology');
     const next = prestigeGame(researched);
     expect(next.permanent.deepResearchUnlocked).toBe(true);
     expect(next.researchRanks).toEqual(createInitialState().researchRanks);
     expect(next.equipmentCounts).toEqual(createInitialState().equipmentCounts);
     expect(next.automation).toBe(researched.automation);
-    expect(next.scoreCapStage).toBe(0);
+    expect(next.scoreCapStage).toBe(2);
+    expect(next.runStartingScoreCapStage).toBe(2);
+    expect(next.runEarnedScore).toBeAmount(0);
+    expect(next.postDeepResearchSkillLock).toBe(false);
+    expect(next.permanent.deepResearchCount).toBe(1);
     expect(performDeepResearch(next)).toBe(next);
     const repeat = advanceGame(performBreakthrough(advanceGame(next, 1e6)), 1e9);
-    expect(performDeepResearch(repeat)).toEqual({ ...repeat, scoreCapStage: 2, postDeepResearchSkillLock: true,
-      permanent: { ...repeat.permanent, deepResearchCount: 2 } });
+    expect(performDeepResearch(repeat)).toBe(repeat);
+    expect(repeat.permanent.deepResearchCount).toBe(1);
+    expect(getDeepResearchReset(repeat).refund).toBe(0);
+    expect(purchaseSkill(next, 'harvest').permanent.skillRanks.harvest).toBe(1);
+    expect(parseSave(serializeSave(createSave(next, 0))).gameState).toEqual(next);
+    const online = advanceWithAutomation(next, 60).state;
+    expect(settleOffline(createSave(next, 0), 60000).save.gameState).toEqual(online);
+    expect(() => createSave({ ...next, runStartingScoreCapStage: 0 }, 0)).toThrow();
+    expect(() => createSave({ ...next, permanent: { ...next.permanent, deepAnalysisActiveThisRoot: false } }, 0)).toThrow();
+    expect(() => createSave({ ...next, postDeepResearchSkillLock: true }, 0)).toThrow();
   });
 
   it.each(['veinExtractor', 'concentrator'] as const)('locks %s until stage2 and gives its actual marginal growth', (id) => {
